@@ -1,6 +1,6 @@
 # Architecture
 
-Aegis implements two connected decisions: whether a login should proceed, and whether a verified identity may temporarily access a resource. The frontend makes decisions visible; the backend is authoritative.
+Adaptive IAM implements two connected decisions: whether a login should proceed, and whether a verified identity may temporarily access a resource. The frontend makes decisions visible; the backend is authoritative.
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,7 @@ flowchart LR
 
 ## Decisions and boundaries
 
-Risk scores live in `[0, 1]`. Paper baseline thresholds are low `< 0.3`, medium `< 0.7`, and high `>= 0.7`; experiments may compare better-calibrated models while preserving explicit policy tiers. Inference is distinct from policy: a low model score does not override mandatory safety checks.
+Risk scores live in `[0, 1]`. Paper baseline thresholds are low `< 0.3`, medium `< 0.7`, and high `>= 0.7`; experiments may compare better-calibrated models while preserving explicit policy tiers. Binary experiment classification uses a separately selected threshold, so its accuracy/recall is not the authentication policy's challenge/block recall. Inference is distinct from policy: a low model score does not override mandatory safety checks. Resource requests recompute risk from stored login context plus server-owned resource sensitivity.
 
 TF-IDF/Naive Bayes provides the paper text baseline. Improved text features and confidence handling may route ambiguity to review. An optional locally configured BERT classifier must have task-specific labels; a generic sentiment model is not an authorization model.
 

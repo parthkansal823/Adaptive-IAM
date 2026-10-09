@@ -16,16 +16,16 @@ Protected routes require `Authorization: Bearer <token>`. Tokens expire after 30
 | `GET /api/auth/me` | Bearer | Current server identity, session and login risk |
 | `POST /api/auth/logout` | Bearer | Invalidate current session |
 | `GET /api/overview` | Bearer | Research dashboard stats and recent activity |
-| `GET /api/requests` | Bearer | Requests with reviewer policy and `can_vote` for current actor |
+| `GET /api/requests` | Bearer | Actor-visible requests with reviewer policy and `can_vote` |
 | `POST /api/requests` | Bearer | Create a pending identity-bound access request |
 | `POST /api/requests/{request_id}/votes` | Eligible bearer | One binary vote with optional comment |
-| `GET /api/grants` | Bearer | Current and expired demo grants |
+| `GET /api/grants` | Bearer | Actor-visible current and expired demo grants |
 | `GET /api/resources/{resource_id}/access` | Bearer | Server checks current actor's unexpired read grant before returning synthetic content |
-| `GET /api/audit` | Bearer | Recent canonical chained events |
+| `GET /api/audit` | Bearer | Actor-visible recent canonical chained events |
 | `GET /api/audit/verify` | Bearer | Recompute local chain integrity |
 | `GET /api/evaluation` | Public | Synthetic baseline/improved model and NLP evaluation |
 
-`bootstrap` deliberately exposes public demo passwords. All routes are intended for loopback-only research; authenticated demo users see shared organization metadata.
+`bootstrap` deliberately exposes public demo passwords. All routes are intended for loopback-only research. Requesters and selected reviewers see their related requests/audit events; grantees and owners see related grants. The security reviewer sees organization-wide activity.
 
 ## Login and context
 
@@ -62,7 +62,7 @@ Medium risk returns `challenge_id`, `demo_code` and `expires_at`; submit `{ "cha
 }
 ```
 
-The session supplies the requester; no client identity, reviewer IDs, vote weight or risk score is accepted in this body. Justifications must contain 20–2,000 characters. Requested duration is positive and at most 72 hours, additionally capped by the resource: research vault 24, finance reports 8, production logs 4 hours. Resource owners cannot request self-review. A requester may have at most ten pending requests.
+The session supplies the requester; no client identity, reviewer IDs, vote weight or risk score is accepted in this body. Request risk is recomputed using the stored login context and server-owned resource sensitivity (internal 0.3, confidential 0.7, restricted 1.0), rather than accepting a client-selected resource score. Justifications must contain 20–2,000 characters. Requested duration is positive and at most 72 hours, additionally capped by the resource: research vault 24, finance reports 8, production logs 4 hours. Resource owners cannot request self-review. A requester may have at most ten pending requests.
 
 Every request starts pending. Selected reviewers receive weights 1.5 (owner) or 1.0 (peer), calculated server-side. Submit `{ "approve": true, "comment": "Reviewed task scope" }` once as an eligible reviewer. Approval requires owner approval, at least two votes, and `approval_weight > 0.5 * total_selected_weight`; owner denial vetoes. Pending requests expire after 48 hours and deny by default. Approved grants expire from their creation time, and access is rechecked on the server.
 
@@ -71,4 +71,3 @@ Every request starts pending. Selected reviewers receive weights 1.5 (owner) or 
 Errors use FastAPI's `detail` field. `401` means invalid/expired credentials, challenge or session; `403` means ineligible reviewer; `404` means unknown request/resource; `409` means duplicate vote, terminal request or self-owner request; `422` means invalid input/duration; `429` means attempt or request limits. Five credential failures lock an account for 15 minutes; the login route also limits clients to 30 attempts/minute.
 
 Audit verification proves consistency of the retained local chain. It cannot prove that an administrator did not replace/recompute the database or remove its tail. Audit payloads omit raw justifications and vote comments, credentials, tokens and OTPs.
-

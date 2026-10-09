@@ -1,0 +1,13 @@
+{
+  "name": "adaptive-iam-website-integration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/client.test.mjs",
+    "start": "node ../examples/node-site.mjs"
+  },
+  "dependencies": {
+    "jose": "6.2.12"
+  }
+}

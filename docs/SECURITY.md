@@ -15,7 +15,7 @@ This is a local research prototype with synthetic data and demo identities. Do n
 
 ## Known prototype limitations
 
-Synthetic identity/context signals are demonstrative and can be chosen by the tester. They are not trusted device telemetry. Public bootstrap credentials and UI-displayed demo challenges are not production authentication factors. Local process memory and SQLite are not a high-availability identity provider. Audit and resource access use the same host trust boundary. The console exposes organization-wide review/audit metadata to its authenticated demo users; it does not implement tenant isolation or private enterprise log-reader roles.
+Synthetic identity/context signals are demonstrative and can be chosen by the tester. They are not trusted device telemetry. Public bootstrap credentials and UI-displayed demo challenges are not production authentication factors. Local process memory and SQLite are not a high-availability identity provider. Audit and resource access use the same host trust boundary. Requests/audit views are scoped to the requester and selected reviewers; grants are scoped to the grantee and resource owner. Security reviewers have organization-wide visibility. This demo does not implement separate organization tenancy.
 
 LLM justification text is untrusted input. Reviewer recommendations must remain recommendations. A generic pretrained transformer does not supply calibrated suspicious-request probabilities without task-specific training.
 

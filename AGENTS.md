@@ -1,4 +1,4 @@
-# Adaptive IAM / Aegis
+# Adaptive IAM
 
 Research prototype. Preserve original research assets; see `docs/RESEARCH_INDEX.md`.
 
@@ -24,4 +24,3 @@ Research prototype. Preserve original research assets; see `docs/RESEARCH_INDEX.
 ## Commands
 
 `python scripts/check.py --all` performs lightweight syntax and secret checks. `python scripts/verify.py` runs project checks. See `README.md` for setup and launch commands.
-

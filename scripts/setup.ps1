@@ -7,7 +7,7 @@ try {
         python -m venv .venv
         if ($LASTEXITCODE -ne 0) { throw 'Python environment creation failed.' }
     }
-    & '.venv/Scripts/python.exe' -m pip install -r backend/requirements.txt
+    & '.venv/Scripts/python.exe' -m pip install -r backend/requirements-dev.txt
     if ($LASTEXITCODE -ne 0) { throw 'Backend dependency installation failed.' }
     if (-not $SkipFrontend) {
         if (Test-Path -LiteralPath 'frontend/package-lock.json') { npm.cmd --prefix frontend ci }
@@ -18,8 +18,7 @@ try {
         git config --local core.hooksPath .githooks
         if ($LASTEXITCODE -ne 0) { throw 'Git hooks configuration failed. Run git init first.' }
     }
-    Write-Host 'Setup complete. Run .\scripts\dev.ps1 -Service backend and -Service frontend in separate terminals.'
+    Write-Host 'Setup complete. Run npm run dev to start both services.'
     Write-Host 'Project Codex lifecycle hooks require review/trust with /hooks before activation.'
 }
 finally { Pop-Location }
-

@@ -15,7 +15,7 @@ from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
 FEATURES = ["unknown_device", "unknown_location", "vpn", "failed_attempts", "hour_deviation", "login_velocity", "young_account", "travel_distance", "resource_sensitivity", "prior_risk"]
 SEED = 20261009
-ARTIFACT_VERSION = "risk-v3-20261009"
+ARTIFACT_VERSION = "risk-v4-20261009"
 
 
 def features(context: dict) -> np.ndarray:
@@ -51,7 +51,7 @@ def dataset(seed: int = SEED, n: int = 10000):
     return x[order], y[order]
 
 
-def metrics(y, probability, threshold):
+def metrics(y, probability, threshold, low_threshold=.3, high_threshold=.7):
     pred = np.asarray(probability) >= threshold
     tn, fp, fn, tp = confusion_matrix(y, pred, labels=[0, 1]).ravel()
     return {
@@ -63,12 +63,13 @@ def metrics(y, probability, threshold):
         "brier_score": round(float(brier_score_loss(y, probability)), 6),
         "threshold": round(float(threshold), 4),
         "confusion_matrix": {"true_negative": int(tn), "false_positive": int(fp), "false_negative": int(fn), "true_positive": int(tp)},
-        "friction_rate": round(float(np.mean(np.asarray(probability) >= .3)), 6),
-        "legitimate_friction_rate": round(float(np.mean(np.asarray(probability)[y == 0] >= .3)), 6),
-        "high_risk_block_rate": round(float(np.mean(np.asarray(probability) >= .7)), 6),
-        "suspicious_direct_allow_rate": round(float(np.mean(np.asarray(probability)[y == 1] < .3)), 6),
-        "suspicious_challenge_or_block_recall": round(float(np.mean(np.asarray(probability)[y == 1] >= .3)), 6),
-        "blocked_legitimate_rate": round(float(np.mean(np.asarray(probability)[y == 0] >= .7)), 6),
+        "friction_rate": round(float(np.mean(np.asarray(probability) >= low_threshold)), 6),
+        "legitimate_friction_rate": round(float(np.mean(np.asarray(probability)[y == 0] >= low_threshold)), 6),
+        "high_risk_block_rate": round(float(np.mean(np.asarray(probability) >= high_threshold)), 6),
+        "suspicious_direct_allow_rate": round(float(np.mean(np.asarray(probability)[y == 1] < low_threshold)), 6),
+        "suspicious_challenge_or_block_recall": round(float(np.mean(np.asarray(probability)[y == 1] >= low_threshold)), 6),
+        "blocked_legitimate_rate": round(float(np.mean(np.asarray(probability)[y == 0] >= high_threshold)), 6),
+        "policy_thresholds": {"low": round(float(low_threshold), 6), "high": round(float(high_threshold), 6)},
     }
 
 
@@ -115,6 +116,11 @@ class RiskEngine:
         p_select = self.probabilities(selection_x)
         candidates = np.linspace(.05, .75, 141)
         self.threshold = float(max(candidates, key=lambda t: (f1_score(selection_y, p_select >= t), t)))
+        # Predeclared conservative policy target, selected on validation only.
+        # Largest threshold satisfying >=80% suspicious detection minimizes friction.
+        suspicious_validation = p_select[selection_y == 1]
+        self.low_threshold = min(.699, float(np.nextafter(np.quantile(suspicious_validation, .2, method="lower"), 0)))
+        self.high_threshold = .7
         legitimate = train_x[train_y == 0]
         self.mean = legitimate.mean(axis=0)
         self.inverse_covariance = np.linalg.pinv(np.cov(legitimate, rowvar=False) + np.eye(len(FEATURES))*.025)
@@ -127,13 +133,14 @@ class RiskEngine:
             timings.append((time.perf_counter() - start)*1000)
         self.report = {
             "dataset": {"name": "Seeded synthetic contextual login events", "synthetic": True, "seed": SEED, "total": len(y), "train": 6000, "validation": 2000, "calibration": 1000, "threshold_selection": 1000, "test": 2000, "test_suspicious_prevalence": round(float(test_y.mean()), 6), "feature_names": FEATURES},
-            "method": {"ensemble": "0.4 × logistic regression + 0.6 × random forest", "improvement": "Validation-gated pairwise interaction features; sigmoid probability calibration", "interaction_features_selected": bool(self.use_interactions), "candidate_selection": "Retain interaction candidate only when selection-partition ROC AUC beats original blend; otherwise original model remains", "calibration": "Platt sigmoid fitted on calibration partition only; retained only if selection-partition Brier error improves", "calibration_selected": bool(self.use_calibration), "threshold_selection": "Maximum F1 on separate validation selection partition", "tier_thresholds": {"low": .3, "high": .7}, "classification_threshold_is_not_tier_threshold": True, "split_before_preprocessing": True},
+            "method": {"ensemble": "0.4 × logistic regression + 0.6 × random forest", "improvement": "Validation-gated pairwise interaction features; sigmoid probability calibration", "interaction_features_selected": bool(self.use_interactions), "candidate_selection": "Retain interaction candidate only when selection-partition ROC AUC beats original blend; otherwise original model remains", "calibration": "Platt sigmoid fitted on calibration partition only; retained only if selection-partition Brier error improves", "calibration_selected": bool(self.use_calibration), "threshold_selection": "Maximum F1 on separate validation selection partition", "authentication_policy_selection": "Largest calibrated challenge threshold meeting >=80% suspicious detection on selection partition, minimizing legitimate friction; high cutoff remains 0.7", "validation_policy_recall": round(float(np.mean(suspicious_validation >= self.low_threshold)), 6), "paper_tier_thresholds": {"low": .3, "high": .7}, "tier_thresholds": {"low": round(self.low_threshold, 6), "high": self.high_threshold}, "classification_threshold_is_not_tier_threshold": True, "split_before_preprocessing": True},
             "baseline": {"name": "Paper blend, raw probabilities, 0.5 classification threshold", **metrics(test_y, raw_test, .5)},
-            "improved": {"name": "Validation-selected blend + calibrated probabilities + validation-selected threshold", **metrics(test_y, calibrated_test, self.threshold)},
+            "improved": {"name": "Validation-selected blend + calibrated probabilities + conservative challenge policy", **metrics(test_y, calibrated_test, self.threshold, self.low_threshold, self.high_threshold)},
+            "rejected_policy_ablation": {"name": "Calibrated probability with unchanged paper 0.3/0.7 cutoffs", **metrics(test_y, calibrated_test, self.threshold), "reason": "Calibration reduced probabilities; unchanged cutoffs lose suspicious challenge recall, so this policy is not deployed."},
             "majority_baseline": {"name": "Always predict legitimate", **metrics(test_y, np.zeros(len(test_y)), .5), "interpretation": "Imbalanced-label accuracy alone is misleading; this baseline detects no suspicious events."},
             "static_auth_baseline": {"name": "Valid credential always directly allowed", "suspicious_direct_allow_rate": 1.0, "suspicious_challenge_or_block_recall": 0.0, "legitimate_friction_rate": 0.0, "interpretation": "Conceptual policy baseline assumes credentials already passed, with no context challenge."},
             "latency": {"scope": "Single-row model inference, local CPU, excludes HTTP and model training", "samples": len(timings), "median_ms": round(float(np.median(timings)), 3), "p95_ms": round(float(np.percentile(timings, 95)), 3)},
-            "limitations": ["Synthetic labels measure this generator, not real-world credential theft detection.", "The paper reports projected benchmarks; these are fresh empirical synthetic measurements.", "Calibration reduces probability error; any accuracy/recall tradeoff is reported without suppressing regressions.", "Client-supplied context is suitable for a local demo; production must derive device, network and behavioral signals server-side.", "No automatic retraining from votes: approval labels are not ground-truth malicious-login labels.", "Authentication tier thresholds remain the paper's 0.3/0.7; evaluation classification threshold is separate."],
+            "limitations": ["Synthetic labels measure this generator, not real-world credential theft detection.", "The paper reports projected benchmarks; these are fresh empirical synthetic measurements.", "Calibration reduces probability error; any accuracy/recall tradeoff is reported without suppressing regressions.", "Client-supplied context is suitable for a local demo; production must derive device, network and behavioral signals server-side.", "No automatic retraining from votes: approval labels are not ground-truth malicious-login labels.", "Authentication challenge cutoff is validation-tuned for >=80% suspicious detection; evaluation maximum-F1 classification threshold is separate.", "Validation recall target is not a guarantee of held-out or real-world detection."],
         }
 
     @staticmethod
@@ -157,7 +164,7 @@ class RiskEngine:
         score = float(self.calibrator.predict_proba(self.logits(np.array([raw])))[0, 1]) if self.use_calibration else raw
         deviation = row[0] - self.mean
         anomaly = math.sqrt(max(0, float(deviation @ self.inverse_covariance @ deviation)))
-        tier = "low" if score < .3 else "medium" if score < .7 else "high"
+        tier = "low" if score < self.low_threshold else "medium" if score < self.high_threshold else "high"
         values = [("Device familiarity", context.get("known_device", True), "positive" if context.get("known_device", True) else "negative"),
                   ("Location familiarity", context.get("known_location", True), "positive" if context.get("known_location", True) else "negative"),
                   ("VPN / proxy", context.get("vpn", False), "negative" if context.get("vpn", False) else "neutral"),

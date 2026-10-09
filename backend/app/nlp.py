@@ -79,14 +79,21 @@ class JustificationEngine:
         confidence = max(p, 1-p)
         label = "suspicious" if p >= .5 else "legitimate"
         engine = "tfidf_naive_bayes"
+        fallback_reason = None
         if confidence < .65:
             label = "uncertain"
             if self.bert:
-                result = self.bert(text[:2000], truncation=True, max_length=256)[0]
-                if result["label"].lower() in {"legitimate", "suspicious"}:
+                try:
+                    result = self.bert(text[:2000], truncation=True, max_length=256)[0]
+                    if result["label"].lower() not in {"legitimate", "suspicious"} or not 0 <= float(result["score"]) <= 1:
+                        raise ValueError("Invalid BERT inference result")
                     label = result["label"].lower()
                     confidence = float(result["score"])
                     engine = "local_bert"
+                except (RuntimeError, OSError, ValueError, TypeError, KeyError, IndexError):
+                    label = "uncertain"
+                    engine = "tfidf_naive_bayes_fallback"
+                    fallback_reason = "local_bert_inference_failed"
         if any(word in text.lower() for word in ("ignore the", "bypass", "disable logging", "remove the audit", "personal email", "private account")):
             label = "suspicious"
-        return {"label": label, "confidence": round(confidence, 6), "suspicious_probability": round(p, 6), "engine": engine, "explanation": "Advisory text assessment; all requests require human owner quorum. Untrusted text never changes policy.", "bert_available": bool(self.bert)}
+        return {"label": label, "confidence": round(confidence, 6), "suspicious_probability": round(p, 6), "engine": engine, "explanation": "Advisory text assessment; all requests require human owner quorum. Untrusted text never changes policy.", "bert_available": bool(self.bert), "fallback_reason": fallback_reason}

@@ -17,6 +17,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .models import AssessmentInput, LoginInput, RequestInput, VerifyInput, VoteInput
 from .nlp import JustificationEngine
+from .oauth import OAuthProvider, install_oauth
 from .reviewers import ReviewerSelector
 from .risk import RiskEngine
 from .store import PASSWORD, Store, canonical, hash_password, now, secret_hash, stamp, verify_password
@@ -35,6 +36,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         application.state.risk = RiskEngine(model_cache)
         application.state.nlp = JustificationEngine()
         application.state.reviewers = ReviewerSelector()
+        application.state.oauth = OAuthProvider(application.state.store, data_dir)
         yield
 
     api = FastAPI(title="Adaptive IAM research API", version="1.0.0", lifespan=lifespan)
@@ -74,7 +76,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
     @api.get("/api/bootstrap")
     def bootstrap():
         with api.state.store.connection() as db:
-            return {"demo_mode": True, "notice": "Offline research demo: these seeded credentials are public. Use synthetic identities only. Run on loopback.", "users": [{**user, "password": PASSWORD} for user in api.state.store.users(db)], "resources": api.state.store.resources(db), "reviewer_weights": {"owner": 1.5, "peer": 1}, "risk_thresholds": {"low": .3, "high": .7}, "capabilities": capabilities()}
+            return {"demo_mode": True, "notice": "Offline research demo: these seeded credentials are public. Use synthetic identities only. Run on loopback.", "users": [{**user, "password": PASSWORD} for user in api.state.store.users(db)], "resources": api.state.store.resources(db), "reviewer_weights": {"owner": 1.5, "peer": 1}, "risk_thresholds": {"low": round(api.state.risk.low_threshold, 6), "high": api.state.risk.high_threshold}, "capabilities": capabilities()}
 
     @api.post("/api/risk/assess")
     def assess(body: AssessmentInput):
@@ -310,6 +312,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         report["model_version"] = api.state.risk.version
         return report
 
+    install_oauth(api, authenticated, data_dir)
     return api
 
 

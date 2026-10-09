@@ -7,6 +7,7 @@ Run commands from the repository root. See [README](../README.md) for installati
 | Task | Command on Windows |
 | --- | --- |
 | Install | `.\scripts\setup.ps1` |
+| API + UI together | `npm run dev` |
 | API | `.\scripts\dev.ps1 -Service backend` |
 | UI | `.\scripts\dev.ps1 -Service frontend` |
 | Full checks | `.\scripts\verify.ps1` |
@@ -21,7 +22,9 @@ The portable runner is `python scripts/verify.py`, using your active interpreter
 
 Enable the reviewable repo-local hooks with `git config --local core.hooksPath .githooks`. On Unix, also run `chmod +x .githooks/pre-commit .githooks/pre-push`. Git for Windows uses its bundled shell.
 
-Pre-commit reads index bytes, so it evaluates the actual staged Python/JSON/TOML syntax and common key patterns without printing detected values. Pre-push checks the pushed diff when its remote base resolves, otherwise it runs full checks. New branches run full checks. These lightweight secret checks are a guardrail, not exhaustive secret discovery.
+Pre-commit reads index bytes, so it evaluates the actual staged Python/JSON/TOML syntax and common key patterns without printing detected values. Pre-push requires relevant source/test files to match the actual pushed commit; it fails if uncommitted or untracked source would make tests check different code. Review and commit the complete intended changes before pushing. It then checks the pushed diff when its remote base resolves, otherwise it runs full checks. New branches run full checks. These lightweight secret checks are a guardrail, not exhaustive secret discovery.
+
+`scripts/run_tests.py` fails when discovery produces zero tests, the directory is missing, discovery fails or any test fails. CI and local verification use this runner so an incomplete test suite cannot produce a green result.
 
 Hooks do not stage, commit or push anything. Local `.env`, SQLite databases, model artifacts, dependency folders and logs are ignored.
 

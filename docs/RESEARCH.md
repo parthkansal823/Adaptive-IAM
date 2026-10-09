@@ -21,6 +21,10 @@ Paper figures of 85–92% risk accuracy and 83–89% NLP accuracy are projection
 
 Compare candidates on the same held-out examples. Tune models and calibration on training/validation data only. Keep the test split untouched by model selection. Report suspicious-class recall, precision, ROC-AUC, PR-AUC, Brier score/calibration, and latency alongside accuracy. For text, group generated templates before splitting so near-identical variants do not inflate the test result.
 
+The current risk report separates binary classification metrics from the policy's fixed 0.3/0.7 tiers. Read `suspicious_challenge_or_block_recall`, `suspicious_direct_allow_rate` and `legitimate_friction_rate` to assess authentication behavior; reduced friction can mean more suspicious logins proceed directly. Calibration gains do not by themselves establish a stronger security policy. The always-legitimate and static-password baselines expose how class imbalance can make accuracy misleading.
+
+The default NLP report measures the held-out TF-IDF/Naive Bayes classifier. Runtime lexical safety flags and optional BERT are not independently measured by that classifier report. Report poor held-out suspicious recall explicitly instead of using training performance or the paper's projected scores as a substitute.
+
 Synthetic labels are produced by a controllable simulation, so high scores demonstrate agreement with that simulation. They do not demonstrate resistance to real attackers or generalization to a company's users. Latency excludes unknown external network delays unless specifically measured.
 
 Access-review votes must never be automatically converted into authentication attack labels. Approval of a legitimate business need does not show whether credentials were stolen; such a feedback loop could poison a risk model. Retraining requires separately verified outcomes and provenance.
@@ -35,4 +39,3 @@ Access-review votes must never be automatically converted into authentication at
 6. Test privacy-preserving features, fairness across groups, and data retention.
 
 The final Word/PDF research assets remain unchanged. Implementation findings belong in generated reports and these Markdown docs until a separately reviewed paper revision is requested.
-

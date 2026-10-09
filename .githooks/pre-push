@@ -2,12 +2,11 @@
 set -eu
 root=$(git rev-parse --show-toplevel)
 if [ -x "$root/.venv/Scripts/python.exe" ]; then
-  exec "$root/.venv/Scripts/python.exe" "$root/scripts/verify.py" --changed
+  exec "$root/.venv/Scripts/python.exe" "$root/scripts/verify.py" --changed --pre-push
 elif [ -x "$root/.venv/bin/python" ]; then
-  exec "$root/.venv/bin/python" "$root/scripts/verify.py" --changed
+  exec "$root/.venv/bin/python" "$root/scripts/verify.py" --changed --pre-push
 elif command -v python3 >/dev/null 2>&1; then
-  exec python3 "$root/scripts/verify.py" --changed
+  exec python3 "$root/scripts/verify.py" --changed --pre-push
 else
-  exec python "$root/scripts/verify.py" --changed
+  exec python "$root/scripts/verify.py" --changed --pre-push
 fi
-

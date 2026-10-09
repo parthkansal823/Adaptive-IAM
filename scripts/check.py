@@ -11,7 +11,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-TEXT_SUFFIXES = {".py", ".toml", ".json", ".ts", ".tsx", ".js", ".jsx", ".md", ".yaml", ".yml", ".ps1", ".sh", ".txt", ".html", ".css"}
+TEXT_SUFFIXES = {".py", ".toml", ".json", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".md", ".yaml", ".yml", ".ps1", ".sh", ".txt", ".html", ".css"}
 IGNORE_PARTS = {".git", ".venv", "venv", "node_modules", "__pycache__", "dist", ".pytest_cache", ".ruff_cache", "data", "models", "artifacts", ".cache"}
 SECRET_PATTERNS = {
     "private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
@@ -27,7 +27,15 @@ def git(*args: str) -> bytes:
 
 def staged_files() -> list[tuple[str, bytes]]:
     paths = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").decode().split("\0")
-    return [(path, git("show", f":{path}")) for path in paths if path]
+    files = []
+    for path in paths:
+        if not path:
+            continue
+        name = PurePosixPath(path)
+        text_file = name.suffix.lower() in TEXT_SUFFIXES or name.name.startswith(".env")
+        # Research binaries need no source scan; key/env filenames are still checked.
+        files.append((path, git("show", f":{path}") if text_file else b""))
+    return files
 
 
 def working_files() -> list[tuple[str, bytes]]:

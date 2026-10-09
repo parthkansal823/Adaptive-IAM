@@ -1,4 +1,4 @@
-# Aegis — Adaptive IAM Research Console
+# Adaptive IAM Research Console
 
 A local implementation of the supplied adaptive IAM research idea: contextual authentication, natural-language access requests, human reviewer decisions, timed access grants, and a verifiable audit chain. The responsive React console supports dark and light themes.
 
@@ -10,12 +10,14 @@ Prerequisites: Python 3.11+, Node.js 22+, npm and Git. Run from the repository r
 
 ```powershell
 .\scripts\setup.ps1
-.\scripts\dev.ps1 -Service backend
+npm run dev
 ```
 
-In a second terminal:
+`npm run dev` starts the API and frontend together. Ctrl+C stops both. For separate terminals or backend hot reload, use:
 
 ```powershell
+.\scripts\dev.ps1 -Service backend
+# In another terminal:
 .\scripts\dev.ps1 -Service frontend
 ```
 
@@ -25,7 +27,7 @@ If local PowerShell policy blocks a script, execute its documented commands dire
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
 npm.cmd --prefix frontend ci
 .venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 npm.cmd --prefix frontend run dev
@@ -35,11 +37,9 @@ npm.cmd --prefix frontend run dev
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements.txt
+.venv/bin/python -m pip install -r backend/requirements-dev.txt
 npm --prefix frontend ci
-.venv/bin/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
-# Run this in a second terminal:
-npm --prefix frontend run dev
+npm run dev
 ```
 
 ## Verify and reproduce

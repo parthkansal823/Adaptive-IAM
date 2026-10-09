@@ -17,7 +17,10 @@ class ReviewerSelector:
         self.base_url = os.getenv("IAM_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
         parsed = urlparse(self.base_url)
         self.enabled = bool(self.model and parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"})
-        self.max_calls = min(100, max(0, int(os.getenv("IAM_LLM_MAX_CALLS", "20"))))
+        try:
+            self.max_calls = min(100, max(0, int(os.getenv("IAM_LLM_MAX_CALLS", "20"))))
+        except ValueError:
+            self.max_calls = 0
         self.calls = 0
         self.cache = {}
         self.lock = threading.Lock()
@@ -48,6 +51,8 @@ class ReviewerSelector:
                 with urllib.request.urlopen(req, timeout=2.0) as response:
                     outer = json.loads(response.read(20000))
                 result = json.loads(outer["response"])
+                if not isinstance(result, dict):
+                    raise ValueError("Reviewer suggestion must be a JSON object")
                 ids = result.get("reviewer_ids")
                 allowed = {u["id"] for u in eligible}
                 if (not isinstance(ids, list) or not 2 <= len(ids) <= 3 or not all(isinstance(i, str) for i in ids)

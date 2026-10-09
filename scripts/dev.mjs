@@ -10,7 +10,7 @@ if (!existsSync(python) || !existsSync(vite)) {
   console.error('Run npm run setup first to install the project dependencies.')
   process.exit(1)
 }
-console.log('Aegis: http://127.0.0.1:5173 | API: http://127.0.0.1:8000/docs | Ctrl+C stops both servers.')
+console.log('Adaptive IAM: http://127.0.0.1:5173 | API: http://127.0.0.1:8000/docs | Ctrl+C stops both servers.')
 const children = [
   spawn(python, ['-m', 'uvicorn', 'backend.app.main:app', '--host', '127.0.0.1', '--port', '8000'], { cwd: root, stdio: 'inherit' }),
   spawn(process.execPath, [vite, '--host', '127.0.0.1', '--port', '5173', '--strictPort'], { cwd: path.join(root, 'frontend'), stdio: 'inherit' }),

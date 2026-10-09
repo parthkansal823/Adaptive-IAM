@@ -1,0 +1,2 @@
+-r ../backend/requirements-dev.txt
+matplotlib==3.11.2

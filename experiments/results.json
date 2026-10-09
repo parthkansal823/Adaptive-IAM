@@ -31,8 +31,14 @@
     "calibration": "Platt sigmoid fitted on calibration partition only; retained only if selection-partition Brier error improves",
     "calibration_selected": true,
     "threshold_selection": "Maximum F1 on separate validation selection partition",
-    "tier_thresholds": {
+    "authentication_policy_selection": "Largest calibrated challenge threshold meeting >=80% suspicious detection on selection partition, minimizing legitimate friction; high cutoff remains 0.7",
+    "validation_policy_recall": 0.803681,
+    "paper_tier_thresholds": {
       "low": 0.3,
+      "high": 0.7
+    },
+    "tier_thresholds": {
+      "low": 0.10533,
       "high": 0.7
     },
     "classification_threshold_is_not_tier_threshold": true,
@@ -58,10 +64,40 @@
     "high_risk_block_rate": 0.087,
     "suspicious_direct_allow_rate": 0.131429,
     "suspicious_challenge_or_block_recall": 0.868571,
-    "blocked_legitimate_rate": 0.041818
+    "blocked_legitimate_rate": 0.041818,
+    "policy_thresholds": {
+      "low": 0.3,
+      "high": 0.7
+    }
   },
   "improved": {
-    "name": "Validation-selected blend + calibrated probabilities + validation-selected threshold",
+    "name": "Validation-selected blend + calibrated probabilities + conservative challenge policy",
+    "accuracy": 0.815,
+    "precision": 0.472678,
+    "recall": 0.494286,
+    "f1": 0.48324,
+    "roc_auc": 0.774324,
+    "brier_score": 0.11654,
+    "threshold": 0.26,
+    "confusion_matrix": {
+      "true_negative": 1457,
+      "false_positive": 193,
+      "false_negative": 177,
+      "true_positive": 173
+    },
+    "friction_rate": 0.5715,
+    "legitimate_friction_rate": 0.514545,
+    "high_risk_block_rate": 0.0055,
+    "suspicious_direct_allow_rate": 0.16,
+    "suspicious_challenge_or_block_recall": 0.84,
+    "blocked_legitimate_rate": 0.0,
+    "policy_thresholds": {
+      "low": 0.10533,
+      "high": 0.7
+    }
+  },
+  "rejected_policy_ablation": {
+    "name": "Calibrated probability with unchanged paper 0.3/0.7 cutoffs",
     "accuracy": 0.815,
     "precision": 0.472678,
     "recall": 0.494286,
@@ -80,7 +116,12 @@
     "high_risk_block_rate": 0.0055,
     "suspicious_direct_allow_rate": 0.588571,
     "suspicious_challenge_or_block_recall": 0.411429,
-    "blocked_legitimate_rate": 0.0
+    "blocked_legitimate_rate": 0.0,
+    "policy_thresholds": {
+      "low": 0.3,
+      "high": 0.7
+    },
+    "reason": "Calibration reduced probabilities; unchanged cutoffs lose suspicious challenge recall, so this policy is not deployed."
   },
   "majority_baseline": {
     "name": "Always predict legitimate",
@@ -103,6 +144,10 @@
     "suspicious_direct_allow_rate": 1.0,
     "suspicious_challenge_or_block_recall": 0.0,
     "blocked_legitimate_rate": 0.0,
+    "policy_thresholds": {
+      "low": 0.3,
+      "high": 0.7
+    },
     "interpretation": "Imbalanced-label accuracy alone is misleading; this baseline detects no suspicious events."
   },
   "static_auth_baseline": {
@@ -115,8 +160,8 @@
   "latency": {
     "scope": "Single-row model inference, local CPU, excludes HTTP and model training",
     "samples": 80,
-    "median_ms": 5.308,
-    "p95_ms": 6.538
+    "median_ms": 4.848,
+    "p95_ms": 7.138
   },
   "limitations": [
     "Synthetic labels measure this generator, not real-world credential theft detection.",
@@ -124,7 +169,8 @@
     "Calibration reduces probability error; any accuracy/recall tradeoff is reported without suppressing regressions.",
     "Client-supplied context is suitable for a local demo; production must derive device, network and behavioral signals server-side.",
     "No automatic retraining from votes: approval labels are not ground-truth malicious-login labels.",
-    "Authentication tier thresholds remain the paper's 0.3/0.7; evaluation classification threshold is separate."
+    "Authentication challenge cutoff is validation-tuned for >=80% suspicious detection; evaluation maximum-F1 classification threshold is separate.",
+    "Validation recall target is not a guarantee of held-out or real-world detection."
   ],
   "nlp": {
     "name": "TF-IDF + Multinomial Naive Bayes",
@@ -146,6 +192,6 @@
     "bert_measured": false,
     "limitation": "Synthetic phrasing and template groups are a functional benchmark, not generalization evidence. No BERT result is claimed."
   },
-  "generated_at": "2026-10-09T12:55:49.611630+00:00",
-  "model_version": "risk-v3-20261009"
+  "generated_at": "2026-10-09T13:07:30.567256+00:00",
+  "model_version": "risk-v4-20261009"
 }

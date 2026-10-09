@@ -1,0 +1,412 @@
+{
+  "model_version": "risk-v4-20261009",
+  "protocol": {
+    "frozen_model": true,
+    "test_set_used_for_tuning": false,
+    "bootstrap_repetitions": 1000,
+    "bootstrap_seed": 20261109,
+    "resampling": "Paired class-stratified event bootstrap; percentile 95% intervals",
+    "interpretation": "Conditional uncertainty for one trained model, not uncertainty across retraining or real-world distributions",
+    "replication": "Five new independently generated 2000-event batches; no refitting"
+  },
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.6",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.5.3"
+  },
+  "paired_comparison": {
+    "f1": {
+      "baseline": 0.47157894736842104,
+      "candidate": 0.48324022346368717,
+      "difference_candidate_minus_baseline": 0.011661276095266127,
+      "ci95": [
+        -0.017843975896192646,
+        0.04121284283526208
+      ]
+    },
+    "brier_score": {
+      "baseline": 0.17467270405462212,
+      "candidate": 0.11654005367687056,
+      "difference_candidate_minus_baseline": -0.05813265037775156,
+      "ci95": [
+        -0.06260125936353116,
+        -0.053871364598214795
+      ]
+    },
+    "policy_detection_recall": {
+      "baseline": 0.8685714285714285,
+      "candidate": 0.84,
+      "difference_candidate_minus_baseline": -0.02857142857142858,
+      "ci95": [
+        -0.04571428571428571,
+        -0.011428571428571455
+      ]
+    },
+    "legitimate_friction_rate": {
+      "baseline": 0.5648484848484848,
+      "candidate": 0.5145454545454545,
+      "difference_candidate_minus_baseline": -0.050303030303030294,
+      "ci95": [
+        -0.06000000000000005,
+        -0.039393939393939426
+      ]
+    }
+  },
+  "subgroups": [
+    {
+      "group": "known_device",
+      "events": 1528,
+      "suspicious": 182,
+      "baseline": {
+        "f1": 0.3490566037735849,
+        "brier_score": 0.14828998109964986,
+        "policy_detection_recall": 0.7472527472527473,
+        "legitimate_friction_rate": 0.4687964338781575
+      },
+      "candidate": {
+        "f1": 0.31125827814569534,
+        "brier_score": 0.09616530142579695,
+        "policy_detection_recall": 0.6978021978021978,
+        "legitimate_friction_rate": 0.4086181277860327
+      }
+    },
+    {
+      "group": "new_device",
+      "events": 472,
+      "suspicious": 168,
+      "baseline": {
+        "f1": 0.5703422053231939,
+        "brier_score": 0.2600811800613968,
+        "policy_detection_recall": 1.0,
+        "legitimate_friction_rate": 0.9901315789473685
+      },
+      "candidate": {
+        "f1": 0.6086956521739131,
+        "brier_score": 0.18249899740492248,
+        "policy_detection_recall": 0.9940476190476191,
+        "legitimate_friction_rate": 0.9835526315789473
+      }
+    },
+    {
+      "group": "known_location",
+      "events": 1659,
+      "suspicious": 220,
+      "baseline": {
+        "f1": 0.37436762225969644,
+        "brier_score": 0.16231869625134632,
+        "policy_detection_recall": 0.7954545454545454,
+        "legitimate_friction_rate": 0.5045170257123002
+      },
+      "candidate": {
+        "f1": 0.3469879518072289,
+        "brier_score": 0.10371444022484531,
+        "policy_detection_recall": 0.75,
+        "legitimate_friction_rate": 0.4496177901320361
+      }
+    },
+    {
+      "group": "new_location",
+      "events": 341,
+      "suspicious": 130,
+      "baseline": {
+        "f1": 0.6330532212885154,
+        "brier_score": 0.234776220024225,
+        "policy_detection_recall": 0.9923076923076923,
+        "legitimate_friction_rate": 0.976303317535545
+      },
+      "candidate": {
+        "f1": 0.6710963455149501,
+        "brier_score": 0.17893797953291132,
+        "policy_detection_recall": 0.9923076923076923,
+        "legitimate_friction_rate": 0.957345971563981
+      }
+    }
+  ],
+  "independent_seed_replication": [
+    {
+      "seed": 20261010,
+      "events": 2000,
+      "suspicious_prevalence": 0.1665,
+      "baseline": {
+        "accuracy": 0.7485,
+        "precision": 0.353952,
+        "recall": 0.618619,
+        "f1": 0.450273,
+        "roc_auc": 0.768115,
+        "brier_score": 0.173699,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 1291,
+          "false_positive": 376,
+          "false_negative": 127,
+          "true_positive": 206
+        },
+        "friction_rate": 0.6155,
+        "legitimate_friction_rate": 0.563287,
+        "high_risk_block_rate": 0.081,
+        "suspicious_direct_allow_rate": 0.123123,
+        "suspicious_challenge_or_block_recall": 0.876877,
+        "blocked_legitimate_rate": 0.038392,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.8155,
+        "precision": 0.446746,
+        "recall": 0.453453,
+        "f1": 0.450075,
+        "roc_auc": 0.768115,
+        "brier_score": 0.115284,
+        "threshold": 0.26,
+        "confusion_matrix": {
+          "true_negative": 1480,
+          "false_positive": 187,
+          "false_negative": 182,
+          "true_positive": 151
+        },
+        "friction_rate": 0.568,
+        "legitimate_friction_rate": 0.512298,
+        "high_risk_block_rate": 0.0025,
+        "suspicious_direct_allow_rate": 0.153153,
+        "suspicious_challenge_or_block_recall": 0.846847,
+        "blocked_legitimate_rate": 0.0,
+        "policy_thresholds": {
+          "low": 0.10533,
+          "high": 0.7
+        }
+      }
+    },
+    {
+      "seed": 20261011,
+      "events": 2000,
+      "suspicious_prevalence": 0.175,
+      "baseline": {
+        "accuracy": 0.7475,
+        "precision": 0.373159,
+        "recall": 0.651429,
+        "f1": 0.474506,
+        "roc_auc": 0.779385,
+        "brier_score": 0.175092,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 1267,
+          "false_positive": 383,
+          "false_negative": 122,
+          "true_positive": 228
+        },
+        "friction_rate": 0.637,
+        "legitimate_friction_rate": 0.587879,
+        "high_risk_block_rate": 0.09,
+        "suspicious_direct_allow_rate": 0.131429,
+        "suspicious_challenge_or_block_recall": 0.868571,
+        "blocked_legitimate_rate": 0.041212,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.817,
+        "precision": 0.477778,
+        "recall": 0.491429,
+        "f1": 0.484507,
+        "roc_auc": 0.779385,
+        "brier_score": 0.115028,
+        "threshold": 0.26,
+        "confusion_matrix": {
+          "true_negative": 1462,
+          "false_positive": 188,
+          "false_negative": 178,
+          "true_positive": 172
+        },
+        "friction_rate": 0.59,
+        "legitimate_friction_rate": 0.533939,
+        "high_risk_block_rate": 0.0085,
+        "suspicious_direct_allow_rate": 0.145714,
+        "suspicious_challenge_or_block_recall": 0.854286,
+        "blocked_legitimate_rate": 0.000606,
+        "policy_thresholds": {
+          "low": 0.10533,
+          "high": 0.7
+        }
+      }
+    },
+    {
+      "seed": 20261012,
+      "events": 2000,
+      "suspicious_prevalence": 0.1605,
+      "baseline": {
+        "accuracy": 0.739,
+        "precision": 0.325217,
+        "recall": 0.582555,
+        "f1": 0.417411,
+        "roc_auc": 0.741873,
+        "brier_score": 0.177674,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 1291,
+          "false_positive": 388,
+          "false_negative": 134,
+          "true_positive": 187
+        },
+        "friction_rate": 0.634,
+        "legitimate_friction_rate": 0.595593,
+        "high_risk_block_rate": 0.081,
+        "suspicious_direct_allow_rate": 0.165109,
+        "suspicious_challenge_or_block_recall": 0.834891,
+        "blocked_legitimate_rate": 0.037522,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.8115,
+        "precision": 0.420455,
+        "recall": 0.461059,
+        "f1": 0.439822,
+        "roc_auc": 0.741873,
+        "brier_score": 0.111623,
+        "threshold": 0.26,
+        "confusion_matrix": {
+          "true_negative": 1475,
+          "false_positive": 204,
+          "false_negative": 173,
+          "true_positive": 148
+        },
+        "friction_rate": 0.5775,
+        "legitimate_friction_rate": 0.531864,
+        "high_risk_block_rate": 0.008,
+        "suspicious_direct_allow_rate": 0.183801,
+        "suspicious_challenge_or_block_recall": 0.816199,
+        "blocked_legitimate_rate": 0.001787,
+        "policy_thresholds": {
+          "low": 0.10533,
+          "high": 0.7
+        }
+      }
+    },
+    {
+      "seed": 20261013,
+      "events": 2000,
+      "suspicious_prevalence": 0.179,
+      "baseline": {
+        "accuracy": 0.7385,
+        "precision": 0.374046,
+        "recall": 0.684358,
+        "f1": 0.483712,
+        "roc_auc": 0.785973,
+        "brier_score": 0.178157,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 1232,
+          "false_positive": 410,
+          "false_negative": 113,
+          "true_positive": 245
+        },
+        "friction_rate": 0.6475,
+        "legitimate_friction_rate": 0.593179,
+        "high_risk_block_rate": 0.0955,
+        "suspicious_direct_allow_rate": 0.103352,
+        "suspicious_challenge_or_block_recall": 0.896648,
+        "blocked_legitimate_rate": 0.04324,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.808,
+        "precision": 0.4675,
+        "recall": 0.522346,
+        "f1": 0.493404,
+        "roc_auc": 0.785973,
+        "brier_score": 0.117164,
+        "threshold": 0.26,
+        "confusion_matrix": {
+          "true_negative": 1429,
+          "false_positive": 213,
+          "false_negative": 171,
+          "true_positive": 187
+        },
+        "friction_rate": 0.608,
+        "legitimate_friction_rate": 0.550548,
+        "high_risk_block_rate": 0.011,
+        "suspicious_direct_allow_rate": 0.128492,
+        "suspicious_challenge_or_block_recall": 0.871508,
+        "blocked_legitimate_rate": 0.001827,
+        "policy_thresholds": {
+          "low": 0.10533,
+          "high": 0.7
+        }
+      }
+    },
+    {
+      "seed": 20261014,
+      "events": 2000,
+      "suspicious_prevalence": 0.168,
+      "baseline": {
+        "accuracy": 0.748,
+        "precision": 0.357627,
+        "recall": 0.627976,
+        "f1": 0.455724,
+        "roc_auc": 0.782176,
+        "brier_score": 0.173312,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 1285,
+          "false_positive": 379,
+          "false_negative": 125,
+          "true_positive": 211
+        },
+        "friction_rate": 0.623,
+        "legitimate_friction_rate": 0.571514,
+        "high_risk_block_rate": 0.087,
+        "suspicious_direct_allow_rate": 0.122024,
+        "suspicious_challenge_or_block_recall": 0.877976,
+        "blocked_legitimate_rate": 0.039062,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.8245,
+        "precision": 0.479339,
+        "recall": 0.517857,
+        "f1": 0.497854,
+        "roc_auc": 0.782176,
+        "brier_score": 0.112786,
+        "threshold": 0.26,
+        "confusion_matrix": {
+          "true_negative": 1475,
+          "false_positive": 189,
+          "false_negative": 162,
+          "true_positive": 174
+        },
+        "friction_rate": 0.5705,
+        "legitimate_friction_rate": 0.51262,
+        "high_risk_block_rate": 0.005,
+        "suspicious_direct_allow_rate": 0.142857,
+        "suspicious_challenge_or_block_recall": 0.857143,
+        "blocked_legitimate_rate": 0.000601,
+        "policy_thresholds": {
+          "low": 0.10533,
+          "high": 0.7
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "All outcomes are synthetic and generated by the same mechanism as training.",
+    "New seeds do not represent distribution shift, new organizations or real users.",
+    "Bootstrap intervals are exploratory and unadjusted for multiple comparisons.",
+    "Device/location subgroup differences are diagnostics, not a demographic fairness evaluation.",
+    "Lower benign friction can come with lower attack detection; both are disclosed.",
+    "NLP, LLM quality, decentralized blockchain performance and production MFA are not evaluated by this experiment."
+  ]
+}

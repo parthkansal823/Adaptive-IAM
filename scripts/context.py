@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-MAP = """Adaptive IAM / Aegis: local research prototype.
+MAP = """Adaptive IAM: local research prototype.
 backend/ - Python API, identity/challenges, risk, reviews, timed grants, SQLite audit, tests.
 frontend/ - React/Vite console, API client, responsive dark/light themes.
 experiments/ - seeded baseline/candidate evaluation and measured reports.
