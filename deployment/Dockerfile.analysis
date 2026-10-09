@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 MPLCONFIGDIR=/tmp/matplotlib
+WORKDIR /workspace
+COPY backend/requirements.txt backend/requirements-dev.txt backend/
+COPY experiments/requirements-analysis.txt experiments/
+RUN pip install --no-cache-dir -r experiments/requirements-analysis.txt \
+    && useradd --uid 10001 --create-home analyst
+COPY backend backend
+COPY experiments experiments
+COPY scripts scripts
+USER 10001:10001
+CMD ["python", "experiments/plot_results.py"]

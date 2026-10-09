@@ -94,6 +94,36 @@ export interface Grant {
   created_at: string
   expires_at: string
   status: 'active' | 'expired'
+  blockchain?: { required: boolean; status: 'disabled' | 'pending' | 'confirmed' | 'failed'; transaction_hash?: string }
+}
+
+export interface ChainStatus {
+  enabled: boolean
+  connected: boolean
+  ready: boolean
+  chain_id: number | null
+  contract_address: string | null
+  audit_count: number
+  head_hash: string
+  local_audit_count: number
+  pending_audit_events: number
+  pending_grants: number
+  error?: string
+  limitation: string
+  synced_audit_events?: number
+  synced_grants?: number
+  receipts?: { kind: string; local_id: string; transaction_hash: string; block_number: number }[]
+  errors?: { kind: string; local_id: string; message: string }[]
+}
+
+export interface ResourceAccess {
+  allowed: boolean
+  resource_id: string
+  resource_name: string
+  scope: string | null
+  expires_at?: string
+  reason: string
+  content: { title: string; records: unknown[] } | null
 }
 
 export interface AuditEvent {
@@ -134,7 +164,7 @@ export interface Metrics {
   brier_score?: number
   false_positive_rate?: number
   false_negative_rate?: number
-  confusion_matrix?: number[][]
+  confusion_matrix?: number[][] | { true_negative: number; false_positive: number; false_negative: number; true_positive: number }
   [key: string]: unknown
 }
 
@@ -147,6 +177,36 @@ export interface Evaluation {
   [key: string]: unknown
 }
 
+export interface ConnectedApp {
+  client_id: string
+  name: string
+  client_type: 'public' | 'confidential'
+  redirect_uris: string[]
+  scopes: string[]
+  resource_ids: string[]
+  created_at: string
+  active: boolean
+  client_secret?: string
+}
+
+export interface AppRegistry {
+  items: ConnectedApp[]
+  issuer: string
+  authorization_endpoint: string
+  token_endpoint: string
+  userinfo_endpoint: string
+  jwks_uri: string
+  revocation_endpoint: string
+}
+
+export interface AuthorizationPacket {
+  request_id: string
+  app: { name: string; client_id: string }
+  scopes: string[]
+  resources: Resource[]
+  expires_at: string
+}
+
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) {
@@ -155,11 +215,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, token?: string | null, body?: unknown): Promise<T> {
+export async function api<T>(path: string, token?: string | null, body?: unknown, method?: 'GET' | 'POST' | 'DELETE'): Promise<T> {
   let response: Response
   try {
     response = await fetch(`/api${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
+      method: method || (body === undefined ? 'GET' : 'POST'),
       headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     })

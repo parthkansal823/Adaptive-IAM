@@ -2,7 +2,7 @@
 
 ## Local research milestone
 
-Paper-inspired authentication, reviewer authorization, timed grants, audit verification, responsive dark/light console, reproducible measured baseline comparison, and developer tooling.
+Paper-inspired authentication, reviewer authorization, timed grants, audit verification, registered OAuth/OIDC website login, server permission SDKs, responsive dark/light console, reproducible measured comparisons and developer tooling.
 
 ## Better evidence
 
@@ -10,9 +10,8 @@ Real login data adapter, user/time split, independent text corpus, repeated seed
 
 ## Enterprise integration
 
-OIDC/WebAuthn, trusted device telemetry, granular resources/scopes, database migrations, organization tenancy, rate limiting, external audit anchoring and independently reviewed deployment hardening.
+OIDC conformance/interoperability validation, verified WebAuthn/MFA, trusted device telemetry, resource administration, database migrations, organization tenancy, shared website session storage, external audit anchoring and independently reviewed deployment hardening.
 
 ## Research extensions
 
 Distributed permissioned ledger, privacy-preserving federated learning, continuous authentication, validated BERT fallback and reviewer-selection experiments. Each extension needs its own measured benefit and failure analysis.
-

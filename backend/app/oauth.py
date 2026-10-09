@@ -54,7 +54,7 @@ def valid_url(value: str, callback=False):
         _ = parsed.port
     except ValueError:
         return False
-    if not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+    if not parsed.hostname or "*" in parsed.netloc or parsed.username or parsed.password or parsed.fragment:
         return False
     if parsed.scheme != "https" and not (parsed.scheme == "http" and parsed.hostname in LOOPBACK):
         return False
@@ -72,6 +72,10 @@ def callback_url(uri: str, parameters: dict):
     parsed = urlsplit(uri)
     query = parsed.query + ("&" if parsed.query else "") + urlencode(parameters)
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, query, ""))
+
+
+def protocol_json(value, status_code=200, headers=None):
+    return JSONResponse(value, status_code=status_code, headers={"Cache-Control": "no-store", "Pragma": "no-cache", **(headers or {})})
 
 
 class OAuthProvider:
@@ -103,24 +107,28 @@ class OAuthProvider:
         self.jwk.update({"kid": self.kid, "use": "sig", "alg": "RS256"})
         with store.connection(write=True) as db:
             db.executescript("""
-                CREATE TABLE IF NOT EXISTS oauth_apps (client_id TEXT PRIMARY KEY, name TEXT NOT NULL, client_type TEXT NOT NULL, redirect_uris TEXT NOT NULL, scopes TEXT NOT NULL, resource_ids TEXT NOT NULL, secret_hash TEXT, created_at TEXT NOT NULL, created_by TEXT NOT NULL REFERENCES users(id));
+                CREATE TABLE IF NOT EXISTS oauth_apps (client_id TEXT PRIMARY KEY, name TEXT NOT NULL, client_type TEXT NOT NULL, redirect_uris TEXT NOT NULL, scopes TEXT NOT NULL, resource_ids TEXT NOT NULL, secret_hash TEXT, created_at TEXT NOT NULL, created_by TEXT NOT NULL REFERENCES users(id), active INTEGER NOT NULL DEFAULT 1);
                 CREATE TABLE IF NOT EXISTS oauth_authorizations (id TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), redirect_uri TEXT NOT NULL, scopes TEXT NOT NULL, state TEXT NOT NULL, nonce TEXT NOT NULL, code_challenge TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS oauth_codes (code_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), user_id TEXT NOT NULL REFERENCES users(id), redirect_uri TEXT NOT NULL, scopes TEXT NOT NULL, nonce TEXT NOT NULL, code_challenge TEXT NOT NULL, auth_time INTEGER NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
-                CREATE TABLE IF NOT EXISTS oauth_tokens (token_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), user_id TEXT NOT NULL REFERENCES users(id), scopes TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS oauth_tokens (token_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), user_id TEXT NOT NULL REFERENCES users(id), scopes TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, code_hash TEXT);
             """)
+            if "active" not in {r["name"] for r in db.execute("PRAGMA table_info(oauth_apps)")}:
+                db.execute("ALTER TABLE oauth_apps ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
+            if "code_hash" not in {r["name"] for r in db.execute("PRAGMA table_info(oauth_tokens)")}:
+                db.execute("ALTER TABLE oauth_tokens ADD COLUMN code_hash TEXT")
 
     @staticmethod
     def app_dto(row):
-        return {"client_id": row["client_id"], "name": row["name"], "client_type": row["client_type"], "redirect_uris": json.loads(row["redirect_uris"]), "scopes": json.loads(row["scopes"]), "resource_ids": json.loads(row["resource_ids"]), "created_at": row["created_at"]}
+        return {"client_id": row["client_id"], "name": row["name"], "client_type": row["client_type"], "redirect_uris": json.loads(row["redirect_uris"]), "scopes": json.loads(row["scopes"]), "resource_ids": json.loads(row["resource_ids"]), "created_at": row["created_at"], "active": bool(row["active"])}
 
     def endpoints(self):
-        return {"issuer": self.issuer, "authorization_endpoint": self.issuer+"/oauth/authorize", "token_endpoint": self.issuer+"/oauth/token", "userinfo_endpoint": self.issuer+"/oauth/userinfo", "jwks_uri": self.issuer+"/oauth/jwks"}
+        return {"issuer": self.issuer, "authorization_endpoint": self.issuer+"/oauth/authorize", "token_endpoint": self.issuer+"/oauth/token", "userinfo_endpoint": self.issuer+"/oauth/userinfo", "jwks_uri": self.issuer+"/oauth/jwks", "revocation_endpoint": self.issuer+"/oauth/revoke"}
 
     def access_token(self, value):
         if not value or len(value) > 256:
             raise HTTPException(401, "Invalid OAuth access token")
         with self.store.connection() as db:
-            row = db.execute("SELECT t.*,a.resource_ids,a.redirect_uris,u.name,u.role,u.department FROM oauth_tokens t JOIN oauth_apps a ON t.client_id=a.client_id JOIN users u ON t.user_id=u.id WHERE t.token_hash=?", (secret_hash(value),)).fetchone()
+            row = db.execute("SELECT t.*,a.resource_ids,a.redirect_uris,u.name,u.role,u.department FROM oauth_tokens t JOIN oauth_apps a ON t.client_id=a.client_id JOIN users u ON t.user_id=u.id WHERE t.token_hash=? AND a.active=1", (secret_hash(value),)).fetchone()
         if not row or row["expires_at"] <= stamp():
             raise HTTPException(401, "OAuth access token expired or invalid")
         return dict(row)
@@ -180,12 +188,25 @@ def install_oauth(api, authenticated, data_dir: Path):
                 raise HTTPException(422, "Unknown resource mapping")
             if db.execute("SELECT COUNT(*) FROM oauth_apps").fetchone()[0] >= 100:
                 raise HTTPException(429, "Research provider supports at most 100 registered applications")
-            db.execute("INSERT INTO oauth_apps VALUES (?,?,?,?,?,?,?,?,?)", (client_id, body.name, body.client_type, canonical(body.redirect_uris), canonical(body.scopes), canonical(body.resource_ids), secret_hash(secret) if secret else None, stamp(), identity["user"]["id"]))
+            db.execute("INSERT INTO oauth_apps (client_id,name,client_type,redirect_uris,scopes,resource_ids,secret_hash,created_at,created_by) VALUES (?,?,?,?,?,?,?,?,?)", (client_id, body.name, body.client_type, canonical(body.redirect_uris), canonical(body.scopes), canonical(body.resource_ids), secret_hash(secret) if secret else None, stamp(), identity["user"]["id"]))
             store.audit(db, "oauth_app_registered", identity["user"]["id"], {"client_id": client_id, "name": body.name, "client_type": body.client_type, "resource_ids": body.resource_ids})
             result = provider().app_dto(db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (client_id,)).fetchone())
         if secret:
             result["client_secret"] = secret
         return JSONResponse(result, status_code=201, headers={"Cache-Control": "no-store"})
+
+    @api.delete("/api/apps/{client_id}")
+    def disable(client_id: str, identity=Depends(security)):
+        store = provider().store
+        with store.connection(write=True) as db:
+            app = db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (client_id,)).fetchone()
+            if not app:
+                raise HTTPException(404, "Application not found")
+            db.execute("UPDATE oauth_apps SET active=0 WHERE client_id=?", (client_id,))
+            db.execute("DELETE FROM oauth_tokens WHERE client_id=?", (client_id,))
+            db.execute("UPDATE oauth_authorizations SET consumed=1 WHERE client_id=?", (client_id,))
+            store.audit(db, "oauth_app_disabled", identity["user"]["id"], {"client_id": client_id, "tokens_revoked": True})
+        return {"client_id": client_id, "active": False, "tokens_revoked": True}
 
     @api.get("/oauth/authorize")
     def authorize(request: Request):
@@ -202,7 +223,7 @@ def install_oauth(api, authenticated, data_dir: Path):
         store = provider().store
         with store.connection(write=True) as db:
             app = db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (query["client_id"],)).fetchone()
-            if not app or query["redirect_uri"] not in json.loads(app["redirect_uris"]):
+            if not app or not app["active"] or query["redirect_uri"] not in json.loads(app["redirect_uris"]):
                 # Never redirect an error to an unvalidated callback.
                 raise HTTPException(400, "Unknown client or unregistered exact redirect URI")
             scopes = query["scope"].split()
@@ -217,7 +238,7 @@ def install_oauth(api, authenticated, data_dir: Path):
     @api.get("/api/oauth/authorization/{request_id}")
     def authorization_packet(request_id: str):
         with provider().store.connection() as db:
-            record = db.execute("SELECT q.*,a.name,a.resource_ids FROM oauth_authorizations q JOIN oauth_apps a ON q.client_id=a.client_id WHERE q.id=?", (request_id,)).fetchone()
+            record = db.execute("SELECT q.*,a.name,a.resource_ids FROM oauth_authorizations q JOIN oauth_apps a ON q.client_id=a.client_id WHERE q.id=? AND a.active=1", (request_id,)).fetchone()
             if not record or record["consumed"] or record["expires_at"] <= stamp():
                 raise HTTPException(404, "Authorization request invalid, expired or used")
             resource_ids = set(json.loads(record["resource_ids"]))
@@ -228,7 +249,7 @@ def install_oauth(api, authenticated, data_dir: Path):
     def consent(body: ConsentInput, identity=Depends(authenticated)):
         store = provider().store
         with store.connection(write=True) as db:
-            record = db.execute("SELECT * FROM oauth_authorizations WHERE id=?", (body.request_id,)).fetchone()
+            record = db.execute("SELECT q.* FROM oauth_authorizations q JOIN oauth_apps a ON q.client_id=a.client_id WHERE q.id=? AND a.active=1", (body.request_id,)).fetchone()
             if not record or record["consumed"] or record["expires_at"] <= stamp():
                 raise HTTPException(409, "Authorization request expired or already consumed")
             db.execute("UPDATE oauth_authorizations SET consumed=1 WHERE id=?", (body.request_id,))
@@ -251,20 +272,20 @@ def install_oauth(api, authenticated, data_dir: Path):
     @api.post("/oauth/token")
     async def token(request: Request):
         if request.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/x-www-form-urlencoded":
-            return JSONResponse({"error": "invalid_request", "error_description": "Use form-urlencoded token parameters"}, status_code=400)
+            return protocol_json({"error": "invalid_request", "error_description": "Use form-urlencoded token parameters"}, status_code=400)
         raw = await request.body()
         if len(raw) > 8192:
-            return JSONResponse({"error": "invalid_request"}, status_code=400)
+            return protocol_json({"error": "invalid_request"}, status_code=400)
         try:
             parsed = parse_qs(raw.decode("utf-8"), keep_blank_values=True, strict_parsing=True, max_num_fields=8)
         except (UnicodeError, ValueError):
-            return JSONResponse({"error": "invalid_request"}, status_code=400)
+            return protocol_json({"error": "invalid_request"}, status_code=400)
         required = {"grant_type", "code", "client_id", "redirect_uri", "code_verifier"}
         if not required <= set(parsed) or set(parsed) - required - {"client_secret"} or any(len(v) != 1 for v in parsed.values()):
-            return JSONResponse({"error": "invalid_request"}, status_code=400)
+            return protocol_json({"error": "invalid_request"}, status_code=400)
         values = {k: v[0] for k, v in parsed.items()}
         if values["grant_type"] != "authorization_code" or not VERIFIER.fullmatch(values["code_verifier"]):
-            return JSONResponse({"error": "invalid_grant"}, status_code=400)
+            return protocol_json({"error": "invalid_grant"}, status_code=400)
         basic = request.headers.get("Authorization")
         if basic:
             try:
@@ -275,26 +296,64 @@ def install_oauth(api, authenticated, data_dir: Path):
                     raise ValueError()
                 values["client_secret"] = password
             except (ValueError, UnicodeError):
-                return JSONResponse({"error": "invalid_client"}, status_code=401)
+                return protocol_json({"error": "invalid_client"}, status_code=401)
         store = provider().store
         with store.connection(write=True) as db:
             app = db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (values["client_id"],)).fetchone()
-            if not app:
-                return JSONResponse({"error": "invalid_client"}, status_code=401)
+            if not app or not app["active"]:
+                return protocol_json({"error": "invalid_client"}, status_code=401)
             if app["client_type"] == "confidential" and not hmac.compare_digest(secret_hash(values.get("client_secret", "")), app["secret_hash"]):
-                return JSONResponse({"error": "invalid_client"}, status_code=401)
+                return protocol_json({"error": "invalid_client"}, status_code=401)
             code = db.execute("SELECT * FROM oauth_codes WHERE code_hash=?", (secret_hash(values["code"]),)).fetchone()
-            if (not code or code["consumed"] or code["expires_at"] <= stamp() or code["client_id"] != values["client_id"] or code["redirect_uri"] != values["redirect_uri"] or not hmac.compare_digest(code["code_challenge"], pkce(values["code_verifier"]))):
-                return JSONResponse({"error": "invalid_grant"}, status_code=400)
+            if (not code or code["expires_at"] <= stamp() or code["client_id"] != values["client_id"] or code["redirect_uri"] != values["redirect_uri"] or not hmac.compare_digest(code["code_challenge"], pkce(values["code_verifier"]))):
+                return protocol_json({"error": "invalid_grant"}, status_code=400)
+            if code["consumed"]:
+                db.execute("DELETE FROM oauth_tokens WHERE code_hash=?", (code["code_hash"],))
+                store.audit(db, "oauth_code_replay_denied", code["user_id"], {"client_id": code["client_id"], "issued_access_tokens_revoked": True})
+                return protocol_json({"error": "invalid_grant"}, status_code=400)
             db.execute("UPDATE oauth_codes SET consumed=1 WHERE code_hash=?", (code["code_hash"],))
             access_token = secrets.token_urlsafe(32)
-            db.execute("INSERT INTO oauth_tokens VALUES (?,?,?,?,?,?)", (secret_hash(access_token), code["client_id"], code["user_id"], code["scopes"], stamp(), stamp(now()+timedelta(seconds=600))))
+            db.execute("INSERT INTO oauth_tokens VALUES (?,?,?,?,?,?,?)", (secret_hash(access_token), code["client_id"], code["user_id"], code["scopes"], stamp(), stamp(now()+timedelta(seconds=600)), code["code_hash"]))
             timestamp = int(time.time())
             claims = {"iss": provider().issuer, "sub": code["user_id"], "aud": code["client_id"], "iat": timestamp, "exp": timestamp+600, "nonce": code["nonce"], "auth_time": code["auth_time"]}
             id_token = jwt.encode(claims, provider().key, algorithm="RS256", headers={"kid": provider().kid, "typ": "JWT"})
             store.audit(db, "oauth_token_issued", code["user_id"], {"client_id": code["client_id"], "scopes": json.loads(code["scopes"]), "expires_in": 600})
             headers = {"Cache-Control": "no-store", "Pragma": "no-cache", **provider().cors(request.headers.get("Origin"), json.loads(app["redirect_uris"]))}
             return JSONResponse({"access_token": access_token, "token_type": "Bearer", "expires_in": 600, "scope": " ".join(json.loads(code["scopes"])), "id_token": id_token}, headers=headers)
+
+    @api.post("/oauth/revoke")
+    async def revoke(request: Request):
+        if request.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/x-www-form-urlencoded":
+            return protocol_json({"error": "invalid_request"}, status_code=400)
+        raw = await request.body()
+        if len(raw) > 8192:
+            return protocol_json({"error": "invalid_request"}, status_code=400)
+        try:
+            parsed = parse_qs(raw.decode("utf-8"), keep_blank_values=True, strict_parsing=True, max_num_fields=5)
+            if not {"token", "client_id"} <= set(parsed) or set(parsed)-{"token", "client_id", "client_secret", "token_type_hint"} or any(len(v) != 1 for v in parsed.values()):
+                raise ValueError()
+            values = {k: v[0] for k, v in parsed.items()}
+            basic = request.headers.get("Authorization")
+            if basic:
+                if "client_secret" in values or not basic.startswith("Basic "):
+                    raise ValueError()
+                client_id, password = base64.b64decode(basic[6:], validate=True).decode("utf-8").split(":", 1)
+                if client_id != values["client_id"]:
+                    raise ValueError()
+                values["client_secret"] = password
+        except (UnicodeError, ValueError):
+            return protocol_json({"error": "invalid_request"}, status_code=400)
+        store = provider().store
+        with store.connection(write=True) as db:
+            app = db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (values["client_id"],)).fetchone()
+            if not app or not app["active"] or (app["client_type"] == "confidential" and not hmac.compare_digest(secret_hash(values.get("client_secret", "")), app["secret_hash"])):
+                return protocol_json({"error": "invalid_client"}, status_code=401)
+            token = db.execute("SELECT * FROM oauth_tokens WHERE token_hash=? AND client_id=?", (secret_hash(values["token"]), values["client_id"])).fetchone()
+            if token:
+                db.execute("DELETE FROM oauth_tokens WHERE token_hash=?", (token["token_hash"],))
+                store.audit(db, "oauth_token_revoked", token["user_id"], {"client_id": token["client_id"]})
+            # RFC 7009 deliberately returns success for unknown/already-revoked tokens.
+            return protocol_json({}, headers=provider().cors(request.headers.get("Origin"), json.loads(app["redirect_uris"])))
 
     @api.get("/oauth/userinfo")
     def userinfo(request: Request, token=Depends(app_token)):
@@ -316,16 +375,18 @@ def install_oauth(api, authenticated, data_dir: Path):
         with store.connection(write=True) as db:
             store.expire(db)
             grant = db.execute("SELECT * FROM grants WHERE user_id=? AND resource_id=? AND status='active' AND expires_at>? ORDER BY expires_at DESC LIMIT 1", (token["user_id"], resource_id, stamp())).fetchone()
-            store.audit(db, "oauth_permission_checked", token["user_id"], {"client_id": token["client_id"], "resource_id": resource_id, "allowed": bool(grant)})
-        return JSONResponse({"allowed": bool(grant), "sub": token["user_id"], "client_id": token["client_id"], "resource_id": resource_id, "scope": "read" if grant else None, "expires_at": grant["expires_at"] if grant else None, "reason": "Active human-approved subject grant" if grant else "Authentication and consent do not grant resource access"}, headers={"Cache-Control": "no-store", **provider().cors(request.headers.get("Origin"), json.loads(token["redirect_uris"]))})
+            chain = api.state.blockchain.check_grant(dict(grant)) if grant else {"required": api.state.blockchain.enabled, "allowed": False, "status": "no_local_grant"}
+            allowed = bool(grant) and chain["allowed"]
+            store.audit(db, "oauth_permission_checked", token["user_id"], {"client_id": token["client_id"], "resource_id": resource_id, "allowed": allowed, "chain_required": chain["required"], "chain_status": chain["status"]})
+        return JSONResponse({"allowed": allowed, "sub": token["user_id"], "client_id": token["client_id"], "resource_id": resource_id, "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if allowed else None, "blockchain": chain, "reason": "Active human-approved subject grant confirmed by configured policy" if allowed else chain.get("reason", "Authentication and consent do not grant resource access")}, headers={"Cache-Control": "no-store", **provider().cors(request.headers.get("Origin"), json.loads(token["redirect_uris"]))})
 
     @api.options("/oauth/{path:path}")
     def preflight(path: str, request: Request):
-        if path not in {"token", "userinfo"} and not path.startswith("permissions/"):
+        if path not in {"token", "userinfo", "revoke"} and not path.startswith("permissions/"):
             raise HTTPException(404, "Unknown OAuth endpoint")
         origin = request.headers.get("Origin")
         with provider().store.connection() as db:
-            callbacks = [uri for row in db.execute("SELECT redirect_uris FROM oauth_apps") for uri in json.loads(row[0])]
+            callbacks = [uri for row in db.execute("SELECT redirect_uris FROM oauth_apps WHERE active=1") for uri in json.loads(row[0])]
         headers = provider().cors(origin, callbacks)
         if not headers:
             raise HTTPException(403, "Origin must match a registered redirect URI origin")

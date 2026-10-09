@@ -83,6 +83,7 @@ export class AdaptiveIamClient {
     const body = await this.request(`${this.issuer}/.well-known/openid-configuration`)
     if (body.issuer !== this.issuer) throw new IamError('issuer_mismatch')
     for (const name of ['authorization_endpoint', 'token_endpoint', 'jwks_uri', 'userinfo_endpoint']) this.endpoint(body[name])
+    if (body.revocation_endpoint) this.endpoint(body.revocation_endpoint)
     this.metadata = body
     return body
   }
@@ -101,7 +102,7 @@ export class AdaptiveIamClient {
     const form = new URLSearchParams({ grant_type: 'authorization_code', code, client_id: this.clientId, redirect_uri: this.redirectUri, code_verifier: verifier })
     if (this.clientSecret) form.set('client_secret', this.clientSecret)
     const token = await this.request(metadata.token_endpoint, { method: 'POST', form })
-    if (typeof token.access_token !== 'string' || !token.access_token || typeof token.id_token !== 'string' || token.id_token.length > 16384 || token.token_type?.toLowerCase() !== 'bearer' || !Number.isInteger(token.expires_in) || token.expires_in <= 0 || token.expires_in > 86400 || typeof token.scope !== 'string' || !this.scopes.every(scope => token.scope.split(' ').includes(scope))) throw new IamError('invalid_token_response')
+    if (typeof token.access_token !== 'string' || !token.access_token || typeof token.id_token !== 'string' || token.id_token.length > 16384 || typeof token.token_type !== 'string' || token.token_type.toLowerCase() !== 'bearer' || !Number.isInteger(token.expires_in) || token.expires_in <= 0 || token.expires_in > 86400 || typeof token.scope !== 'string' || !this.scopes.every(scope => token.scope.split(' ').includes(scope))) throw new IamError('invalid_token_response')
     let claims
     try {
       const header = decodeProtectedHeader(token.id_token)
@@ -125,11 +126,19 @@ export class AdaptiveIamClient {
   }
 
   async permission(session, resourceId) {
-    if (!resourcePattern.test(resourceId) || !object(session) || !object(session.identity) || typeof session.identity.sub !== 'string' || !Number.isFinite(session.expiresAt) || session.expiresAt <= this.clock()) throw new IamError('invalid_session', 401)
+    if (!resourcePattern.test(resourceId) || !object(session) || !object(session.identity) || typeof session.identity.sub !== 'string' || !session.identity.sub || typeof session.accessToken !== 'string' || !session.accessToken || !Number.isFinite(session.expiresAt) || session.expiresAt <= this.clock()) throw new IamError('invalid_session', 401)
     const result = await this.request(`${this.issuer}/oauth/permissions/${encodeURIComponent(resourceId)}`, { token: session.accessToken })
-    if (result.resource_id !== resourceId || result.sub !== session.identity.sub || typeof result.allowed !== 'boolean') throw new IamError('permission_response_mismatch')
+    if (result.resource_id !== resourceId || result.sub !== session.identity.sub || result.client_id !== this.clientId || typeof result.allowed !== 'boolean') throw new IamError('permission_response_mismatch')
     if (!result.allowed) throw new IamError('access_denied', 403)
     if (result.scope !== 'read' || !future(result.expires_at, this.clock()) || session.expiresAt <= this.clock()) throw new IamError('grant_expired_or_invalid', 403)
     return { identity: session.identity, resourceId, scope: result.scope, expiresAt: result.expires_at }
+  }
+
+  async revoke(session) {
+    const metadata = await this.discover()
+    if (!metadata.revocation_endpoint) throw new IamError('revocation_unavailable')
+    const form = new URLSearchParams({ token: session.accessToken, client_id: this.clientId, token_type_hint: 'access_token' })
+    if (this.clientSecret) form.set('client_secret', this.clientSecret)
+    await this.request(metadata.revocation_endpoint, { method: 'POST', form })
   }
 }

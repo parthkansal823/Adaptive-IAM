@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 import type { Context, Risk } from './api'
 import { actionLabel, Badge, defaultContext, Icon, PageTitle, PanelTitle, percent, presets, RiskWave } from './components'
 
-export function RiskView({ risk, onAssess, busy }: { risk: Risk | null; onAssess: (context: Context) => Promise<boolean>; busy: boolean }) {
+export function RiskView({ risk, onAssess, busy, thresholds }: { risk: Risk | null; onAssess: (context: Context) => Promise<boolean>; busy: boolean; thresholds?: { low: number; high: number } }) {
   const [context, setContext] = useState<Context>({ ...defaultContext })
   const [preset, setPreset] = useState('usual')
   const [hasRun, setHasRun] = useState(false)
@@ -19,6 +19,7 @@ export function RiskView({ risk, onAssess, busy }: { risk: Risk | null; onAssess
   return <>
     <PageTitle title="The context behind the decision." description="Change a sign-in scenario and inspect the model's actual response." action={<span className="quiet-tag"><Icon name="research" size={15} /> Synthetic research model</span>} />
     <div className="preset-switch" role="group" aria-label="Risk scenario presets">{presets.map(item => <button key={item.id} className={preset === item.id ? 'selected' : ''} onClick={() => selectPreset(item.id)}>{item.name}</button>)}</div>
+    {thresholds && <p className="threshold-note">Current policy: allow below {(thresholds.low * 100).toFixed(1)}%, verify from {(thresholds.low * 100).toFixed(1)}% to {(thresholds.high * 100).toFixed(1)}%, and block at {(thresholds.high * 100).toFixed(1)}%.</p>}
     <div className="risk-layout">
       <section className="panel context-panel">
         <PanelTitle title="Sign-in context" description={presets.find(item => item.id === preset)?.description || 'A custom combination of contextual signals.'} />

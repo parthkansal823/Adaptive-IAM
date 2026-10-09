@@ -1,46 +1,50 @@
-# Aegis design system
+# Adaptive IAM design system
 
-The subject is contextual identity and collective access authorization. The interface is a research workbench: every assessment, grant, vote, and experiment is backed by the API.
+The subject is contextual identity and collective access authorization. This is a research workbench: assessments, grants, votes, integrations, and experiments use actual API results.
 
 ## Tokens
 
 | Token | Light | Dark | Purpose |
 | --- | --- | --- | --- |
-| Canvas | `#f3f6fa` | `#101827` | Quiet work area |
-| Surface | `#ffffff` | `#162135` | Raised functional regions |
-| Ink | `#13213c` | `#e7edf6` | Main content |
-| Navy | `#111d33` | `#0d1626` | Persistent navigation |
-| Blue | `#3478e5` | `#76a7fb` | Action and assessment |
-| Teal | `#16867b` | `#65c8b8` | Verified state |
+| Canvas | `#f5f5f5` | `#101010` | Quiet work area |
+| Surface | `#ffffff` | `#191919` | Functional regions |
+| Ink | `#171717` | `#f3f3f3` | Main content |
+| Navigation | `#111111` | `#090909` | Persistent rail |
+| Orange | `#c2410c` | `#fb923c` | Action, focus, and assessment |
+| Muted | `#666666` | `#aaaaaa` | Supporting text |
 
-Type uses locally available Segoe UI with a humanist system fallback; headings have compact spacing, labels stay in sentence case, and tabular numerals align measurements. Core sizes are 12, 13, 14, 16, 20, 28, and 34 px. Borders communicate group boundaries; radius varies by hierarchy: 8 px controls, 12 px panels, fully round status indicators.
+The user's final palette direction is white, black, and orange. Low-risk verified states are monochrome, with amber and muted red reserved for risk semantics. Orange controls use white text in light mode and black text in dark mode for contrast.
+
+Type uses locally available Segoe UI with a humanist system fallback. Headings have compact spacing, labels stay in sentence case, and tabular numerals align measurements. Core sizes are 10, 12, 14, 16, 20, 28, and 34 px. Borders communicate group boundaries. Controls use 7 px radii and panels 12 px; status indicators are round.
 
 ## Layout
 
-Left-aligned content uses a fixed navigation rail and a flexible workspace with a maximum width. The unique centerpiece is a horizontal assessment journey: identity context, risk score, policy response, access decision. A measured waveform comes from actual assessment component values. The route collapses into a vertical sequence on small screens.
+Left-aligned content uses a fixed navigation rail and flexible workspace. The centerpiece is a horizontal assessment journey: identity context, model risk, adaptive policy, and collaborative resource access. The small graph uses actual LR, RF, and ensemble probabilities. On mobile, the journey becomes a two-column sequence and navigation remains swipeable.
 
 ```text
-┌───────────┬───────────────────────────────────────────────────────┐
-│ Aegis     │ Workspace / Overview                       Theme User │
-│           ├───────────────────────────────────────────────────────┤
-│ Overview  │ Adaptive access, in context.              Run a check │
-│ Risk lab  │ [context] ── [risk signal] ── [policy] ── [access]     │
-│ Requests  │                                                       │
-│ Ledger    │ Actual session metrics     │ Recent decisions         │
-│ Research  │ Resource access            │ Workflow summary         │
-│           │                                                       │
-│ API state │ Research notes and direct links to experiments        │
-└───────────┴───────────────────────────────────────────────────────┘
+Navigation       Workspace / Overview                      Theme / Identity
+                 Access, with context.                     Run a context check
+Overview         [identity] → [risk probabilities] → [policy] → [resource]
+Risk lab
+Access requests  Workspace metrics, separated by quiet rules
+Audit ledger     Recent decisions                 Policy boundaries
+Experiments      Requests in motion
+Connected apps   Research evidence
 ```
 
 ## Brief review and refinement
 
-Identical metric cards and decorative charts would make this feel like an ordinary admin template. Instead, use one large decision route, a compact row of separated measurements, open tables, and a restrained scientific workbench layout. Data visualizations are clearly labeled with real measured values or no-data states. Light and dark modes are equally designed. Only user-triggered transitions animate; reduced motion is honored.
+Identical metric cards and decorative charts would feel like an ordinary admin template. Instead, one large decision journey anchors the page; open metrics, meaningful tables, and clear request details provide the rest. A black rail and orange data traces connect the identity theme. Data absence is visible rather than filled with invented examples. Light and dark modes are equally designed.
 
 ## Interaction rules
 
-- Never fabricate activity or show successful actions before the API confirms them.
-- Authentication explicitly labels the local seeded demo credentials. Session tokens live in sessionStorage; theme preferences alone live in localStorage.
-- Assessment inputs are editable and deterministic presets are named for their context.
-- Errors explain the failed action and provide retry. Offline state remains visible.
-- Keyboard focus, semantic forms, chart text alternatives, narrow-screen navigation, and clear contrast are part of the interface.
+- Show successful actions only after API confirmation. Keep failures actionable.
+- Label seeded demo identities and credentials explicitly. Keep bearer tokens in sessionStorage; theme alone goes in localStorage.
+- Use the API's current policy thresholds rather than hardcoded chart ranges.
+- Public assessments do not create sessions. MFA, votes, grants, and resource reads remain server-enforced.
+- Connected apps use exact registered callbacks and PKCE. Consent never creates a resource grant.
+- Support visible keyboard focus, modal focus containment, semantic forms, reduced motion, and narrow screens.
+
+## Verification
+
+`npm run build` checks TypeScript and produces the static application. The root workflow separately checks actual browser behavior for theme, risk assessment, identity, request/reviewer workflow, consent, and responsive layout.

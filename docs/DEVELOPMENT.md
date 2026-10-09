@@ -16,7 +16,7 @@ Run commands from the repository root. See [README](../README.md) for installati
 | Reproduce evaluation | `.venv\Scripts\python.exe experiments/evaluate.py` |
 | Small project map | `python scripts/context.py` |
 
-The portable runner is `python scripts/verify.py`, using your active interpreter. It runs Python state-transition/security tests, available experiment adapter tests, and the frontend typecheck/build. It never installs dependencies. Research evaluation is explicit because it trains models and rewrites measured artifacts.
+The portable runner is `python scripts/verify.py`, using your active interpreter. It runs Python state-transition/security tests, available experiment adapter tests, Node/Python OIDC relying-party tests, and the frontend typecheck/build. It never installs dependencies. Research evaluation is explicit because it trains models and rewrites measured artifacts. Website setup is in [INTEGRATION.md](INTEGRATION.md).
 
 ## Git hooks
 

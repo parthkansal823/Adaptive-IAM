@@ -1,4 +1,4 @@
-param([switch]$SkipFrontend, [switch]$SkipHooks)
+param([switch]$SkipFrontend, [switch]$SkipHooks, [switch]$SkipIntegration)
 $ErrorActionPreference = 'Stop'
 $repoPath = Split-Path -Parent $PSScriptRoot
 Push-Location $repoPath
@@ -13,6 +13,11 @@ try {
         if (Test-Path -LiteralPath 'frontend/package-lock.json') { npm.cmd --prefix frontend ci }
         else { npm.cmd --prefix frontend install }
         if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+    }
+    if (-not $SkipIntegration) {
+        if (Test-Path -LiteralPath 'integrations/node/package-lock.json') { npm.cmd --prefix integrations/node ci }
+        else { npm.cmd --prefix integrations/node install }
+        if ($LASTEXITCODE -ne 0) { throw 'Website integration dependency installation failed.' }
     }
     if (-not $SkipHooks) {
         git config --local core.hooksPath .githooks

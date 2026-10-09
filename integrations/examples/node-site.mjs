@@ -32,6 +32,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/callback') {
       const flow = flows.get(jar.iam_login); flows.delete(jar.iam_login)
       if (!flow || flow.expiresAt <= now || !safeEqual(flow.state, url.searchParams.get('state'))) throw new IamError('invalid_login_state', 401)
+      if (url.searchParams.get('iss') !== client.issuer) throw new IamError('callback_issuer_mismatch', 401)
       if (url.searchParams.has('error')) throw new IamError('login_not_approved', 401)
       const session = await client.exchangeCode({ code: url.searchParams.get('code'), verifier: flow.verifier, nonce: flow.nonce })
       if (sessions.size >= 1024) throw new IamError('session_capacity_reached')
@@ -47,6 +48,7 @@ const server = http.createServer(async (request, response) => {
     if (request.method === 'POST' && url.pathname === '/logout') {
       if (request.headers.origin !== site.origin) throw new IamError('invalid_origin', 403)
       sessions.delete(jar.iam_site_session)
+      if (session) { try { await client.revoke(session) } catch { /* Local session is already removed; no protected content is served. */ } }
       return redirect(response, '/', cookie('iam_site_session', '', 0))
     }
     if (request.method === 'GET' && url.pathname === '/') {
@@ -58,4 +60,4 @@ const server = http.createServer(async (request, response) => {
     reply(response, error instanceof IamError ? error.status : 503, { error: error instanceof IamError ? error.code : 'iam_unavailable' })
   }
 })
-server.listen(Number(site.port || (site.protocol === 'https:' ? 443 : 80)), '127.0.0.1', () => console.log(`Connected website: ${site.origin}. Tokens and client secrets stay on its server.`))
+server.listen(Number(process.env.SITE_PORT || site.port || 3001), '127.0.0.1', () => console.log(`Connected website: ${site.origin}. Tokens and client secrets stay on its server.`))

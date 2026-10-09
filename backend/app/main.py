@@ -16,6 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .models import AssessmentInput, LoginInput, RequestInput, VerifyInput, VoteInput
+from .blockchain import BlockchainMirror, install_blockchain
 from .nlp import JustificationEngine
 from .oauth import OAuthProvider, install_oauth
 from .reviewers import ReviewerSelector
@@ -37,6 +38,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         application.state.nlp = JustificationEngine()
         application.state.reviewers = ReviewerSelector()
         application.state.oauth = OAuthProvider(application.state.store, data_dir)
+        application.state.blockchain = BlockchainMirror(application.state.store, data_dir)
         yield
 
     api = FastAPI(title="Adaptive IAM research API", version="1.0.0", lifespan=lifespan)
@@ -49,7 +51,8 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
 
     def capabilities():
         selector = api.state.reviewers
-        return {"demo_mode": True, "risk_model": "calibrated_lr_random_forest", "nlp": "tfidf_naive_bayes", "bert_available": bool(api.state.nlp.bert), "llm_available": selector.enabled, "llm_engine": "ollama_optional" if selector.enabled else "deterministic_policy", "llm_calls_used": selector.calls, "llm_call_budget": selector.max_calls, "ledger": "local_sha256_hash_chain", "distributed_blockchain": False, "human_approval_required": True, "context_source": "client_simulated_research_only"}
+        chain = api.state.blockchain.status()
+        return {"demo_mode": True, "risk_model": "calibrated_lr_random_forest", "nlp": "tfidf_naive_bayes", "bert_available": bool(api.state.nlp.bert), "llm_available": selector.enabled, "llm_engine": "ollama_optional" if selector.enabled else "deterministic_policy", "llm_calls_used": selector.calls, "llm_call_budget": selector.max_calls, "ledger": "local_sha256_hash_chain", "blockchain": chain["ready"], "web3": {key: chain[key] for key in ("enabled", "connected", "ready", "chain_id", "contract_address", "error")}, "distributed_blockchain": False, "human_approval_required": True, "context_source": "client_simulated_research_only"}
 
     def visible_requests(db, identity):
         actor, role = identity["user"]["id"], identity["user"]["role"]
@@ -59,7 +62,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
     def visible_grants(db, identity):
         actor, role = identity["user"]["id"], identity["user"]["role"]
         rows = db.execute("SELECT g.*,u.name user_name,r.name resource_name,r.owner_id FROM grants g JOIN users u ON g.user_id=u.id JOIN resources r ON g.resource_id=r.id ORDER BY g.created_at DESC").fetchall()
-        return [{k: v for k, v in dict(r).items() if k != "owner_id"} for r in rows if role == "security_reviewer" or r["user_id"] == actor or r["owner_id"] == actor]
+        return [{**{k: v for k, v in dict(r).items() if k != "owner_id"}, "blockchain": api.state.blockchain.grant_status(db, r["id"])} for r in rows if role == "security_reviewer" or r["user_id"] == actor or r["owner_id"] == actor]
 
     def visible_audit(db, identity, limit=200):
         events = api.state.store.audit_dtos(db, 1000)
@@ -264,6 +267,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
                     db.execute("UPDATE requests SET status='approved' WHERE id=?", (request_id,))
                     grant_id, expiry = secrets.token_hex(10), stamp(now()+timedelta(hours=packet["duration_hours"]))
                     db.execute("INSERT INTO grants VALUES (?,?,?,?,?,?,?,?)", (grant_id, request_id, packet["requester_id"], packet["resource_id"], "read", stamp(), expiry, "active"))
+                    db.execute("INSERT OR IGNORE INTO blockchain_outbox (kind,local_id,status,updated_at) VALUES ('grant',?,'pending',?)", (grant_id, stamp()))
                     store.audit(db, "grant_created", actor, {"request_id": request_id, "grant_id": grant_id, "user_id": packet["requester_id"], "resource_id": packet["resource_id"], "scope": "read", "expires_at": expiry})
                 elif all_voted:
                     db.execute("UPDATE requests SET status='denied' WHERE id=?", (request_id,))
@@ -271,6 +275,8 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
                 result = store.request_dto(db, request_id, actor)
         if rejection:
             raise HTTPException(*rejection)
+        if result and result["status"] == "approved" and api.state.blockchain.enabled:
+            result["blockchain_sync"] = api.state.blockchain.sync()
         return result
 
     @api.get("/api/grants")
@@ -289,9 +295,10 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
             if not resource:
                 raise HTTPException(404, "Resource not found")
             grant = db.execute("SELECT * FROM grants WHERE user_id=? AND resource_id=? AND status='active' AND expires_at>? ORDER BY expires_at DESC LIMIT 1", (actor, resource_id, stamp())).fetchone()
-            allowed = bool(grant)
-            store.audit(db, "resource_access_checked", actor, {"resource_id": resource_id, "allowed": allowed, "grant_id": grant["id"] if grant else None})
-            return {"allowed": allowed, "resource_id": resource_id, "resource_name": resource["name"], "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if grant else None, "reason": "Active identity-bound read grant" if allowed else "No active read grant for this authenticated identity", "content": {"title": resource["name"], "records": ["Synthetic research record: access is checked on the server.", "This demo resource contains no production or personal data."]} if allowed else None}
+            chain = api.state.blockchain.check_grant(dict(grant)) if grant else {"required": api.state.blockchain.enabled, "allowed": False, "status": "no_local_grant"}
+            allowed = bool(grant) and chain["allowed"]
+            store.audit(db, "resource_access_checked", actor, {"resource_id": resource_id, "allowed": allowed, "grant_id": grant["id"] if grant else None, "chain_required": chain["required"], "chain_status": chain["status"]})
+            return {"allowed": allowed, "resource_id": resource_id, "resource_name": resource["name"], "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if allowed else None, "reason": "Active identity-bound read grant confirmed by configured policy" if allowed else chain.get("reason", "No active read grant for this authenticated identity"), "blockchain": chain, "content": {"title": resource["name"], "records": ["Synthetic research record: access is checked on the server.", "This demo resource contains no production or personal data."]} if allowed else None}
 
     @api.get("/api/audit")
     def audit(identity=Depends(authenticated)):
@@ -313,6 +320,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         return report
 
     install_oauth(api, authenticated, data_dir)
+    install_blockchain(api, authenticated)
     return api
 
 

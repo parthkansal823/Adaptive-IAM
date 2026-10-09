@@ -12,11 +12,13 @@ export function AuthModal({ bootstrap, onClose, onAuthenticated }: { bootstrap: 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const dialogRef = useRef<HTMLDivElement>(null)
+  const busyRef = useRef(busy)
+  busyRef.current = busy
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null
-    dialogRef.current?.querySelector<HTMLElement>('select, input, button')?.focus()
+    dialogRef.current?.querySelector<HTMLElement>('select, input')?.focus()
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !busy) onClose()
+      if (event.key === 'Escape' && !busyRef.current) onClose()
       if (event.key !== 'Tab') return
       const elements = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href]') || [])]
       if (event.shiftKey && document.activeElement === elements[0]) { event.preventDefault(); elements.at(-1)?.focus() }
@@ -24,7 +26,7 @@ export function AuthModal({ bootstrap, onClose, onAuthenticated }: { bootstrap: 
     }
     document.addEventListener('keydown', handleKey)
     return () => { document.removeEventListener('keydown', handleKey); previousFocus?.focus() }
-  }, [onClose, busy])
+  }, [onClose])
   const login = async () => {
     setBusy(true); setError('')
     try {

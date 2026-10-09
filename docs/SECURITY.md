@@ -19,8 +19,14 @@ Synthetic identity/context signals are demonstrative and can be chosen by the te
 
 LLM justification text is untrusted input. Reviewer recommendations must remain recommendations. A generic pretrained transformer does not supply calibrated suspicious-request probabilities without task-specific training.
 
+## Website identity and permission
+
+Registered clients use exact callback matching, S256 PKCE, consent, one-use codes and client-bound scopes/resources. App access tokens have no console-session authority. Relying-party SDKs validate RS256 signing keys, issuer, audience, nonce, expiry and UserInfo subject before creating their server-side website session. Every protected response checks a subject/client/resource-bound live read grant. Identity consent alone grants no resource access. Website cookies contain random session keys; access tokens and confidential client secrets stay on the server. Timeout, malformed data or unavailable permission checks deny protected content.
+
+The supplied website examples use process-memory sessions and loopback HTTP opt-in. Production needs HTTPS, protected shared session/key storage, rotation, verified MFA and an independent protocol/security review. This implementation does not claim OIDC certification. See [INTEGRATION.md](INTEGRATION.md).
+
 ## Production work
 
-Integrate OIDC/SSO and WebAuthn or a verified MFA provider; bind sessions to trusted context; add rate limits and lockout policies, CSRF protections as applicable, secure cookie/TLS settings, managed secret rotation, backup/retention, external audit checkpoints, migration tests and threat-model review. Validate independent data and business approvals before automated decisions.
+Validate the OIDC deployment and add WebAuthn or a verified MFA provider; bind sessions to trusted context; strengthen abuse controls, CSRF protections as applicable, secure cookie/TLS settings, managed secret rotation, backup/retention, external audit checkpoints, migration tests and threat-model review. Validate independent data and business approvals before automated decisions.
 
 For a suspected issue, record reproducible steps, affected module, impact and a proposed fix in a private channel. Never include credentials or sensitive request content in a public issue.

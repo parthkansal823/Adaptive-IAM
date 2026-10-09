@@ -94,6 +94,7 @@ class JustificationEngine:
                     label = "uncertain"
                     engine = "tfidf_naive_bayes_fallback"
                     fallback_reason = "local_bert_inference_failed"
-        if any(word in text.lower() for word in ("ignore the", "bypass", "disable logging", "remove the audit", "personal email", "private account")):
+        policy_flags = [word for word in ("ignore the", "bypass", "disable logging", "remove the audit", "personal email", "private account") if word in text.lower()]
+        if policy_flags:
             label = "suspicious"
-        return {"label": label, "confidence": round(confidence, 6), "suspicious_probability": round(p, 6), "engine": engine, "explanation": "Advisory text assessment; all requests require human owner quorum. Untrusted text never changes policy.", "bert_available": bool(self.bert), "fallback_reason": fallback_reason}
+        return {"label": label, "confidence": round(confidence, 6), "suspicious_probability": round(p, 6), "engine": engine, "explanation": "Advisory text assessment; handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.", "bert_available": bool(self.bert), "fallback_reason": fallback_reason, "policy_flags": policy_flags, "confidence_source": "classifier_probability; policy flags are deterministic, not probabilistic"}

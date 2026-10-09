@@ -7,6 +7,7 @@ Research prototype. Preserve original research assets; see `docs/RESEARCH_INDEX.
 - Start with `docs/STATUS.md`; use `python scripts/context.py` for the small project map.
 - `backend/` owns APIs, security policy, SQLite audit ledger; read its scoped `AGENTS.md`.
 - `frontend/` owns the React UI; read its scoped `AGENTS.md`.
+- `integrations/` owns OIDC relying-party SDKs, website examples and their security tests.
 - `experiments/` owns reproducible datasets and evaluation. `docs/RESEARCH.md` distinguishes measured evidence from paper projections.
 - Read full papers only for a research-specific question. Avoid dumps of lockfiles, binaries, datasets, `.env`, logs, and model artifacts.
 

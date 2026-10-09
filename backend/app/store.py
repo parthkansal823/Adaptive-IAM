@@ -71,6 +71,7 @@ class Store:
                 CREATE TABLE IF NOT EXISTS votes (request_id TEXT NOT NULL REFERENCES requests(id), reviewer_id TEXT NOT NULL REFERENCES users(id), approve INTEGER NOT NULL, weight REAL NOT NULL, comment TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (request_id, reviewer_id));
                 CREATE TABLE IF NOT EXISTS grants (id TEXT PRIMARY KEY, request_id TEXT UNIQUE NOT NULL REFERENCES requests(id), user_id TEXT NOT NULL REFERENCES users(id), resource_id TEXT NOT NULL REFERENCES resources(id), scope TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, status TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, event_type TEXT NOT NULL, actor_id TEXT, payload TEXT NOT NULL, previous_hash TEXT NOT NULL, hash TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS blockchain_outbox (kind TEXT NOT NULL, local_id TEXT NOT NULL, status TEXT NOT NULL, transaction_hash TEXT, block_number INTEGER, error TEXT, updated_at TEXT NOT NULL, PRIMARY KEY(kind,local_id));
             """)
             for user in USERS:
                 if not db.execute("SELECT id FROM users WHERE id=?", (user["id"],)).fetchone():
@@ -79,6 +80,7 @@ class Store:
                 db.execute("INSERT OR IGNORE INTO resources VALUES (?,?,?,?,?,?)", tuple(resource.values()))
             if not db.execute("SELECT id FROM audit LIMIT 1").fetchone():
                 self.audit(db, "system_initialized", None, {"mode": "offline_research_demo", "ledger_type": "local_sha256_hash_chain"})
+            db.execute("INSERT OR IGNORE INTO blockchain_outbox (kind,local_id,status,updated_at) SELECT 'grant',id,'pending',created_at FROM grants")
 
     @contextmanager
     def connection(self, write=False):
@@ -103,6 +105,7 @@ class Store:
         record = {"id": previous["id"]+1 if previous else 1, "timestamp": stamp(), "event_type": event_type, "actor_id": actor_id, "payload": payload, "previous_hash": previous["hash"] if previous else "0"*64}
         digest = hashlib.sha256(canonical(record).encode()).hexdigest()
         db.execute("INSERT INTO audit (id,timestamp,event_type,actor_id,payload,previous_hash,hash) VALUES (?,?,?,?,?,?,?)", (record["id"], record["timestamp"], event_type, actor_id, canonical(payload), record["previous_hash"], digest))
+        db.execute("INSERT OR IGNORE INTO blockchain_outbox (kind,local_id,status,updated_at) VALUES ('audit',?,'pending',?)", (str(record["id"]), record["timestamp"]))
 
     def users(self, db):
         return [dict(row) for row in db.execute("SELECT id,name,role,department FROM users ORDER BY id")]

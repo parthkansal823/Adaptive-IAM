@@ -5,3 +5,4 @@ numpy==2.4.6
 scikit-learn==1.9.1
 joblib==1.5.3
 PyJWT[crypto]==2.10.1
+web3==7.14.0

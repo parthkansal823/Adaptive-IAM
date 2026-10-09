@@ -1,5 +1,5 @@
 {
-  "name": "aegis-research-console",
+  "name": "adaptive-iam-console",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -21,3 +21,4 @@
     "vite": "^7.1.9"
   }
 }
+

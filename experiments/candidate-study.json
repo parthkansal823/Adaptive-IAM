@@ -1,0 +1,216 @@
+{
+  "study": "Fresh independent model-family comparison",
+  "dataset": {
+    "synthetic": true,
+    "seed": 20261509,
+    "total": 12000,
+    "sha256": "bda0d3c0a61638d34cbf819dc97dc8d939eb61ec25ad7a9440f0cb4ec7e94a37",
+    "partitions": {
+      "train": {
+        "events": 7200,
+        "suspicious": 1230
+      },
+      "calibration": {
+        "events": 1200,
+        "suspicious": 186
+      },
+      "selection": {
+        "events": 1200,
+        "suspicious": 186
+      },
+      "test": {
+        "events": 2400,
+        "suspicious": 418
+      }
+    }
+  },
+  "protocol": {
+    "selection": "Lowest validation Brier score among candidates with validation ROC AUC >= calibrated paper blend and no greater legitimate friction at >=80% validation suspicious challenge detection",
+    "test_used_for_selection": false,
+    "classification_selection": "Maximum validation F1; distinct from authentication policy",
+    "high_threshold": 0.7,
+    "runtime_model_replaced": false,
+    "purpose": "Independent evidence for a future candidate; deployment requires context-signal and real-dataset validation"
+  },
+  "selected_by_validation": "calibrated_paper_blend",
+  "candidates": {
+    "calibrated_paper_blend": {
+      "calibration_selected": true,
+      "threshold": 0.24,
+      "low_threshold": 0.10579483348982419,
+      "validation": {
+        "accuracy": 0.816667,
+        "precision": 0.423423,
+        "recall": 0.505376,
+        "f1": 0.460784,
+        "roc_auc": 0.763796,
+        "brier_score": 0.109651,
+        "threshold": 0.24,
+        "confusion_matrix": {
+          "true_negative": 886,
+          "false_positive": 128,
+          "false_negative": 92,
+          "true_positive": 94
+        },
+        "friction_rate": 0.510833,
+        "legitimate_friction_rate": 0.457594,
+        "high_risk_block_rate": 0.005,
+        "suspicious_direct_allow_rate": 0.198925,
+        "suspicious_challenge_or_block_recall": 0.801075,
+        "blocked_legitimate_rate": 0.0,
+        "policy_thresholds": {
+          "low": 0.105795,
+          "high": 0.7
+        }
+      },
+      "test": {
+        "accuracy": 0.798333,
+        "precision": 0.427948,
+        "recall": 0.4689,
+        "f1": 0.447489,
+        "roc_auc": 0.746683,
+        "brier_score": 0.120219,
+        "threshold": 0.24,
+        "confusion_matrix": {
+          "true_negative": 1720,
+          "false_positive": 262,
+          "false_negative": 222,
+          "true_positive": 196
+        },
+        "friction_rate": 0.519167,
+        "legitimate_friction_rate": 0.463169,
+        "high_risk_block_rate": 0.00875,
+        "suspicious_direct_allow_rate": 0.215311,
+        "suspicious_challenge_or_block_recall": 0.784689,
+        "blocked_legitimate_rate": 0.002018,
+        "policy_thresholds": {
+          "low": 0.105795,
+          "high": 0.7
+        }
+      }
+    },
+    "unweighted_interaction_logistic": {
+      "calibration_selected": true,
+      "threshold": 0.19,
+      "low_threshold": 0.11332430270955086,
+      "validation": {
+        "accuracy": 0.7825,
+        "precision": 0.373737,
+        "recall": 0.596774,
+        "f1": 0.459627,
+        "roc_auc": 0.761331,
+        "brier_score": 0.109937,
+        "threshold": 0.19,
+        "confusion_matrix": {
+          "true_negative": 828,
+          "false_positive": 186,
+          "false_negative": 75,
+          "true_positive": 111
+        },
+        "friction_rate": 0.483333,
+        "legitimate_friction_rate": 0.425049,
+        "high_risk_block_rate": 0.014167,
+        "suspicious_direct_allow_rate": 0.198925,
+        "suspicious_challenge_or_block_recall": 0.801075,
+        "blocked_legitimate_rate": 0.004931,
+        "policy_thresholds": {
+          "low": 0.113324,
+          "high": 0.7
+        }
+      },
+      "test": {
+        "accuracy": 0.765417,
+        "precision": 0.380952,
+        "recall": 0.555024,
+        "f1": 0.451801,
+        "roc_auc": 0.746306,
+        "brier_score": 0.119674,
+        "threshold": 0.19,
+        "confusion_matrix": {
+          "true_negative": 1605,
+          "false_positive": 377,
+          "false_negative": 186,
+          "true_positive": 232
+        },
+        "friction_rate": 0.497917,
+        "legitimate_friction_rate": 0.441473,
+        "high_risk_block_rate": 0.021667,
+        "suspicious_direct_allow_rate": 0.23445,
+        "suspicious_challenge_or_block_recall": 0.76555,
+        "blocked_legitimate_rate": 0.004541,
+        "policy_thresholds": {
+          "low": 0.113324,
+          "high": 0.7
+        }
+      }
+    },
+    "histogram_gradient_boosting": {
+      "calibration_selected": true,
+      "threshold": 0.22000000000000003,
+      "low_threshold": 0.11306082777012277,
+      "validation": {
+        "accuracy": 0.813333,
+        "precision": 0.415929,
+        "recall": 0.505376,
+        "f1": 0.456311,
+        "roc_auc": 0.75694,
+        "brier_score": 0.111098,
+        "threshold": 0.22,
+        "confusion_matrix": {
+          "true_negative": 882,
+          "false_positive": 132,
+          "false_negative": 92,
+          "true_positive": 94
+        },
+        "friction_rate": 0.500833,
+        "legitimate_friction_rate": 0.445759,
+        "high_risk_block_rate": 0.005,
+        "suspicious_direct_allow_rate": 0.198925,
+        "suspicious_challenge_or_block_recall": 0.801075,
+        "blocked_legitimate_rate": 0.001972,
+        "policy_thresholds": {
+          "low": 0.113061,
+          "high": 0.7
+        }
+      },
+      "test": {
+        "accuracy": 0.785833,
+        "precision": 0.395197,
+        "recall": 0.433014,
+        "f1": 0.413242,
+        "roc_auc": 0.738398,
+        "brier_score": 0.122408,
+        "threshold": 0.22,
+        "confusion_matrix": {
+          "true_negative": 1705,
+          "false_positive": 277,
+          "false_negative": 237,
+          "true_positive": 181
+        },
+        "friction_rate": 0.504167,
+        "legitimate_friction_rate": 0.45005,
+        "high_risk_block_rate": 0.008333,
+        "suspicious_direct_allow_rate": 0.239234,
+        "suspicious_challenge_or_block_recall": 0.760766,
+        "blocked_legitimate_rate": 0.003027,
+        "policy_thresholds": {
+          "low": 0.113061,
+          "high": 0.7
+        }
+      }
+    }
+  },
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.6",
+    "scikit-learn": "1.9.1"
+  },
+  "limitations": [
+    "Same synthetic generator family; independent seed is not real-world generalization.",
+    "One fresh train/test split, not nested cross-validation or retraining uncertainty.",
+    "Candidates and calibration selected on one validation partition; held-out outcomes may regress.",
+    "Reported selection does not automatically replace the deployed risk-v4 model.",
+    "Interaction logistic uses observed features only, but synthetic generator structure can favor this family."
+  ]
+}

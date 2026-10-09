@@ -31,7 +31,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 }
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className="brand"><span className="brand-mark"><svg width="27" height="29" viewBox="0 0 27 29" fill="none" aria-hidden="true"><path d="m13.5 2 11 6.5v13L13.5 28l-11-6.5v-13L13.5 2Z" stroke="currentColor" strokeWidth="1.4" /><path d="m7 19 6.5-11 6.5 11M10 15h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></span><span>Aegis{!compact && <small>Adaptive identity</small>}</span></div>
+  return <div className="brand"><span className="brand-mark"><svg width="27" height="29" viewBox="0 0 27 29" fill="none" aria-hidden="true"><path d="m13.5 2 11 6.5v13L13.5 28l-11-6.5v-13L13.5 2Z" stroke="currentColor" strokeWidth="1.4" /><path d="m7 19 6.5-11 6.5 11M10 15h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></span><span>Adaptive IAM{!compact && <small>Identity, in context</small>}</span></div>
 }
 
 export function Badge({ status, children }: { status: string; children?: ReactNode }) {

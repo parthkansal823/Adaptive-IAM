@@ -4,6 +4,8 @@ Base URL: `http://127.0.0.1:8000`. Interactive OpenAPI documentation: `/docs`. S
 
 Protected routes require `Authorization: Bearer <token>`. Tokens expire after 30 minutes and are stored as hashes server-side. Login credentials, demo OTPs and token values must never appear in audit events.
 
+The table below uses console session tokens. Website application tokens are a separate, client-bound credential with ten-minute lifetime and cannot vote or manage the console.
+
 ## Routes
 
 | Method / path | Authentication | Behavior |
@@ -71,3 +73,22 @@ Every request starts pending. Selected reviewers receive weights 1.5 (owner) or 
 Errors use FastAPI's `detail` field. `401` means invalid/expired credentials, challenge or session; `403` means ineligible reviewer; `404` means unknown request/resource; `409` means duplicate vote, terminal request or self-owner request; `422` means invalid input/duration; `429` means attempt or request limits. Five credential failures lock an account for 15 minutes; the login route also limits clients to 30 attempts/minute.
 
 Audit verification proves consistency of the retained local chain. It cannot prove that an administrator did not replace/recompute the database or remove its tail. Audit payloads omit raw justifications and vote comments, credentials, tokens and OTPs.
+
+## Registered website OAuth/OIDC
+
+| Method / path | Authentication | Behavior |
+| --- | --- | --- |
+| `GET /.well-known/openid-configuration` | Public | Canonical issuer and protocol endpoints |
+| `GET /oauth/jwks` | Public | Public RS256 verification keys |
+| `GET /api/apps` | Security console bearer | Registered apps and issuer metadata |
+| `POST /api/apps` | Security console bearer | Register name, exact `redirect_uris`, `client_type`, scopes and `resource_ids`; confidential secret returned once |
+| `DELETE /api/apps/{client_id}` | Security console bearer | Soft-disable client and revoke its tokens |
+| `GET /oauth/authorize` | Client request | Validate code flow, scope, state, nonce, exact redirect and S256 PKCE; redirect to console consent |
+| `GET /api/oauth/authorization/{request_id}` | Public | Bounded consent packet, app identity, scopes and resources |
+| `POST /api/oauth/consent` | Console bearer | `{request_id, approve}` produces validated `redirect_to` with state and issuer |
+| `POST /oauth/token` | Client + code + verifier | Form-encoded code exchange; opaque access token, RS256 ID token, scope and ten-minute lifetime |
+| `GET /oauth/userinfo` | App bearer | Subject and approved profile fields |
+| `GET /oauth/permissions/{resource_id}` | App bearer | Check permission scope, registered resource and subject's current read grant |
+| `POST /oauth/revoke` | Registered client | Form-encoded token revocation, client-bound; unknown/revoked tokens return success |
+
+Registration accepts `public` or `confidential` clients and `openid`, `profile`, `iam:permissions` scopes. Confidential exchange/revocation supports secret-post or HTTP Basic. Permission responses bind `{allowed, sub, client_id, resource_id, scope, expires_at, reason}`; a website must validate those bindings and expiry rather than trusting `allowed` alone. Source: `backend/app/oauth.py`. [INTEGRATION.md](INTEGRATION.md) contains registration and complete server examples.

@@ -21,7 +21,7 @@ npm run dev
 .\scripts\dev.ps1 -Service frontend
 ```
 
-Open the frontend URL printed by Vite (normally `http://127.0.0.1:5173`). API reference: `http://127.0.0.1:8000/docs`. Both development servers bind to loopback by default.
+Open the frontend URL printed by Vite (normally `http://127.0.0.1:5173`). API reference: `http://127.0.0.1:8000/docs`. Both development servers bind to loopback by default. [Connect your own website](docs/INTEGRATION.md) with registered OAuth/OIDC login and server-enforced resource permissions.
 
 If local PowerShell policy blocks a script, execute its documented commands directly rather than changing machine policy:
 
@@ -29,6 +29,7 @@ If local PowerShell policy blocks a script, execute its documented commands dire
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
 npm.cmd --prefix frontend ci
+npm.cmd --prefix integrations/node ci
 .venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 npm.cmd --prefix frontend run dev
 ```
@@ -39,6 +40,7 @@ npm.cmd --prefix frontend run dev
 python3 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements-dev.txt
 npm --prefix frontend ci
+npm --prefix integrations/node ci
 npm run dev
 ```
 
@@ -58,6 +60,7 @@ Evaluation writes measured results to `experiments/results.json`; model artifact
 | --- | --- |
 | `backend/` | Python API, models, policy enforcement and security tests |
 | `frontend/` | React/TypeScript interface and theme system |
+| `integrations/` | Node/Python OIDC server SDKs, protected website examples and tests |
 | `experiments/` | Reproducible model evaluation and measured result reports |
 | `research/` | 31 preserved originals arranged by type |
 | `docs/` | Architecture, API, security, research, development and roadmap |

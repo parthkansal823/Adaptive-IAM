@@ -21,7 +21,7 @@ Paper figures of 85–92% risk accuracy and 83–89% NLP accuracy are projection
 
 Compare candidates on the same held-out examples. Tune models and calibration on training/validation data only. Keep the test split untouched by model selection. Report suspicious-class recall, precision, ROC-AUC, PR-AUC, Brier score/calibration, and latency alongside accuracy. For text, group generated templates before splitting so near-identical variants do not inflate the test result.
 
-The current risk report separates binary classification metrics from the policy's fixed 0.3/0.7 tiers. Read `suspicious_challenge_or_block_recall`, `suspicious_direct_allow_rate` and `legitimate_friction_rate` to assess authentication behavior; reduced friction can mean more suspicious logins proceed directly. Calibration gains do not by themselves establish a stronger security policy. The always-legitimate and static-password baselines expose how class imbalance can make accuracy misleading.
+The risk report separates binary classification metrics from authentication policy. The paper baseline uses 0.3/0.7 boundaries; the candidate chooses a low challenge boundary on validation data to meet an 80% suspicious-detection target, while retaining high cutoff 0.7. Read `suspicious_challenge_or_block_recall`, `suspicious_direct_allow_rate` and `legitimate_friction_rate`: reduced friction can mean more suspicious logins proceed directly. The rejected ablation of calibrated probabilities with unchanged paper cutoffs makes that failure explicit. Calibration gains alone do not establish a stronger security policy. Always-legitimate and static-password baselines expose misleading accuracy under imbalance.
 
 The default NLP report measures the held-out TF-IDF/Naive Bayes classifier. Runtime lexical safety flags and optional BERT are not independently measured by that classifier report. Report poor held-out suspicious recall explicitly instead of using training performance or the paper's projected scores as a substitute.
 
@@ -31,11 +31,11 @@ Access-review votes must never be automatically converted into authentication at
 
 ## Improving research validity next
 
-1. Evaluate a real risk-based authentication dataset with a documented license and data provenance.
+1. Evaluate independent risk-based authentication data with documented provenance. The optional public RBA adapter uses a creator-synthesized dataset, not raw organizational telemetry.
 2. Split login data by user/time, report class imbalance, and test distribution shift.
 3. Validate reviewer/justification decisions with independently labeled human examples.
 4. Run calibration and threshold ablations; include confidence intervals and false-positive burden.
 5. Benchmark optional BERT and LLM components independently before claiming gains.
 6. Test privacy-preserving features, fairness across groups, and data retention.
 
-The final Word/PDF research assets remain unchanged. Implementation findings belong in generated reports and these Markdown docs until a separately reviewed paper revision is requested.
+The final Word/PDF research assets remain unchanged. The obsolete remote `ProjectInfo.md` proposed a different unfinished stack; the implemented Python/React architecture supersedes that scaffold. Verified primary readings and a claim-evidence map live in [research notes](../research_notes/Adaptive%20IAM%20evidence%20study/readings.md) and [gap analysis](../research_notes/Adaptive%20IAM%20evidence%20study/gap-analysis.md). A new manuscript must cite measured artifacts, distinguish simulations from external evidence, and avoid unsupported first-system or unified-novelty claims.

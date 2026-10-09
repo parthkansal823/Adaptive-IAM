@@ -13,9 +13,9 @@ export function ExperimentsView({ report, loading, onRefresh }: { report: Evalua
   const download = () => {
     if (!report) return
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }))
-    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'aegis-evaluation.json'; anchor.click(); URL.revokeObjectURL(url)
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'adaptive-iam-evaluation.json'; anchor.click(); URL.revokeObjectURL(url)
   }
-  const metricRows = [{ key: 'accuracy', label: 'Accuracy', better: 'higher' }, { key: 'precision', label: 'Precision', better: 'higher' }, { key: 'recall', label: 'Recall', better: 'higher' }, { key: 'f1', label: 'F1 score', better: 'higher' }, { key: 'roc_auc', label: 'ROC AUC', better: 'higher' }, { key: 'false_positive_rate', label: 'False positive rate', better: 'lower' }, { key: 'false_negative_rate', label: 'False negative rate', better: 'lower' }, { key: 'brier_score', label: 'Brier score', better: 'lower' }]
+  const metricRows = [{ key: 'accuracy', label: 'Accuracy', better: 'higher' }, { key: 'precision', label: 'Precision', better: 'higher' }, { key: 'recall', label: 'Recall', better: 'higher' }, { key: 'f1', label: 'F1 score', better: 'higher' }, { key: 'roc_auc', label: 'ROC AUC', better: 'higher' }, { key: 'false_positive_rate', label: 'False positive rate', better: 'lower' }, { key: 'false_negative_rate', label: 'False negative rate', better: 'lower' }, { key: 'brier_score', label: 'Brier score', better: 'lower' }, { key: 'suspicious_challenge_or_block_recall', label: 'Challenge or block recall', better: 'higher' }, { key: 'suspicious_direct_allow_rate', label: 'Suspicious direct allow', better: 'lower' }, { key: 'legitimate_friction_rate', label: 'Legitimate sign-in friction', better: 'lower' }, { key: 'blocked_legitimate_rate', label: 'Legitimate sign-ins blocked', better: 'lower' }]
   return <>
     <PageTitle title="A better result needs evidence." description="Compare measured results, inspect the protocol, and keep the limitations in view." action={<button className="button secondary" onClick={download} disabled={!report}><Icon name="download" size={17} />Export report</button>} />
     {!report ? <section className="panel"><Empty icon="research" title={loading ? 'Loading the measured evaluation…' : 'The evaluation is unavailable.'} action={<button className="button primary" disabled={loading} onClick={onRefresh}>{loading ? 'Loading…' : 'Retry evaluation'}</button>}>The backend exposes the reproducible held-out report. Start the API and retry to view actual results.</Empty></section> : <>
@@ -26,3 +26,4 @@ export function ExperimentsView({ report, loading, onRefresh }: { report: Evalua
     </>}
   </>
 }
+

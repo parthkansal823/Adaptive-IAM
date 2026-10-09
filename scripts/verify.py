@@ -10,7 +10,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 
 
-SOURCE_PATHS = ("backend/", "frontend/", "experiments/", "scripts/", ".githooks/", "package.json", "package-lock.json")
+SOURCE_PATHS = ("backend/", "frontend/", "integrations/", "experiments/", "scripts/", ".githooks/", "package.json", "package-lock.json")
 
 
 def check_pushed_snapshot(refs: list[list[str]]) -> bool:
@@ -86,13 +86,19 @@ def main() -> int:
         return 1
     backend_needed = paths is None or any(path.startswith(("backend/", "experiments/", "scripts/")) for path in paths)
     frontend_needed = paths is None or any(path.startswith(("frontend/", "backend/app/", "package", "scripts/")) for path in paths)
+    integration_needed = paths is None or any(path.startswith(("integrations/", "backend/app/", "scripts/")) for path in paths)
     if backend_needed and not run("backend state-transition/security tests", [sys.executable, "scripts/run_tests.py", "-s", "backend/tests"]):
         return 1
     if backend_needed and (ROOT / "scripts/tests").exists():
         if not run("experiment adapter tests", [sys.executable, "scripts/run_tests.py", "-s", "scripts/tests"]):
             return 1
+    npm = "npm.cmd" if os.name == "nt" else "npm"
+    if integration_needed:
+        if not run("Python OIDC relying-party security tests", [sys.executable, "scripts/run_tests.py", "-s", "integrations/python/tests"]):
+            return 1
+        if not run("Node OIDC relying-party security tests", [npm, "--prefix", "integrations/node", "test"]):
+            return 1
     if frontend_needed:
-        npm = "npm.cmd" if os.name == "nt" else "npm"
         if not run("frontend typecheck and production build", [npm, "--prefix", "frontend", "run", "build"]):
             return 1
     print("Project verification passed.")
