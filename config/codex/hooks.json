@@ -1,0 +1,20 @@
+{
+  "description": "Bounded project map and status on startup, resume and compaction. Read-only, no transcript access.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/context.py\" --hook",
+            "commandWindows": "python -c \"import pathlib,runpy,subprocess; r=subprocess.check_output(['git','rev-parse','--show-toplevel'],text=True).strip(); runpy.run_path(str(pathlib.Path(r)/'scripts/context.py'),run_name='__main__')\" --hook",
+            "timeout": 5,
+            "additionalContextLimit": 4000,
+            "statusMessage": "Loading compact Adaptive IAM context"
+          }
+        ]
+      }
+    ]
+  }
+}

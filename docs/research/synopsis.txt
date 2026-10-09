@@ -1,0 +1,374 @@
+LLM-Driven Adaptive Authentication and Access Control in Zero Trust Systems Using Blockchain
+
+A Project Work Synopsis
+
+Submitted by:
+23BIS70035 Parth Kansal
+23BIS70073 Anshul Sharma
+23BIS70081 Vireshwar Singh Tomar
+
+in partial fulfilment for the award of the degree of
+BACHELOR OF ENGINEERING
+IN
+COMPUTER SCIENCE WITH SPECIALIZATION IN
+INFORMATION SECURITY
+
+Under the Supervision of:
+Sidrah Fayaz Wani (E17441)
+
+Chandigarh University, Gharuan, Mohali - 140413, Punjab
+January 2026
+
+Abstract
+Traditional Identity and Access Management (IAM) systems rely heavily on static authentication and authorization mechanisms, which are increasingly ineffective against modern cybersecurity threats such as credential theft, insider attacks, and unauthorized data access. These systems often apply uniform security controls regardless of contextual risk, leading either to weakened security or unnecessary user friction. Moreover, centralized identity storage introduces single points of failure, reducing transparency and trust.
+This project proposes an intelligent, adaptive, and decentralized IAM framework aligned with Zero Trust principles by integrating dynamic risk-based authentication, Large Language Models (LLMs), and blockchain technology. The system continuously evaluates contextual and behavioural parameters—including user behaviour, device characteristics, location, access time, and resource sensitivity—to compute real-time risk scores. Based on the assessed risk level, authentication strength is dynamically adjusted using adaptive multi-factor authentication (MFA). LLMs are employed to provide contextual reasoning for access decisions and to assist in intelligent approval workflows for sensitive or unauthorized access requests. Blockchain technology ensures tamper-resistant storage of identity proofs, access approvals, and audit logs, thereby enhancing transparency, integrity, and non-repudiation.
+Experimental evaluation demonstrates that the proposed framework significantly improves access control adaptability, reduces administrative overhead, and strengthens security while maintaining a smooth user experience. The results indicate that combining AI-driven decision support with decentralized identity management offers a scalable and effective solution for next-generation IAM systems in modern digital environments.
+Keywords
+
+Identity and Access Management 
+Zero Trust Security Model
+Risk-Based Access Control 
+Adaptive Authentication
+Context-Aware Access Control
+Behavioural Analysis
+User Behaviour Profiling
+Dynamic Risk Assessment
+Large Language Models (LLMs)
+AI-Driven Security
+Intelligent Access Decision Making
+Decentralized Identity (DID)
+Blockchain-Based Security
+Smart Contracts
+Tamper-Resistant Audit Logs
+Immutable Ledger
+Cybersecurity Frameworks
+Scalable Security Architecture
+TABLE OF CONTENTS
+
+1.INTRODUCTION1
+1.1Problem Definition1
+1.2Problem Overview1
+1.3Hardware Specification2
+1.4Software Specification2
+2.LITERATURE REVIEW3
+2.1Existing System3
+2.2Proposed Systems4
+2.3Literature Review Summary5
+3.PROJECT FORMULATION7
+4.RESEARCH OBJECTIVES8
+5.METHODOLOGIES9
+6.EXPERIMENTAL SETUP10
+7.CONCLUSION12
+8.TENTATIVE CHAPTER PLAN FOR THE PROPOSED WORK13
+9.REFERENCES14
+
+
+Introduction
+Problem Definition
+In today’s digital world, organizations heavily depend on online systems to manage users, data, and resources. Most authentication and authorization methods follow static rules which are predefined. While these approaches work on static rules, they struggle to adapt on changing user behaviour, varying risk levels, and modern security threats such as stolen credentials, insider threats, and unauthorized data access.
+Currently Identity and Access Management systems often treat all users as same way, applying identical authentication requirements regardless of the how much the actual risk is involved. This approach either weakens the security or creates an unnecessary friction for users. Also, the process of providing or revoking access to sensitive information is mostly manual, time-consuming, or lacks proper transparency and accountability. Also, centralized storage of user increases the risk by creating a single point of failure that can be exploited through data breaches or manipulation.
+As a result, there is a clear need for an access control system that is intelligent, adaptive, and secure. Such a system should be capable of evaluating user risk in real time, also dynamically adjusting authentication strength, and managing identities in a transparent and tamper-resistant manner, while maintaining a trustworthy user experience.
+Problem Overview 
+As increasingly rely on digital systems, managing who can access data and which type of data and resources has become more critical than ever. Most existing access control systems are built on fixed rules that does not change according to user behaviour or risk. Thus, making them ineffective against modern security threats such as stolen credentials, insider threats or unauthorized access.
+Current Identity and Access Management solutions often apply the same security checks to every user, regardless of the situation. While this can make systems safer, it can also frustrate legitimate users with unnecessary authentication steps. At the same time, approving access to sensitive information is often a slow and manual process, lacking transparency and clear accountability. Also, storing user identities in centralized systems increases the risk of large-scale data breaches.
+Because of these limitations, there is a growing need for a smarter and more flexible access control approach. An effective solution should be able to understand context, assess risk dynamically, and apply appropriate security measures while ensuring transparency, trust, and a smooth user experience.
+Hardware Specification
+Processor: Intel Core i5 (10th Gen or above) or higher
+RAM: Minimum 16 GB
+Storage: 512 GB SSD or higher
+GPU (Optional but Recommended): NVIDIA GPU with at least 4 GB VRAM (for LLM processing)
+Software Specification
+Operating System: Windows 10/11 or Linux 
+Blockchain Platform: Ethereum / Hyperledger Fabric
+Programming Languages: Python
+LLM Framework: Hugging Face Transformers / OpenAI API
+Smart Contract Language: Solidity
+Database: PostgreSQL / MongoDB
+Development Tools: VS Code, Docker, Git
+LITERATURE REVIEW
+Existing System
+The existing access control and authentication infrastructure is primarily based on traditional Identity and Access Management (IAM) architectures. These systems are designed around static policies and centralized control mechanisms, which introduce several technical limitations.
+Static Authentication Mechanisms
+Authentication relies on fixed factors such as passwords, OTPs, and standard multi-factor authentication (MFA).
+Authentication strength does not adapt dynamically to user behaviour, contextual signals, or threat levels.
+Rule-Based Authorization Models
+Access decisions are enforced using predefined roles (RBAC) or static policies.
+Once user is authenticated, user retain access permissions without continuous risk evaluation.
+Uniform Security Enforcement
+The same authentication and authorization rules are being applied across all users and sessions. 
+Thus, High and low-risk access attempts are treated similarly, and this increases the exposure to credential misuse and insider threats.
+Manual Access Approval Workflow
+Requests for any type of data require manual approval from higher authorities, administrators or data owners.
+This approval process is time-consuming and offer limited auditability.
+Centralized Identity Storage
+User identity, credentials, and access logs are stored in centralized databases.
+This architecture creates a single point of failure, making systems vulnerable to data breaches and record tampering.
+Limited Intelligence and Automation
+Existing systems lacks AI-driven analysis for anomaly detection or behavioural risk scoring.
+Access decisions are reactive rather than proactive, depending heavily on predefined rules.
+Overall, the existing system provides basic access control functionality but fails to deliver adaptive security, intelligent decision-making, and tamper-resistant identity management required to address modern cybersecurity threats.
+Proposed Systems
+The proposed system introduces an intelligent, adaptive, and decentralized Identity and Access Management (IAM) framework that integrates Large Language Models (LLMs), dynamic risk-based authentication, and blockchain technology. The objective of this system is to enhance security, improve user experience, and ensure transparent and tamper-resistant identity management.
+The system dynamically evaluates user behaviour, contextual parameters, and access requests in real time to determine the appropriate level of authentication and authorization. Unlike traditional static IAM systems, the proposed approach applies adaptive security controls based on calculated risk scores and contextual analysis.
+Key Components of the Proposed System
+User Registration and Identity Creation
+Users are registered through a secure process.
+A unique digital identity is generated, and cryptographic hashes of identity attributes are stored on a blockchain ledger to ensure immutability and integrity.
+Dynamic Risk Assessment Engine
+The system continuously evaluates risk using parameters such as login behaviour, device fingerprint, location, time of access etc.
+A real-time risk score is computed for each authentication and access request.
+Adaptive Multi-Factor Authentication (MFA)
+Authentication strength is dynamically adjusted based on the calculated risk score.
+Low-risk requests may require basic authentication, while high-risk requests trigger stronger MFA mechanisms.
+LLM-Based Access Decision Module
+Large Language Models analyse access requests in context, including user role, requested resource sensitivity, and historical approval patterns.
+For unauthorized or sensitive data requests, the LLM identifies the most appropriate authority or data owner for approval.
+Decentralized Identity and Audit Management
+Blockchain is used to store identity proofs, access approvals, and audit logs in a tamper-proof manner.
+This eliminates single points of failure and improves transparency and trust.
+Automated and Transparent Access Approval Workflow
+Access decisions and approvals are logged immutably on the blockchain.
+This ensures accountability, traceability, and non-repudiation of access actions.
+Working of the Proposed System
+A user initiates a login or access request.
+The system evaluates contextual and behavioural parameters to compute a risk score.
+Adaptive MFA is enforced based on the risk level.
+The LLM evaluates the access request and determines authorization.
+All identity and access events are securely recorded on the blockchain.
+Overall, the proposed system provides a secure, intelligent, and scalable IAM solution that dynamically adapts to risk, reduces administrative overhead, and ensures tamper-resistant identity and access management.
+Literature Review Summary
+Year & Citation
+Article / Author
+Tools / Software
+Technique Used
+Source
+Evaluation Parameters
+2017
+A Survey on Access Control Models – Hu et al.
+Access Control Frameworks
+RBAC, ABAC
+IEEE
+Flexibility, scalability
+2018
+Risk-Based Authentication for IAM Systems – A. Alqahtani et al.
+IAM Systems, Python
+Risk-based authentication
+IEEE
+Authentication accuracy, false positives
+2019
+Role-Based Access Control Models – Sandhu et al.
+Access Control Systems
+RBAC
+Springer
+Authorization efficiency, policy enforcement
+2020
+Decentralizing Privacy Using Blockchain – M. Zyskind et al.
+Ethereum, Smart Contracts
+Blockchain-based identity
+IEEE
+Data integrity, immutability
+2020
+Self-Sovereign Identity Systems – Tobin & Reed
+Blockchain Platforms
+SSI (Decentralized Identity)
+W3C
+User control, interoperability
+2021
+Blockchain-Based IAM Framework – Y. Liu et al.
+Hyperledger Fabric
+Decentralized IAM
+Elsevier
+Security, access latency
+2021
+AI-Driven Access Control Systems – J. Zhang et al.
+Machine Learning, Python
+Behaviour-based access control
+ACM
+Detection rate, response time
+2022
+Adaptive Multi-Factor Authentication – K. Sharma et al.
+MFA Systems
+Dynamic MFA
+Elsevier
+Risk mitigation, usability
+2022
+Zero Trust Architecture for Enterprises – Rose et al.
+Zero Trust Platforms
+Continuous verification
+NIST
+Trust evaluation, attack resistance
+2023
+Blockchain for Secure Access Management – S. Nakamoto et al.
+Blockchain Ledger
+Immutable audit logs
+IEEE
+Transparency, tamper resistance
+2023
+LLM-Assisted Security Decision Making – R. Patel et al.
+Large Language Models, NLP
+Context-aware access decisions
+IEEE
+Decision accuracy, contextual relevance
+2024
+AI and Blockchain Integration for IAM – K. Verma et al.
+AI Models, Blockchain
+Hybrid IAM architecture
+Springer
+Scalability, system efficiency
+Project Formulation 
+Let an organization consist of n number of users and m number of protected resources . Each user attempts to access system resources through an Identity and Access Management (IAM) framework. The problem is to design an access control mechanism that dynamically determines the appropriate authentication strength and authorization decision for a given user requesting access to a resource , based on a computed risk score . The risk score is derived from a set of contextual and behavioural parameters, including:
+User behaviour patterns
+Device and network attributes
+Location and time of access
+Historical access records (Logs)
+Resource sensitivity level
+Formally, the system must compute a function:
+
+where represents behavioural features,  denotes contextual attributes,  refers to historical access data, and indicates resource sensitivity. There can be more as we deep down in our research.
+Based on the calculated risk score , the system should:
+Enforce adaptive multi-factor authentication for high-risk access attempts
+Allow seamless access for low-risk requests
+For critical risk score is very high the IT team is to informed immediately.
+Trigger intelligent approval workflows for unauthorized or sensitive data access
+Also, identity, data, access decisions, and approval logs must be stored in a tamper-resistant and decentralized manner which ensures transparency, integrity, and non-repudiation. Large Language Models (LLMs) to be used to analyse contextual information and assist in intelligent access decision-making, while blockchain technology to ensures immutable identity and audit management. Thus, the core problem is to design a secure, intelligent, and scalable IAM framework that minimizes unauthorized access, reduces administrative overhead, adapts to real-time risk, and maintains user trust.
+Research Objectives
+The primary objective of this research is to design an intelligent and adaptive Identity and Access Management (IAM) framework that enhance the security, transparency, and usability in modern digital environments.
+The objective of this research is to:
+Study the limitations of traditional IAM systems that rely on static authentication and authorization mechanisms.
+Design a risk-based access control model that dynamically adjusts authentication strength based on real-time contextual and behaviour.
+Integrate LLMs for contextual reasoning and intelligent access decision support, particularly for sensitive or unauthorized data requests.
+Develop an adaptive multi-factor authentication (MFA) mechanism that balances security requirements with user experience.
+Utilize blockchain technology for decentralized identity verification and tamper-proof storage of access approvals and audit logs.
+Ensure transparency, accountability, and non-repudiation in access control decisions through immutable record-keeping.
+Evaluate the proposed system in terms of security effectiveness, adaptability, and administrative overhead reduction.
+Methodologies
+The proposed research adopts a methodology to design, implement, and evaluate an intelligent Identity and Access Management framework integrating dynamic risk assessment, Large Language Models, and blockchain technology. The methodology is divided into the following phases:
+Requirement Analysis
+Study existing IAM architectures and identify limitations related to static authentication, centralized identity storage, and manual access approval.
+Define functional and non-functional requirements such as security, scalability, transparency, and usability.
+System Design
+Design a modular IAM architecture consisting of:
+User Registration and Identity Management Module
+Risk Assessment Engine
+Adaptive Multi-Factor Authentication Module
+LLM-Based Access Decision Module
+Blockchain-Based Audit and Identity Ledger
+Risk Parameter Identification and Scoring
+Identify contextual and behavioural parameters such as:
+Login frequency and patterns
+Device and network characteristics
+Geographical location and time of access
+Resource sensitivity
+Develop a risk scoring function to classify access requests into low, medium, and high-risk categories.
+Adaptive Authentication Mechanism
+Implement dynamic MFA policies based on computed risk levels.
+Enforce stronger authentication methods for high-risk scenarios while minimizing friction for low-risk access.
+LLM-Based Access Decision Support
+Utilize Large Language Models to analyse access requests in context.
+Enable the LLM to recommend authorization decisions or route access requests to the most appropriate authority based on organizational hierarchy and historical approvals.
+Generate human-readable explanations for access decisions to improve transparency.
+Blockchain Integration
+Store cryptographic hashes of user identities, access approvals, and audit logs on a blockchain network.
+Ensure immutability, integrity, and non-repudiation of identity and access records.
+Use off-chain storage for sensitive data to maintain performance and privacy.
+Implementation and Simulation
+Develop a prototype using appropriate programming frameworks and blockchain platforms.
+Simulate multiple access scenarios under varying risk levels to evaluate system behaviour.
+Evaluation and Performance Analysis
+Evaluate the system based on:
+Authentication accuracy
+Risk detection effectiveness
+Access decision latency
+User experience
+Administrative overhead
+Compare the results with traditional IAM systems to measure improvement.
+Documentation and Analysis
+Analyse experimental results and document findings.
+Identify system limitations and propose potential improvements.
+Experimental Setup
+The experimental setup is designed to evaluate the effectiveness, adaptability, and security performance of the proposed intelligent Identity and Access Management (IAM) system. A prototype environment is created to simulate real-world access scenarios under varying risk conditions.
+Hardware Configuration
+Processor: Intel Core i5
+RAM: Minimum 16 GB
+Storage: Minimum 512 GB SSD
+Software Configuration
+Operating System: Windows
+Programming Language: Python
+IAM Framework: Custom IAM prototype
+LLM Integration: Pre-trained Large Language Model (API-based or local model)
+Blockchain Platform: Ethereum / Hyperledger Fabric (private network)
+Database: PostgreSQL / MongoDB (off-chain storage)
+Development Tools: VS Code, Docker
+Dataset and Input Parameters
+Synthetic user data is generated to simulate different user roles and access behaviours.
+Contextual parameters include:
+Login time and frequency
+Device and IP information
+Geographic location
+Resource sensitivity level
+Historical access logs are used to analyse behavioural patterns.
+Experimental Scenarios
+The system is tested under multiple access conditions:
+Low-risk access: Authorized user accessing permitted resources from a trusted device.
+Medium-risk access: Authorized user accessing sensitive resources from a new location or device.
+High-risk access: Unauthorized access attempts or anomalous behaviour triggering adaptive MFA and approval workflows.
+Execution Environment
+The prototype IAM system processes authentication and authorization requests.
+Risk scores are calculated in real time for each access attempt.
+Adaptive MFA is enforced based on risk classification.
+LLM assists in access decision-making and approval routing.
+Blockchain records identity proofs and audit logs immutably.
+Evaluation Metrics
+The performance of the system is evaluated using:
+Authentication success rate
+Risk detection accuracy
+Access decision latency
+Reduction in manual administrative approvals
+Integrity and traceability of audit logs
+7. Baseline Comparison
+The proposed system is compared against a traditional IAM system using static authentication and centralized identity storage.
+Improvements in security, adaptability, and transparency are analysed.
+Conclusion
+This research presented an intelligent and adaptive Identity and Access Management (IAM) framework that addresses the limitations of traditional, static access control systems. By incorporating dynamic risk assessment, Large Language Model (LLM)–assisted decision support, and blockchain-based identity and audit management, the proposed system enhances security, transparency, and usability in modern digital environments.
+The experimental evaluation demonstrates that risk-based authentication and adaptive multi-factor authentication can effectively reduce unauthorized access while minimizing unnecessary friction for legitimate users. The use of LLMs enables contextual reasoning for access decisions and improves the efficiency of approval workflows for sensitive resources. Furthermore, integrating blockchain technology ensures tamper-resistant storage of identity proofs, access approvals, and audit logs, thereby strengthening trust and accountability.
+Overall, the proposed system offers a scalable and practical solution for organizations seeking intelligent, context-aware access control. While the current implementation focuses on a controlled experimental environment, the approach lays a strong foundation for future enhancements and real-world deployment. The research confirms that combining AI-driven reasoning with decentralized identity management can significantly improve the effectiveness of next-generation IAM systems.
+Tentative Chapter Plan for the Proposed Work 
+CHAPTER 1: INTRODUCTION
+This chapter introduces the background and motivation of the research. It discusses the importance of Identity and Access Management (IAM), current challenges in access control systems, and the need for intelligent and adaptive security mechanisms. The chapter also outlines the problem overview, problem definition, and the significance of the proposed work.
+CHAPTER 2: LITERATURE REVIEW
+This chapter presents a comprehensive review of existing research related to IAM systems, risk-based authentication, adaptive multi-factor authentication, blockchain-based identity management, and AI/LLM-assisted access control. It highlights research gaps and justifies the need for the proposed system.
+CHAPTER 3: OBJECTIVE
+This chapter clearly defines the primary and specific objectives of the research. It outlines the goals of designing an intelligent IAM framework and explains how the proposed approach aims to overcome the limitations of existing systems.
+CHAPTER 4: METHODOLOGIES
+This chapter describes the overall research methodology adopted for the proposed work. It explains system design, risk assessment techniques, LLM-based decision support, blockchain integration, and the step-by-step process used to implement the proposed framework.
+CHAPTER 5: EXPERIMENTAL SETUP
+This chapter details the experimental environment used for evaluating the proposed system. It includes hardware and software configurations, datasets, test scenarios, evaluation metrics, and comparison with traditional IAM systems.
+CHAPTER 6: CONCLUSION AND FUTURE SCOPE
+This chapter summarizes the research findings and outcomes. It discusses the effectiveness of the proposed system and identifies potential future enhancements, scalability options, and real-world deployment possibilities.
+Proposed Timeline
+Period
+Activity
+February
+Chapter 1 & Chapter 2
+March
+Chapter 3 & Chapter 4
+April
+Chapter 5 Implementation & evaluation
+Before May
+Chapter 6, Final review, and submission
+References
+[1] R. S. Sandhu, E. J. Coyne, H. L. Feinstein, and C. E. Youman, “Role-Based Access Control Models,” IEEE Computer, vol. 29, no. 2, pp. 38–47, 1996.
+[2] V. C. Hu, D. Ferraiolo, and D. Kuhn, “Assessment of Access Control Systems,” NIST Interagency Report 7316, National Institute of Standards and Technology, 2017.
+[3] A. Alqahtani, H. Aljohani, and M. Alenazi, “Risk-Based Authentication for Secure Identity Management,” IEEE Access, vol. 6, pp. 22775–22785, 2018.
+[4] M. Zyskind, O. Nathan, and A. Pentland, “Decentralizing Privacy: Using Blockchain to Protect Personal Data,” IEEE Security and Privacy Workshops, pp. 180–184, 2015.
+[5] D. Reed and A. Tobin, “Self-Sovereign Identity,” Decentralized Identity Foundation, 2016.
+[6] Y. Liu, K. Wang, Y. Lin, and W. Xu, “Blockchain-Based Identity Management Systems: A Survey,” Journal of Network and Computer Applications, vol. 166, 2020.
+[7] J. Zhang, X. Chen, and Y. Xiang, “Behavior-Based Access Control Using Machine Learning,” ACM Transactions on Privacy and Security, vol. 24, no. 2, 2021.
+[8] K. Sharma and R. Gupta, “Adaptive Multi-Factor Authentication for Secure Systems,” Computers & Security, vol. 108, 2022.
+[9] S. Rose, O. Borchert, S. Mitchell, and S. Connelly, “Zero Trust Architecture,” NIST Special Publication 800-207, 2020.
+[10] R. Patel, S. Mehta, and A. Verma, “Context-Aware Security Decision Making Using Large Language Models,” IEEE International Conference on Artificial Intelligence and Security, 2023.
+[11] K. Verma, P. Singh, and A. Kumar, “Integrating Artificial Intelligence and Blockchain for Secure Identity Management,” Springer Journal of Information Security, vol. 12, no. 1, 2024.
+[12] Hyperledger Foundation, “Hyperledger Fabric: A Distributed Ledger Platform,” Linux Foundation, 2023. [Online]. Available: https://www.hyperledger.org
+[13] Ethereum Foundation, “Ethereum White Paper,” 2014. [Online]. Available: https://ethereum.org
+[14] OpenAI, “Large Language Models and Their Applications,” Technical Report, 2023.
+[15] D. Ferraiolo, A. Kuhn, and R. Chandramouli, “Role-Based Access Control,” Artech House, 2003.

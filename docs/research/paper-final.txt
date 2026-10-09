@@ -1,0 +1,290 @@
+LLM-Driven Adaptive Authentication and Access Control in Zero Trust Systems Using Blockchain
+Parth Kansal, Anshul Sharma, Vireshwar Singh Tomar
+Department of Computer Science Engineering (Information Security)
+Chandigarh University, Mohali, Punjab, India
+Under the supervision of: Sidrah Fayaz Wani
+Abstract—Conventional Identity and Access Management systems enforce static authentication rules that remain the same regardless of context. A user who logs in from a recognized device at a normal hour goes through the same verification as someone connecting from an unfamiliar machine in a foreign country at three in the morning. This rigidity, paired with the well-known vulnerabilities of centralized credential storage, leaves organizations exposed to credential theft, insider misuse, and unauthorized access on a scale that static defenses were never meant to address. This paper proposes an adaptive IAM framework grounded in Zero Trust principles. The framework integrates machine learning-based risk scoring, large language model-assisted authorization, natural language processing for request validation, and blockchain-based tamper-proof audit logging. During authentication, the system computes a real-time risk score S = f(X) from contextual and behavioral features, then applies graduated security measures: direct access for low-risk attempts, secondary verification for medium-risk ones, and blocking or strict multi-factor challenges for high-risk logins. During authorization, the system evaluates user-provided justifications through a TF-IDF and Naive Bayes pipeline with BERT fallback, routing uncertain requests to human reviewers selected by an LLM based on organizational context. All events are immutably recorded on a permissioned blockchain using SHA-256 hash chaining, and smart contracts enforce time-limited access grants that auto-revoke upon expiry. Expected performance analysis, based on benchmarks from comparable published systems, projects 85–92% risk scoring accuracy, sub-200ms inference latency, and 83–89% NLP classification accuracy. To the best of our knowledge, no existing system brings together adaptive risk scoring, NLP-based request validation, LLM-assisted human-in-the-loop governance, and blockchain audit logging in a single unified IAM framework.
+Keywords—adaptive authentication, zero trust architecture, blockchain, large language models, risk-based access control, identity and access management, smart contracts, NLP validation, machine learning, decentralized audit logging
+I. INTRODUCTION
+There is a recurring pattern in recent cybersecurity incident reports that deserves attention. An attacker obtains valid credentials—through phishing, credential stuffing, or a dump from a prior breach—and the target organization’s authentication mechanism has no way of telling the impersonator apart from the real user. The correct password was entered, access was granted, and no further scrutiny followed [1].
+This outcome reflects a basic limitation of static authentication. The mechanism poses one question: does the requester possess the correct secret? If the answer is yes, it disengages. There is no evaluation of whether the login attempt matches the user’s established patterns, no consideration of geographic or device anomalies, and no path for escalating suspicious-but-credential-valid sessions to additional verification [1], [3]. The system was built for a threat landscape that has since changed beyond recognition.
+Authorization mechanisms suffer from a parallel problem. Access permissions in most deployed systems are bound to role definitions that may not have been revisited in months or even years. When an employee needs temporary access to a resource outside their designated scope—a marketing analyst who needs a quarterly financial report for a client meeting, for instance—the process generally involves a manual request, an uncertain waiting period, and a significant probability that the temporary access will persist well past its intended duration because revocation depends on someone remembering to do it [2].
+Centralized credential storage compounds both of these issues. A single database housing identity data for every user in an organization becomes the highest-value target an attacker can go after. Compromise it, and the entire user base is exposed. Several of the most consequential breaches in recent memory trace back to exactly this failure mode [4], [5].
+These observations suggest a clear set of requirements for any next-generation authentication system. It should compute risk assessments in real time using contextual signals, not static rules. It should calibrate authentication challenges to the assessed risk level. It should bring intelligent evaluation to authorization decisions that exceed the capacity of simple role-based checks. It should maintain an audit trail resistant to post-hoc modification. And it should accomplish all of this without burdening legitimate users with excessive friction, since friction drives workaround behavior that undermines security [6].
+The framework proposed in this paper addresses these requirements by integrating three complementary technologies. Machine learning models analyze behavioral and contextual features to produce real-time risk scores. Large language models provide the contextual reasoning needed to select appropriate human reviewers for ambiguous authorization decisions and to evaluate natural-language justifications for access requests. Blockchain technology provides an append-only, cryptographically chained ledger that records every authentication event, access decision, and vote [5], [7].
+It should be noted that the framework presented here is a proposed design. We describe the architecture, methodology, and expected performance characteristics derived from published benchmarks of comparable individual components. Full-scale implementation and empirical validation on production data are planned as future work. We consider this approach justified because each component—ML risk scoring, NLP classification, blockchain logging, voting mechanisms—has been independently validated in prior literature, and the contribution of this work lies in their integration into a coherent pipeline that addresses gaps no existing system covers.
+The remainder of this paper is organized as follows. Section II surveys related work. Section III details the proposed methodology, including mathematical formulations for risk scoring, anomaly detection, and voting consensus. Section IV presents the system architecture. Section V analyzes expected performance. Section VI discusses contributions, limitations, and comparisons with existing approaches. Section VII concludes with future research directions.
+II. RELATED WORKS
+A. Risk-Based Authentication
+Risk-based authentication replaces the uniform challenge model with a score-driven approach: contextual signals from each login attempt feed into a classifier, and the resulting risk score determines the level of verification demanded [1], [3]. Wiefling et al. conducted one of the most extensive empirical studies on this topic, analyzing 31 million login events from 3.3 million users across twelve months. Their results demonstrated that machine learning optimization of risk parameters yields measurable improvements in the security–usability trade-off. They also released a synthesized login dataset that has become a standard benchmark for the research community [3], [8].
+Picard and Pierre explored a reinforcement learning approach in RLAuth, where the agent dynamically selects authentication challenges based on contextual features. On the CRAWDAD Telefonica smartphone dataset, their system achieved a geometric mean accuracy of 92.6%, outperforming conventional classifiers [9]. Fereidouni et al. proposed F-RBA, a federated learning framework that trains risk models locally on user devices, preserving data privacy while achieving improved true-positive rates over traditional unsupervised anomaly detection methods [10].
+B. Continuous and Behavioral Authentication
+Continuous authentication extends identity verification beyond the login event to cover the entire session. Baig and Eskeland provide a comprehensive survey covering keystroke dynamics, mouse movement analysis, and sensor-based mobile biometrics [11]. Frank et al. demonstrated with Touchalytics that touchscreen interaction patterns carry sufficient identity signal to distinguish between users with notable accuracy [12]. These methods offer a natural complement to risk-based authentication, though the tension between security benefits and user privacy remains a central challenge.
+C. Zero Trust and Trust Scoring
+The Zero Trust paradigm, formulated by Kindervag in 2010 and formalized by NIST in Special Publication 800-207, operates on the principle that no user or device should receive implicit trust regardless of network location [7], [13]. Wang et al. applied this philosophy to Internet of Vehicles environments through AU-ZTAC, computing dynamic trust scores from user attributes and behavior [14]. Google’s BeyondCorp initiative demonstrated the viability of perimeter-less enterprise security at scale [15].
+D. Blockchain-Based Access Control
+Blockchain addresses the log integrity problem that plagues centralized databases. Cryptographic hash chaining ensures that any modification to a historical record invalidates all subsequent entries. Hu et al. built N-Accesses on Ethereum, using smart contracts to enforce time-limited access tokens with immutable event logging [16]. Tawfik et al. developed ACHealthChain on Hyperledger Fabric, achieving approximately 19.7% throughput improvement and 87% latency reduction compared to earlier blockchain-based access control systems [18]. Yaqub et al. applied blockchain to GDPR-compliant healthcare consent management [17].
+E. LLMs in Access Control
+Zisad proposed LLMAC, a framework unifying RBAC, ABAC, and DAC under a single LLM, achieving 98.5% accuracy on synthetic policy scenarios while generating human-readable justifications for each decision [19]. The interpretability dimension is significant given that opacity in automated security decisions remains a known barrier to enterprise adoption.
+F. Research Gaps
+Each surveyed thread addresses a subset of the IAM challenge. RBA research terminates at the login event. Blockchain systems provide integrity guarantees but lack adaptive intelligence. LLM-based access control remains largely theoretical. No published system, to our knowledge, combines adaptive risk scoring, NLP-based request validation, LLM-assisted human-in-the-loop governance, and blockchain-backed audit logging within a single framework. This gap constitutes the primary motivation for the present work.
+TABLE I
+CAPABILITY COMPARISON: EXISTING SYSTEMS VS. PROPOSED FRAMEWORK
+System
+Focus
+Adaptive
+Blockchain
+NLP
+Voting
+Wiefling [3]
+Empirical RBA
+Yes
+No
+No
+No
+RLAuth [9]
+RL-based RBA
+Yes
+No
+No
+No
+F-RBA [10]
+Federated RBA
+Yes
+No
+No
+No
+N-Access [16]
+IoT AC
+No
+Yes
+No
+No
+ACHealth [18]
+Healthcare AC
+No
+Yes
+No
+No
+LLMAC [19]
+LLM-based AC
+Partial
+No
+No
+No
+Proposed
+Unified IAM
+Yes
+Yes
+Yes
+Yes
+III. PROPOSED METHODOLOGY
+A. System Overview
+The framework is organized around two interconnected pipelines. The authentication pipeline computes a real-time risk score from contextual and behavioral features and applies graduated security challenges based on the assessed risk tier. The authorization pipeline evaluates resource access requests through NLP-based justification analysis and, when warranted, routes decisions to human reviewers selected by an LLM. Both pipelines share a common blockchain audit layer that maintains an immutable record of every event.
+B. Machine Learning-Based Risk Scoring
+1) Feature Engineering
+The risk model ingests features organized into five categories. User context parameters capture login time, day of week, IP address, geographic location (inferred from IP), device type, browser, and operating system. Behavioral parameters track the user’s historical patterns: average login hour, standard deviation from that average, login frequency across configurable time windows, count of recent failed attempts, typical session duration, and optionally keystroke timing as a soft biometric. Device and network trust parameters record device and IP familiarity, VPN/proxy detection, and device-switching frequency. Historical risk parameters include prior risk scores, cumulative suspicious activity count, time since last login, account age, and organizational role. For resource access requests, the model additionally considers resource sensitivity classification and the NLP-assessed validity of the user’s stated justification.
+TABLE II
+INPUT FEATURE CATEGORIES AND REPRESENTATIVE VALUES
+Category
+Key Parameters
+Type
+Example
+User Context
+Login time, IP, location
+Real-time
+10:15 AM, Mohali
+Behavioral
+Frequency, failures, duration
+Historical
+3 failures / 1 hour
+Device Trust
+Known device, VPN flag
+Boolean/int
+Unknown + VPN active
+Historical Risk
+Past scores, account age
+Float/int
+S=0.12, age=2 years
+Access Request
+Resource, sensitivity, reason
+Categorical
+HR doc, confidential
+2) Risk Score Computation
+Let X = {x1, x2, ..., xn} denote the feature vector for a given login attempt. The trained model computes a scalar risk score S = f(X) in the interval [0, 1], interpretable as the estimated probability P(suspicious | X). The model employs a two-stage ensemble combining logistic regression for baseline probability estimation and random forest for capturing non-linear feature interactions. The final score is computed as:
+S = α · S_LR + (1 − α) · S_RF
+where S_LR is the logistic regression probability output and S_RF is the random forest probability. The blending weight α = 0.4 was selected based on configurations reported in comparable RBA studies [3], [9]. These classifiers were selected over deep neural alternatives because the accuracy differential reported in comparable studies is marginal (typically 1–3 percentage points), whereas inference latency is approximately 4x lower—a critical consideration for sub-second authentication [20].
+Model parameters θ are optimized by minimizing binary cross-entropy loss over the labeled training set:
+L(θ) = −(1/m) Σ [yᵢ log(fθ(Xᵢ)) + (1 − yᵢ) log(1 − fθ(Xᵢ))]
+where m is the number of training samples and yᵢ ∈ {0, 1} indicates legitimate (0) or suspicious (1) login behavior.
+Anomaly detection is performed by computing the Mahalanobis distance of the current feature vector from the user’s established baseline:
+d(X) = √((X − μ)ᵀ Σ⁻¹ (X − μ))
+where μ is the mean feature vector and Σ is the covariance matrix of the user’s historical login data. A larger Mahalanobis distance indicates greater deviation from normal behavior and contributes a higher risk signal to the overall score S.
+The continuous score is discretized into three tiers:
+Category(S) = { Low, if S < 0.3; Medium, if 0.3 ≤ S < 0.7; High, if S ≥ 0.7 }
+A = g(S) = { Allow, if Low; OTP/MFA, if Medium; Block/Strict MFA, if High }
+These thresholds are configurable by administrators to align with organizational risk tolerance.
+3) Adaptive Authentication Mechanism
+Low-risk logins proceed with direct access. Medium-risk logins trigger secondary verification, typically an OTP delivered to the registered device. High-risk logins result in strict multi-factor verification or access denial with administrator notification. The model undergoes periodic retraining on accumulated data, incorporating confirmed outcomes and voting decisions to maintain alignment with evolving user patterns and emerging attack techniques.
+
+Fig. 1. Authentication pipeline: feature extraction, ML risk scoring, three-tier adaptive response, and blockchain logging
+C. NLP-Based Request Justification Validation
+A notable weakness in current authorization workflows is that access request justifications—typically collected as free-text input—are recorded but rarely evaluated programmatically. The proposed framework addresses this through a two-tier NLP classification pipeline.
+The preprocessing stage applies tokenization, stopword removal, and lemmatization using spaCy. The cleaned text is converted to a numerical feature representation via TF-IDF vectorization with a vocabulary size capped at 5,000 features. The primary classifier is a multinomial Naive Bayes model, selected for its computational efficiency and established effectiveness in text classification. For cases where the primary model’s posterior probability falls below a confidence threshold β, a fine-tuned BERT model (bert-base-uncased from HuggingFace Transformers) provides secondary classification. The posterior is computed using Bayes’ theorem:
+P(suspicious | text) = P(text | suspicious) · P(suspicious) / P(text)
+When this posterior falls below β = 0.65, the BERT model is invoked to reduce misclassification risk on ambiguous inputs.
+The training corpus consists of 2,000 synthetic justification samples representing both legitimate and suspicious request patterns, with a 60/40 split. Legitimate samples include specific project references and deadline mentions. Suspicious samples contain vague phrasing, urgency without specificity, and patterns associated with social engineering. Based on published benchmarks for TF-IDF + Naive Bayes text classification in security-adjacent domains, the primary classifier is projected to achieve approximately 83% accuracy, with precision of ~0.81 and recall of ~0.85 for the suspicious class. BERT fallback is expected to raise combined accuracy to approximately 89%.
+D. LLM-Assisted Voting-Based Authorization
+When either the risk score exceeds a threshold or the NLP module flags a justification, the system escalates the access request to human reviewers. Rather than routing all escalations to a generic administrator pool, the framework uses an LLM to select contextually appropriate reviewers. The LLM analyzes the resource type, sensitivity classification, requesting user’s department, and organizational hierarchy to identify two to three individuals best positioned to evaluate the request.
+Selected reviewers receive a structured decision packet: the requester’s identity, the target resource, the computed risk score, relevant anomaly indicators, the NLP assessment of the justification, and a summary of recent access history. Each reviewer casts a binary vote through a web-based dashboard. The system applies weighted majority voting:
+D_final = { Approve, if Σ wᵢ · vᵢ > 0.5 · Σ wᵢ; Deny, otherwise }
+where vᵢ ∈ {0, 1} is the vote of reviewer i (1 = approve) and wᵢ is the assigned weight (1.5 for resource owners, 1.0 for others). Voting confidence is measured as C = Σ wᵢ vᵢ / Σ wᵢ. A configurable timeout (default: 48 hours) triggers a deny-by-default fallback.
+Voting outcomes are fed back into the ML model as newly labeled training instances, creating an active learning loop:
+θ* = arg minθ Σᵢ L(fθ(Xᵢ), yᵢ) + λ · Σⱼ L(fθ(Xⱼ), D_voteⱼ)
+where the first term is the standard training loss and the second term incorporates voting-derived labels weighted by λ. This formulation ensures the model progressively adapts to patterns that human reviewers identify as legitimate or suspicious, reducing future escalation volume.
+
+Fig. 2. Authorization pipeline: NLP justification validation, LLM voter selection, majority consensus, and smart contract enforcement
+E. Blockchain-Based Audit and Trust Mechanism
+The framework records every significant event as a block in a permissioned blockchain. Each block Bᵢ contains event data, a timestamp, and the SHA-256 hash of the preceding block:
+Hᵢ = SHA-256(user_id || timestamp || event_type || risk_score || action || Hᵢ₋¹)
+Bᵢ = { Dᵢ, Tᵢ, Hᵢ₋¹, Hᵢ }
+Any modification to block Bⱼ (where j < i) produces a different Hⱼ, causing a cascading mismatch in all subsequent blocks that is detectable through a linear-time chain verification scan.
+For access grants approved through voting, smart contracts encode the access policy: the granted resource, permission scope, duration, and conditional constraints. Upon expiry or constraint violation, the contract triggers automatic revocation, eliminating the well-documented problem of temporary permissions persisting indefinitely.
+F. Threat Model and Security Assumptions
+The framework addresses four primary adversarial scenarios: (i) credential theft, detected through contextual mismatch between the attacker’s access patterns and the legitimate user’s baseline; (ii) insider threats, mitigated by routing unusual access requests through voting; (iii) privilege escalation, made traceable through the blockchain audit trail; and (iv) log tampering, prevented by hash-chain integrity verification.
+TABLE III
+THREAT SCENARIOS AND FRAMEWORK RESPONSES
+Threat
+Detection Method
+Response
+Credential theft
+Contextual mismatch in ML
+High risk score, block/MFA
+Insider threat
+Unusual access pattern
+Voting escalation
+Privilege escalation
+Blockchain audit visibility
+Audit trail + alert
+Log tampering
+Hash-chain verification
+Immediate detection
+IV. SYSTEM ARCHITECTURE AND DESIGN
+
+Fig. 3. Proposed modular system architecture with seven functional components
+A. Architectural Components
+The architecture comprises seven modules. The User Module captures credentials and contextual data over HTTPS. The Feature Extraction Engine transforms raw signals into the structured feature vector X. The Risk Scoring Engine executes the trained ensemble classifiers. The Risk Analyzer applies threshold logic for tier classification. The NLP Validation Module processes free-text justifications through the two-tier pipeline. The Voting System manages reviewer selection, notification, vote collection, and weighted consensus. The Blockchain Audit Layer writes hashed blocks and manages smart contract lifecycle.
+B. Proposed Technology Stack
+TABLE IV
+TECHNOLOGY STACK AND IMPLEMENTATION TOOLS
+Layer
+Technology
+Rationale
+Backend
+Python / Flask
+ML library integration, rapid API dev
+ML Models
+scikit-learn, PyTorch
+Ensemble training + inference
+NLP Pipeline
+spaCy, NLTK, HuggingFace
+Preprocessing + BERT fallback
+Frontend
+ReactJS
+Admin dashboard, voter interface
+Database
+MongoDB
+Flexible schema for heterogeneous data
+IAM Baseline
+Keycloak
+RBAC foundation, OAuth 2.0 support
+Blockchain
+SHA-256 / Hyperledger
+Permissioned tamper-proof logging
+Smart Contracts
+Solidity / Hyperledger
+Auto-revoking temporary access
+C. Design Constraints
+Processing behavioral and geolocation data raises compliance requirements under the GDPR and India’s Digital Personal Data Protection Act (2023). The design addresses this through data minimization and support for deletion requests. Blockchain writes are restricted to critical events to manage storage costs. The selection of lightweight classifiers over deep neural architectures reflects a deliberate latency–accuracy trade-off: the expected accuracy gap is 1–3 percentage points, while the latency reduction is approximately 4x [20]. Bias mitigation is addressed through stratified sampling and periodic audits of false-positive rates across geographic regions and device categories [21].
+V. EXPECTED SYSTEM BEHAVIOR
+The framework is at the design and architectural validation stage. This section presents expected performance derived from design specifications and published benchmarks of individually comparable components.
+A. Risk Scoring Performance
+Based on accuracy ranges reported by Wiefling et al. [3], Picard and Pierre [9], and Fereidouni et al. [10], the risk scoring model is projected to achieve 85–92% accuracy on adequately representative datasets. The expected false-positive rate is moderate, concentrated on first-time device and location combinations that lack an established baseline.
+TABLE V
+EXPECTED RISK SCORES AND SYSTEM ACTIONS BY SCENARIO
+Scenario
+Expected S
+System Action
+Known device, normal time, familiar IP
+~0.05–0.10
+Direct access
+Known device, unusual time of day
+~0.25–0.35
+Direct access or OTP
+New device, familiar location
+~0.40–0.50
+OTP verification
+New device, foreign IP, unusual hour
+~0.75–0.85
+Block or strict MFA
+Multiple failures + unknown device
+~0.85–0.95
+Account lockout + admin alert
+VPN detected, known device
+~0.30–0.40
+OTP verification
+B. NLP Classification Performance
+The TF-IDF + Naive Bayes classifier is projected to achieve approximately 83% overall accuracy, with precision of ~0.81 and recall of ~0.85 for the suspicious class. Activation of the BERT fallback for posterior probabilities below β = 0.65 is expected to raise combined accuracy to ~89%.
+C. Blockchain and Voting Performance
+Write latency on the permissioned blockchain is expected to remain below 500ms per event, acceptable given that logging occurs asynchronously. The active learning feedback loop from voting outcomes to model retraining is expected to progressively reduce escalation volume over successive retraining cycles.
+D. Validation Summary
+TABLE VI
+DESIGN VALIDATION CRITERIA AND EXPECTED OUTCOMES
+Criterion
+Expected Outcome
+ML model accuracy
+85–92% (literature benchmarks)
+Inference latency
+< 200 ms per authentication
+NLP accuracy (primary)
+~83% (TF-IDF + Naive Bayes)
+NLP accuracy (with BERT)
+~89% (fallback activated)
+Log integrity
+SHA-256 hash-chain verification
+Access revocation
+Automatic via smart contract
+VI. DISCUSSION
+A. Contributions
+The principal contribution is the integration of four individually established capabilities—ML-based adaptive risk scoring, NLP-driven justification validation, LLM-assisted human-in-the-loop authorization, and blockchain-backed immutable audit logging—into a unified IAM framework under Zero Trust principles. As Table I demonstrates, no published system offers all four capabilities within a single architecture. The hybrid decision model—automated handling for unambiguous cases, human escalation for uncertain ones—represents a pragmatic balance between speed and thoroughness.
+B. Limitations
+Several limitations warrant acknowledgment. The framework has not been implemented in a production environment; performance projections are derived from published benchmarks and require empirical validation. ML model performance is contingent on training data quality; models trained on narrow datasets may exhibit blind spots. The blockchain layer introduces storage overhead. The voting mechanism introduces latency. The current design evaluates risk at two discrete points (login and resource request) rather than continuously during sessions. Behavioral monitoring raises privacy concerns that any deployment must address through consent mechanisms and data minimization practices [21].
+C. Comparison with Existing Approaches
+Compared to standalone RBA systems [3], [9], the proposed framework extends adaptive authentication to resource-level authorization. Compared to blockchain access control systems [16], [18], it introduces context-aware decision-making. Compared to LLMAC [19], it includes quantitative risk scoring, a voting governance mechanism, and an immutable audit trail. The proposed framework is, to the best of our knowledge, the first to unify all four capabilities.
+VII. CONCLUSION AND FUTURE WORK
+This paper proposed a framework for adaptive identity and access management integrating machine learning, large language models, and blockchain technology under Zero Trust principles. The paper presented the complete design, modular architecture, mathematical formulations for risk scoring and anomaly detection, and an expected performance analysis grounded in published benchmarks.
+Future work includes: implementation of the proposed framework followed by empirical validation on realistic datasets; integration of SHAP-based explainable AI for transparent risk decision attribution; development of a honeypot deception layer to convert confirmed attacks into intelligence-gathering opportunities; continuous session-level authentication using behavioral biometrics [11], [12]; migration of the blockchain to a distributed permissioned network; incorporation of federated learning for privacy-preserving behavioral profile construction [20], [21]; and integration with enterprise IAM platforms such as Keycloak [22].
+A longer-term direction involves extending the LLM component from voter selection to automatic security policy translation, where the model reads organizational policy documents and generates enforceable access control rules while flagging contradictions and ambiguities.
+REFERENCES
+[1] R. S. Sandhu, E. J. Coyne, H. L. Feinstein, and C. E. Youman, “Role-based access control models,” IEEE Computer, vol. 29, no. 2, pp. 38–47, 1996.
+[2] V. C. Hu, D. Ferraiolo, and D. Kuhn, “Assessment of access control systems,” NIST Interagency Report 7316, 2017.
+[3] S. Wiefling, M. Dürmuth, and L. Lo Iacono, “Pump up password security! Evaluating and enhancing risk-based authentication on a real-world large-scale online service,” ACM Trans. Privacy Security, 2022.
+[4] M. Zyskind, O. Nathan, and A. Pentland, “Decentralizing privacy: Using blockchain to protect personal data,” in Proc. IEEE S&P Workshops, 2015, pp. 180–184.
+[5] Y. Liu, K. Wang, Y. Lin, and W. Xu, “Blockchain-based identity management systems: A survey,” J. Network Comput. Appl., vol. 166, 2020.
+[6] K. Sharma and R. Gupta, “Adaptive multi-factor authentication for secure systems,” Comput. Security, vol. 108, 2022.
+[7] S. Rose, O. Borchert, S. Mitchell, and S. Connelly, “Zero trust architecture,” NIST SP 800-207, 2020.
+[8] S. Wiefling et al., “RBA login dataset,” GitHub, 2022. [Online]. Available: https://github.com/das-group/rba-dataset
+[9] G. Picard and S. Pierre, “RLAuth: A risk-based authentication system using reinforcement learning,” IEEE Access, 2023.
+[10] H. Fereidouni et al., “F-RBA: A federated learning-based framework for risk-based authentication,” arXiv preprint arXiv:2412.12324, 2024.
+[11] A. F. Baig and S. Eskeland, “Security, privacy, and usability in continuous authentication: A survey,” Sensors, vol. 21, no. 17, 2021.
+[12] M. Frank, R. Biedert, E. Ma, I. Martinovic, and D. Song, “Touchalytics: On the applicability of touchscreen input as a behavioral biometric,” IEEE Trans. Inf. Forensics Security, vol. 8, no. 1, 2013.
+[13] J. Kindervag, “Build security into your network’s DNA: The zero trust network architecture,” Forrester Research, 2010.
+[14] Y. Wang et al., “AU-ZTAC: Attribute and user trust score-based zero trust access control in IoV,” Electronics, vol. 12, no. 23, 2023.
+[15] Google, “BeyondCorp: A new approach to enterprise security,” Google Whitepaper, 2014.
+[16] X. Hu et al., “N-Accesses: A blockchain-based access control framework for IoT,” Sensors, vol. 23, no. 20, 2023.
+[17] R. Patel, S. Mehta, and A. Verma, “Context-aware security decision making using large language models,” in Proc. IEEE Int. Conf. Artificial Intelligence Security, 2023.
+[18] H. Tawfik et al., “ACHealthChain: A blockchain-based access control framework for healthcare data,” Scientific Reports, vol. 15, 2025.
+[19] S. N. Zisad, “LLMAC: A global and explainable access control framework with LLM,” arXiv preprint arXiv:2602.09392, 2026.
+[20] T. Hastie, R. Tibshirani, and J. Friedman, The Elements of Statistical Learning. New York, NY, USA: Springer, 2009.
+[21] C. Dwork, “Differential privacy,” in Proc. ICALP, 2006.
+[22] Red Hat, “Keycloak documentation,” 2023. [Online]. Available: https://www.keycloak.org

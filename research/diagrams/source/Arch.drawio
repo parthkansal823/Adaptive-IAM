@@ -1,0 +1,170 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="j_UAJtrp7MoThrBDu-af">
+    <mxGraphModel dx="852" dy="473" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="databox" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;dashPattern=5 5;" value="" vertex="1">
+          <mxGeometry height="90" width="734" x="45" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#333333;" value="PROPOSED SYSTEM ARCHITECTURE" vertex="1">
+          <mxGeometry height="30" width="400" x="225" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="userbox" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;dashed=1;dashPattern=5 5;" value="" vertex="1">
+          <mxGeometry height="70" width="740" x="40" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="userlabel" parent="1" style="text;fontStyle=1;fontSize=11;fontColor=#888888;align=left;" value="USER LAYER" vertex="1">
+          <mxGeometry height="15" width="100" x="50" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="2" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=11;fontColor=#333333;" value="Web / Mobile Client&#xa;Login + Resource Request" vertex="1">
+          <mxGeometry height="42" width="200" x="175" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontColor=#333333;" value="API Gateway&#xa;HTTPS + JWT" vertex="1">
+          <mxGeometry height="42" width="160" x="475" y="68" as="geometry" />
+        </mxCell>
+        <mxCell id="e_user" edge="1" parent="1" source="2" style="exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="authbox" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=15;dashed=1;dashPattern=5 5;arcSize=8;" value="" vertex="1">
+          <mxGeometry height="290" width="360" x="40" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="authlabel" parent="1" style="text;fontStyle=1;fontSize=11;fontColor=#6c8ebf;align=left;" value="AUTHENTICATION PIPELINE" vertex="1">
+          <mxGeometry height="15" width="200" x="50" y="142" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#333333;" value="Feature Extraction Engine&#xa;IP, Device, Location, Time, Behavior" vertex="1">
+          <mxGeometry height="45" width="290" x="80" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#333333;" value="ML Risk Scoring Engine&#xa;Logistic Regression + Random Forest" vertex="1">
+          <mxGeometry height="55" width="290" x="80" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#333333;" value="Risk Analyzer&#xa;Low / Medium / High" vertex="1">
+          <mxGeometry height="40" width="190" x="130" y="305" as="geometry" />
+        </mxCell>
+        <mxCell id="Gi_YoCM3d0maOiPPSIIK-57" edge="1" parent="1" source="13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#333333;" value="Adaptive Response&#xa;Direct Access | OTP/MFA | Block" vertex="1">
+          <mxGeometry height="40" width="200" x="60" y="365" as="geometry" />
+        </mxCell>
+        <mxCell id="14" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontColor=#333333;" value="Honeypot Module&#xa;Fake env for stolen creds" vertex="1">
+          <mxGeometry height="40" width="110" x="275" y="365" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" edge="1" parent="1" source="10" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" edge="1" parent="1" source="11" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" edge="1" parent="1" source="12" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;curved=0;exitDx=0;exitDy=0;" target="13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" edge="1" parent="1" source="12" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;curved=0;exitDx=0;exitDy=0;" target="14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="authzbox" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;opacity=15;dashed=1;dashPattern=5 5;arcSize=9;" value="" vertex="1">
+          <mxGeometry height="300" width="330" x="450" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="authzlabel" parent="1" style="text;fontStyle=1;fontSize=11;fontColor=#9673a6;align=left;" value="AUTHORIZATION PIPELINE" vertex="1">
+          <mxGeometry height="15" width="200" x="470" y="142" as="geometry" />
+        </mxCell>
+        <mxCell id="20" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontColor=#333333;" value="NLP Validation Module&#xa;TF-IDF + Naive Bayes / BERT" vertex="1">
+          <mxGeometry height="45" width="290" x="480" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontColor=#333333;" value="LLM Voter Selection&#xa;Picks: Owner, Supervisor, Dept Head" vertex="1">
+          <mxGeometry height="45" width="290" x="480" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="22" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontColor=#333333;" value="Voting Dashboard&#xa;Weighted majority consensus&#xa;Timeout → deny by default" vertex="1">
+          <mxGeometry height="50" width="290" x="480" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="Gi_YoCM3d0maOiPPSIIK-59" edge="1" parent="1" source="23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="23" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontColor=#333333;" value="Access Control Engine&#xa;Smart Contracts&#xa;Scope + Duration + Auto-revoke" vertex="1">
+          <mxGeometry height="50" width="290" x="480" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="ez1" edge="1" parent="1" source="20" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ez2" edge="1" parent="1" source="21" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ez3" edge="1" parent="1" source="22" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eapi1" edge="1" parent="1" style="entryX=0.5;entryY=0;rounded=0;curved=0;" target="10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="555" y="130" />
+              <mxPoint x="225" y="130" />
+            </Array>
+            <mxPoint x="555" y="110" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="eapi2" edge="1" parent="1" source="3" style="exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;curved=0;" target="20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="555" y="130" />
+              <mxPoint x="625" y="130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="datalabel" parent="1" style="text;fontStyle=1;fontSize=11;fontColor=#888888;align=left;" value="DATA LAYER" vertex="1">
+          <mxGeometry height="25" width="100" x="50" y="465" as="geometry" />
+        </mxCell>
+        <mxCell id="Gi_YoCM3d0maOiPPSIIK-58" edge="1" parent="1" source="30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="30" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#333333;" value="MongoDB&#xa;User profiles, logs, config" vertex="1">
+          <mxGeometry height="42" width="190" x="65" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="Gi_YoCM3d0maOiPPSIIK-52" edge="1" parent="1" source="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="41">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="31" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#333333;" value="Keycloak&#xa;RBAC baseline, OAuth 2.0" vertex="1">
+          <mxGeometry height="42" width="190" x="300" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="Gi_YoCM3d0maOiPPSIIK-54" edge="1" parent="1" source="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#333333;" value="ML Model Store&#xa;scikit-learn, PyTorch" vertex="1">
+          <mxGeometry height="42" width="190" x="530" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="bcbox" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;opacity=20;dashed=1;dashPattern=5 5;" value="" vertex="1">
+          <mxGeometry height="95" width="740" x="40" y="575" as="geometry" />
+        </mxCell>
+        <mxCell id="bclabel" parent="1" style="text;fontStyle=1;fontSize=10;fontColor=#d79b00;align=left;" value="BLOCKCHAIN LAYER" vertex="1">
+          <mxGeometry height="23" width="100" x="50" y="577" as="geometry" />
+        </mxCell>
+        <mxCell id="Gi_YoCM3d0maOiPPSIIK-50" edge="1" parent="1" source="40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="50" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="40" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=10;fontColor=#333333;" value="Permissioned Blockchain&#xa;SHA-256 Hash Chain&#xa;Immutable event logging" vertex="1">
+          <mxGeometry height="48" width="230" x="45" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="41" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;fontColor=#333333;" value="Smart Contracts&#xa;Time-limited access&#xa;Auto-revocation" vertex="1">
+          <mxGeometry height="48" width="180" x="305" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="42" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;fontColor=#333333;" value="Threat Intel Store&#xa;Honeypot logs&#xa;Attacker behavior" vertex="1">
+          <mxGeometry height="48" width="180" x="535" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="fbbox" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;opacity=15;dashed=1;dashPattern=5 5;" value="" vertex="1">
+          <mxGeometry height="80" width="740" x="39" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="fblabel" parent="1" style="text;fontStyle=1;fontSize=11;fontColor=#82b366;align=left;" value="FEEDBACK LAYER" vertex="1">
+          <mxGeometry height="15" width="200" x="50" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="50" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontColor=#333333;" value="Continuous Learning: Voting outcomes + confirmed logins retrain ML model periodically" vertex="1">
+          <mxGeometry height="35" width="710" x="45" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="efb" edge="1" parent="1" source="50" style="dashed=1;strokeColor=#82b366;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="30" y="710" />
+              <mxPoint x="30" y="258" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

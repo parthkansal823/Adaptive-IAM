@@ -1,0 +1,188 @@
+[
+  {
+    "original_path": "1_ProjectProposal.docx",
+    "current_path": "research/proposals/1_ProjectProposal.docx",
+    "sha256": "27a8745e5c9f9779b7316388e3f1382782df28a572698f685bb0adc74e9f1e18",
+    "bytes": 73828
+  },
+  {
+    "original_path": "2_Synopsis.docx",
+    "current_path": "research/proposals/2_Synopsis.docx",
+    "sha256": "58894253d4deb727f3bb00bc8116507940e48208b212fe9268d406426e777da2",
+    "bytes": 80631
+  },
+  {
+    "original_path": "3_Report.pdf",
+    "current_path": "research/reports/3_Report.pdf",
+    "sha256": "035003542513b364dbb02d28efe2d928173d99d5c228de5c5a8a6d156ffd87f0",
+    "bytes": 2453689
+  },
+  {
+    "original_path": "5_Phase_4_PPT.pptx",
+    "current_path": "research/presentations/5_Phase_4_PPT.pptx",
+    "sha256": "af656afa25739acfd43996678f30f9133764dc955d2f44a7910ee4cb51fd19aa",
+    "bytes": 4616952
+  },
+  {
+    "original_path": "LLM_Based_Adaptive_IAM.pdf",
+    "current_path": "research/papers/drafts/LLM_Based_Adaptive_IAM.pdf",
+    "sha256": "797852648af50ed8f3149b191e78050e39c5955a2b544ec699ff5efc8dc14063",
+    "bytes": 410745
+  },
+  {
+    "original_path": "Phase 1.pptx",
+    "current_path": "research/presentations/Phase 1.pptx",
+    "sha256": "71fb860bed7b8eaeaf6997edfb10c0d36b282d5225e6b5b77ae43cc0bd8a6b05",
+    "bytes": 354569
+  },
+  {
+    "original_path": "Phase 2.pptx",
+    "current_path": "research/presentations/Phase 2.pptx",
+    "sha256": "799b8474fcac1010292f1ea51569301e67092c621939328c092a6eccb238bd5b",
+    "bytes": 430691
+  },
+  {
+    "original_path": "Phase 3.pptx",
+    "current_path": "research/presentations/Phase 3.pptx",
+    "sha256": "36e9e1fb09336bd14e5f31446d848bcb4cb6f4438ca2ff3aef4eec25068fb4ca",
+    "bytes": 376608
+  },
+  {
+    "original_path": "FINAL/Arch.drawio",
+    "current_path": "research/diagrams/source/Arch.drawio",
+    "sha256": "661abfc5d3e19605b92f7eef06c97a578c174bac395398541b8cb406f62766ce",
+    "bytes": 13922
+  },
+  {
+    "original_path": "FINAL/Arch.drawio (1).pdf",
+    "current_path": "research/diagrams/exports/Arch.drawio (1).pdf",
+    "sha256": "cd443c2232522059eacc8111b953488140ec65e8d2481503b13b0e8f08168e58",
+    "bytes": 79583
+  },
+  {
+    "original_path": "FINAL/Arch.drawio (2).pdf",
+    "current_path": "research/diagrams/exports/Arch.drawio (2).pdf",
+    "sha256": "8445a59f96e907582cad512aa5727f079b4a585f81f4b67809496ae8ce92de16",
+    "bytes": 79832
+  },
+  {
+    "original_path": "FINAL/Arch.drawio (3).pdf",
+    "current_path": "research/diagrams/exports/Arch.drawio (3).pdf",
+    "sha256": "ac5e63ce219736d0991964db4a8f49c78525434c045403f9187b09c8e847148e",
+    "bytes": 77505
+  },
+  {
+    "original_path": "FINAL/Arch.drawio.pdf",
+    "current_path": "research/diagrams/exports/Arch.drawio.pdf",
+    "sha256": "fba680dd9398e7a1721b9ad00be2039ae721b592bc4e43dce35b681c2b73781f",
+    "bytes": 79619
+  },
+  {
+    "original_path": "FINAL/Arch.drawio.png",
+    "current_path": "research/diagrams/exports/Arch.drawio.png",
+    "sha256": "3bc058b1f3e9f7cacd83b40f2df2168f9833d548c456ca48486efe3b806fad35",
+    "bytes": 121373
+  },
+  {
+    "original_path": "FINAL/Auth.drawio",
+    "current_path": "research/diagrams/source/Auth.drawio",
+    "sha256": "b1992212f854f7ed00328a906be20836636ffff021d92f4394738fe131db1954",
+    "bytes": 8766
+  },
+  {
+    "original_path": "FINAL/Authur.drawio",
+    "current_path": "research/diagrams/source/Authur.drawio",
+    "sha256": "c68c8e2aad92afd07e20694d03989c74acf062673c4816fc2965d2da332bf5b5",
+    "bytes": 6946
+  },
+  {
+    "original_path": "FINAL/Authur.drawio (1).png",
+    "current_path": "research/diagrams/exports/Authur.drawio (1).png",
+    "sha256": "4e4a9201d124ee631e702862d5485bfc23b1c21d774b390be17a14e712357fcc",
+    "bytes": 129865
+  },
+  {
+    "original_path": "FINAL/Authur.drawio.pdf",
+    "current_path": "research/diagrams/exports/Authur.drawio.pdf",
+    "sha256": "ee05b42a95f79e819067101454bda3a062c3425f302bed5d3a7e2895d40be008",
+    "bytes": 36898
+  },
+  {
+    "original_path": "FINAL/block.drawio",
+    "current_path": "research/diagrams/source/block.drawio",
+    "sha256": "fac1ad98e2112d48ac05b41e4357920ebf31d76081303971a22d267bc90cd54e",
+    "bytes": 6911
+  },
+  {
+    "original_path": "FINAL/fig_architecture.png",
+    "current_path": "research/diagrams/exports/fig_architecture.png",
+    "sha256": "3bc058b1f3e9f7cacd83b40f2df2168f9833d548c456ca48486efe3b806fad35",
+    "bytes": 121373
+  },
+  {
+    "original_path": "FINAL/fig_auth_flow (1).png",
+    "current_path": "research/diagrams/exports/fig_auth_flow (1).png",
+    "sha256": "60bbcbf92e20c9626c0e5f19ab1103d24c2755afd21798bba453fd7159ad981c",
+    "bytes": 105510
+  },
+  {
+    "original_path": "FINAL/fig_auth_flow.drawio.png",
+    "current_path": "research/diagrams/exports/fig_auth_flow.drawio.png",
+    "sha256": "e6c8ed94d5f8f84277271e5e4f7ee4a5732223b288d3aed110b9a4600e530fcf",
+    "bytes": 60362
+  },
+  {
+    "original_path": "FINAL/fig_auth_flow.png",
+    "current_path": "research/diagrams/exports/fig_auth_flow.png",
+    "sha256": "c23979e4ed4cc4da3432618b7d809594adecdffaed10144f29727302d659c79d",
+    "bytes": 291943
+  },
+  {
+    "original_path": "FINAL/fig_authz_flow.png",
+    "current_path": "research/diagrams/exports/fig_authz_flow.png",
+    "sha256": "f9a517eb74858027c1b269aa3baaf9485d1fae5e22cba8bea97be254b08a1fd1",
+    "bytes": 63080
+  },
+  {
+    "original_path": "FINAL/Fig1_Authentication_Flow.png",
+    "current_path": "research/diagrams/exports/Fig1_Authentication_Flow.png",
+    "sha256": "60bbcbf92e20c9626c0e5f19ab1103d24c2755afd21798bba453fd7159ad981c",
+    "bytes": 105510
+  },
+  {
+    "original_path": "FINAL/Fig2_Authorization_Flow.png",
+    "current_path": "research/diagrams/exports/Fig2_Authorization_Flow.png",
+    "sha256": "5794c2b4ca02ce72c8f7b2600f7ab2409165195334bdbc392cc566423fdf6492",
+    "bytes": 126432
+  },
+  {
+    "original_path": "FINAL/Fig3_System_Architecture.png",
+    "current_path": "research/diagrams/exports/Fig3_System_Architecture.png",
+    "sha256": "c3429b6cce06630f8d75de1d49602dc30606c0ce8fc2bb0d43027651e435a9a1",
+    "bytes": 155988
+  },
+  {
+    "original_path": "FINAL/FINAL_IEEE_Paper_Humanized_WithFormulas.docx",
+    "current_path": "research/papers/final/FINAL_IEEE_Paper_Humanized_WithFormulas.docx",
+    "sha256": "72b4e14d2fb3475ba720c66b47c934c931a37de1be3a4084db0e618270d74b76",
+    "bytes": 370424
+  },
+  {
+    "original_path": "FINAL/flowchart.pdf",
+    "current_path": "research/diagrams/exports/flowchart.pdf",
+    "sha256": "8445a59f96e907582cad512aa5727f079b4a585f81f4b67809496ae8ce92de16",
+    "bytes": 79832
+  },
+  {
+    "original_path": "FINAL/str.drawio",
+    "current_path": "research/diagrams/source/str.drawio",
+    "sha256": "d1357e87b3b466b582750ea79d915e28b7213297a96b8b73b863f32eaf3f7ff3",
+    "bytes": 85
+  },
+  {
+    "original_path": "FINAL/REPORT/Report.docx",
+    "current_path": "research/reports/Report.docx",
+    "sha256": "96a9a7d0351c838e7a218add565515ddf33e776a153972d16b464f47998a4fa0",
+    "bytes": 2107343
+  }
+]

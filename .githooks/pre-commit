@@ -1,0 +1,14 @@
+#!/bin/sh
+# Git for Windows invokes this hook with its bundled POSIX shell.
+set -eu
+root=$(git rev-parse --show-toplevel)
+if [ -x "$root/.venv/Scripts/python.exe" ]; then
+  exec "$root/.venv/Scripts/python.exe" "$root/scripts/check.py" --staged
+elif [ -x "$root/.venv/bin/python" ]; then
+  exec "$root/.venv/bin/python" "$root/scripts/check.py" --staged
+elif command -v python3 >/dev/null 2>&1; then
+  exec python3 "$root/scripts/check.py" --staged
+else
+  exec python "$root/scripts/check.py" --staged
+fi
+

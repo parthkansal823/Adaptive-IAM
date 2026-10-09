@@ -1,0 +1,16 @@
+{
+  "name": "adaptive-iam",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Adaptive IAM research implementation and evaluation workbench",
+  "scripts": {
+    "setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1",
+    "dev": "node scripts/dev.mjs",
+    "dev:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1 -Service backend",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+    "build": "npm --prefix frontend run build",
+    "context": "python scripts/context.py",
+    "research:verify": "python scripts/verify_research.py"
+  }
+}

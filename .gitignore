@@ -1,0 +1,56 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+.aws/
+
+# Python environments, caches and generated model artifacts
+.venv/
+venv/
+**/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.coverage
+htmlcov/
+*.joblib
+*.pkl
+*.pickle
+*.onnx
+*.safetensors
+
+# JavaScript build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Runtime databases, downloads and logs
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.log
+backend/data/
+data/
+models/
+tmp/
+temp/
+artifacts/
+.cache/
+experiments/datasets/
+experiments/output/
+
+# Operating system / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

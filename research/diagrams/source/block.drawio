@@ -1,0 +1,85 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="XJPOJ_t1FNPlxocsvoDx" name="Page-1">
+    <mxGraphModel dx="1022" dy="694" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" parent="1" style="text;align=center;fontSize=14;fontStyle=1;fontColor=#333333;" value="BLOCKCHAIN HASH CHAIN STRUCTURE" vertex="1">
+          <mxGeometry height="25" width="400" x="300" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="b0" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#F57F17;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="200" width="210" x="30" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b0h" parent="1" style="rounded=1;fillColor=#FF9800;strokeColor=#E65100;fontStyle=1;fontSize=11;fontColor=#FFFFFF;" value="Block 0 (Genesis)" vertex="1">
+          <mxGeometry height="30" width="190" x="40" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b0d" parent="1" style="text;fontSize=10;fontColor=#333333;align=left;verticalAlign=top;" value="Event: Genesis&#xa;Timestamp: T₀&#xa;Data: Chain initialized" vertex="1">
+          <mxGeometry height="55" width="180" x="45" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b0p" parent="1" style="text;fontSize=9;fontColor=#888888;fontFamily=Courier New;align=left;" value="Prev: 0000...0000" vertex="1">
+          <mxGeometry height="20" width="180" x="45" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b0hash" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=10;fontColor=#1B5E20;fontFamily=Courier New;" value="H₀ = a3f2...8d1c" vertex="1">
+          <mxGeometry height="25" width="180" x="45" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#F57F17;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="200" width="210" x="290" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b1h" parent="1" style="rounded=1;fillColor=#FF9800;strokeColor=#E65100;fontStyle=1;fontSize=11;fontColor=#FFFFFF;" value="Block 1 (Login)" vertex="1">
+          <mxGeometry height="30" width="190" x="300" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b1d" parent="1" style="text;fontSize=10;fontColor=#333333;align=left;verticalAlign=top;" value="Event: Login attempt&#xa;User: parth_k&#xa;Score: 0.12 | Action: Allow" vertex="1">
+          <mxGeometry height="55" width="185" x="305" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b1p" parent="1" style="text;fontSize=9;fontColor=#888888;fontFamily=Courier New;align=left;" value="Prev: a3f2...8d1c" vertex="1">
+          <mxGeometry height="20" width="180" x="305" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b1hash" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=10;fontColor=#1B5E20;fontFamily=Courier New;" value="H₁ = b7e1...4f2a" vertex="1">
+          <mxGeometry height="25" width="180" x="305" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#F57F17;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="200" width="210" x="550" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b2h" parent="1" style="rounded=1;fillColor=#FF9800;strokeColor=#E65100;fontStyle=1;fontSize=11;fontColor=#FFFFFF;" value="Block 2 (Vote)" vertex="1">
+          <mxGeometry height="30" width="190" x="560" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b2d" parent="1" style="text;fontSize=10;fontColor=#333333;align=left;verticalAlign=top;" value="Event: Access request&#xa;User: anshul_s&#xa;Vote: Approved | Contract" vertex="1">
+          <mxGeometry height="55" width="185" x="565" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b2p" parent="1" style="text;fontSize=9;fontColor=#888888;fontFamily=Courier New;align=left;" value="Prev: b7e1...4f2a" vertex="1">
+          <mxGeometry height="20" width="180" x="565" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b2hash" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=10;fontColor=#1B5E20;fontFamily=Courier New;" value="H₂ = c9d4...7e3b" vertex="1">
+          <mxGeometry height="25" width="180" x="565" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" parent="1" style="rounded=1;fillColor=#FFF8E1;strokeColor=#F57F17;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="200" width="210" x="810" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b3h" parent="1" style="rounded=1;fillColor=#FF9800;strokeColor=#E65100;fontStyle=1;fontSize=11;fontColor=#FFFFFF;" value="Block 3 (Honeypot)" vertex="1">
+          <mxGeometry height="30" width="190" x="820" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b3d" parent="1" style="text;fontSize=10;fontColor=#333333;align=left;verticalAlign=top;" value="Event: Honeypot redirect&#xa;User: attacker_ip&#xa;Score: 0.91 | Monitoring" vertex="1">
+          <mxGeometry height="55" width="185" x="825" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="b3p" parent="1" style="text;fontSize=9;fontColor=#888888;fontFamily=Courier New;align=left;" value="Prev: c9d4...7e3b" vertex="1">
+          <mxGeometry height="20" width="180" x="825" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="b3hash" parent="1" style="rounded=1;fillColor=#E8F5E9;strokeColor=#2E7D32;fontSize=10;fontColor=#1B5E20;fontFamily=Courier New;" value="H₃ = f2a8...1c5d" vertex="1">
+          <mxGeometry height="25" width="180" x="825" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="c01" edge="1" parent="1" source="b0" style="exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#F57F17;strokeWidth=2.5;" target="b1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c12" edge="1" parent="1" source="b1" style="exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#F57F17;strokeWidth=2.5;" target="b2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c23" edge="1" parent="1" source="b2" style="exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#F57F17;strokeWidth=2.5;" target="b3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note" parent="1" style="text;align=center;fontSize=10;fontColor=#888888;fontStyle=2;" value="Modifying any block invalidates all subsequent hashes → tamper detection" vertex="1">
+          <mxGeometry height="20" width="500" x="250" y="280" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

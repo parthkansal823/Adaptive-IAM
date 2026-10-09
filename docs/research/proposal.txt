@@ -1,0 +1,56 @@
+DEPARTMENT OF APEX INSTITUTE OF TECHNOLOGY
+PROJECT PROPOSAL
+
+
+Project Title: - 
+A Decentralized Identity and Access Management Framework Using Blockchain and Large Language Models
+
+Project Scope: - (Max 500 words)
+In digital world, managing access to authorized person is the most critical challenges in cybersecurity. Traditionally, whole identity access system heavily relies on centralized identity provider. This is an static authentication mechanism which are increasing vulnerable to data breaches, insider threats and cyberattacks.Identity and Access Management (IAM) is the framework responsible for ensuring the right individuals or systems access the right resources at the right time. However, modern IAM systems struggle with issues such as centralized trust, poor scalability, identity theft, and lack of intelligent decision-making.To overcome these limitations, we planned to emerge modern technologies like blockchain and large language models (LLMs) into IAM’s. 
+Why Blockchain and LLMs?Language Models (LLMs) are being explored. Blockchain introduces decentralization and immutability, while LLMs bring intelligence, context-awareness, and adaptive decision-making. The integration of IAM with Blockchain and LLMs represents a next-generation access control paradigm. Thus, combining these three will provides trust, intelligence and control.
+Research Objectives
+Design a decentralized IAM architecture using blockchain
+Integrate LLMs for intelligent access decisions
+Enable dynamic, context-aware authorization
+Improve resistance against insider threats
+Maintain auditability and compliance
+
+Requirements: -
+Hardware Requirements
+Processor: Intel Core i5 (10th Gen or above) / AMD Ryzen 5 or higher
+RAM: Minimum 16 GB (for LLM inference and blockchain node execution)
+Storage: 512 GB SSD or higher
+GPU (Optional but Recommended): NVIDIA GPU with at least 4 GB VRAM (for LLM processing)
+
+Software Requirements
+Operating System: Windows 10/11 or Linux 
+Blockchain Platform: Ethereum / Hyperledger Fabric
+Programming Languages: Python, JavaScript
+LLM Framework: Hugging Face Transformers / OpenAI API
+Smart Contract Language: Solidity
+Database: PostgreSQL / MongoDB
+Development Tools: VS Code, Docker, Git
+
+STUDENTS DETAILS
+Name
+UID
+Signature
+Parth Kansal
+23BIS70035
+
+Anshul Sharma
+23BIS70073
+
+Vireshwar Singh Tomar
+23BIS70081
+
+
+APPROVAL AND AUTHORITY TO PROCEED
+We approve the project as described above and authorize the team to proceed.
+Name
+Title
+Signature (With Date)
+Sidrah Fayaz Wani (E17441)
+
+
+
