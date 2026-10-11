@@ -109,6 +109,14 @@ class ClientTests(unittest.TestCase):
             self.client(self.provider(identity={"sub": "other"})).exchange_code(code="x", verifier="v"*43, nonce="nonce-fixture")
         self.assertEqual(result.exception.code, "subject_mismatch")
 
+    def test_authorized_party_and_recent_integer_issuance_are_required(self):
+        for change in ({"azp": "other-client"}, {"aud": [CLIENT_ID, "other-client"]}, {"aud": [CLIENT_ID, "other-client"], "azp": "other-client"}, {"iat": int(time.time())-901}, {"iat": str(int(time.time()))}, {"exp": str(int(time.time())+600)}):
+            with self.subTest(change=change), self.assertRaises(IamError) as result:
+                self.client(self.provider(self.signed(**change))).exchange_code(code="x", verifier="v"*43, nonce="nonce-fixture")
+            self.assertEqual(result.exception.code, "invalid_id_token")
+        session = self.client(self.provider(self.signed(aud=[CLIENT_ID, "other-client"], azp=CLIENT_ID))).exchange_code(code="x", verifier="v"*43, nonce="nonce-fixture")
+        self.assertEqual(session.identity["sub"], "aisha")
+
     def test_valid_permission_is_rechecked_every_call(self):
         calls = []
         client = self.client(lambda request, _: calls.append(request) or Response(self.permit()))

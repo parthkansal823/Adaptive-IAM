@@ -1,0 +1,100 @@
+name: adaptive-iam
+
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  init: true
+  pids_limit: 256
+  restart: unless-stopped
+  networks: [iam_internal]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+
+services:
+  chain:
+    <<: *hardened
+    build: {context: ., dockerfile: deployment/Dockerfile.chain}
+    image: adaptive-iam-chain:local
+    user: '10001:10001'
+    environment:
+      IAM_DOCKER_CHAIN: '1'
+      CHAIN_HOST: 0.0.0.0
+      CHAIN_DATA_DIR: /var/lib/chain
+    volumes: [chain_data:/var/lib/chain]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m']
+    mem_limit: 512m
+    healthcheck:
+      test: [CMD, node, scripts/healthcheck.mjs]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  registry-deploy:
+    <<: *hardened
+    image: adaptive-iam-chain:local
+    user: '10001:10001'
+    restart: 'no'
+    command: [node, scripts/deploy.mjs]
+    environment:
+      IAM_WEB3_RPC_URL: http://chain:8545
+      IAM_WEB3_DEPLOYMENT_FILE: /var/lib/iam/deployment.json
+    volumes: [iam_data:/var/lib/iam]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/app/blockchain/artifacts:rw,nosuid,size=4m,uid=10001,gid=10001']
+    mem_limit: 512m
+    depends_on:
+      chain: {condition: service_healthy}
+
+  api:
+    <<: *hardened
+    build: {context: ., dockerfile: deployment/Dockerfile.api}
+    image: adaptive-iam-api:local
+    user: '10001:10001'
+    networks: [iam_internal, iam_edge]
+    environment:
+      IAM_WEB3_RPC_URL: http://chain:8545
+      IAM_DATA_DIR: /var/lib/iam
+      IAM_OAUTH_ISSUER: http://127.0.0.1:8000
+      IAM_FRONTEND_URL: http://127.0.0.1:5173
+      IAM_DEMO_MODE: '${IAM_DEMO_MODE:-true}'
+      IAM_WEBAUTHN_ORIGIN: http://127.0.0.1:5173
+      IAM_WEBAUTHN_RP_ID: 127.0.0.1
+    ports: ['127.0.0.1:8000:8000']
+    volumes: [iam_data:/var/lib/iam, model_cache:/app/backend/artifacts]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
+    mem_limit: 1g
+    depends_on:
+      registry-deploy: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).read()"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    <<: *hardened
+    build: {context: ., dockerfile: deployment/Dockerfile.frontend}
+    image: adaptive-iam-frontend:local
+    user: '101:101'
+    networks: [iam_internal, iam_edge]
+    ports: ['127.0.0.1:5173:8080']
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/var/cache/nginx:rw,noexec,nosuid,size=8m,uid=101,gid=101', '/var/run:rw,noexec,nosuid,size=4m,uid=101,gid=101']
+    mem_limit: 128m
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/health]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+networks:
+  iam_internal: {internal: true}
+  iam_edge: {}
+volumes:
+  iam_data:
+  chain_data:
+  model_cache:

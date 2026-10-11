@@ -44,3 +44,25 @@ fig.savefig(out / "paired-uncertainty.png")
 fig.savefig(out / "paired-uncertainty.svg")
 plt.close(fig)
 print(f"Figures saved in {out}")
+
+nlp = report["nlp"]
+if "baseline" in nlp and (ROOT / "experiments/case-study.json").exists():
+    cases = json.loads((ROOT / "experiments/case-study.json").read_text(encoding="utf-8"))["cases"]
+    fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.2), layout="constrained")
+    keys = ["accuracy", "recall", "f1"]
+    x = np.arange(len(keys))
+    axes[0].bar(x-.18, [nlp["baseline"][k] for k in keys], .36, label="Original threshold 0.5", color="#737373")
+    axes[0].bar(x+.18, [nlp[k] for k in keys], .36, label="Validation-tuned threshold", color="#c2410c")
+    axes[0].set(xticks=x, xticklabels=["Accuracy", "Suspicious recall", "F1"], ylim=(0, 1), title="Original synthetic template benchmark", ylabel="Binary classifier score")
+    axes[0].legend(fontsize=8)
+    bottom = np.zeros(2)
+    for label, color in [("legitimate", "#737373"), ("uncertain", "#d4d4d4"), ("suspicious", "#c2410c")]:
+        counts = np.array([sum(c["assessment"]["label"] == label and c["author_expectation"] == expected for c in cases) for expected in ["legitimate", "suspicious"]])
+        axes[1].bar([0, 1], counts, bottom=bottom, label=label.capitalize(), color=color)
+        bottom += counts
+    axes[1].set(xticks=[0, 1], xticklabels=["Author expects\nlegitimate", "Author expects\nsuspicious"], yticks=[0, 4, 8, 12, 16], title="32 manual runtime diagnostics", ylabel="Cases")
+    axes[1].legend(fontsize=8)
+    fig.suptitle("Text analysis: exploratory reanalysis; manual labels are diagnostic expectations", fontsize=10)
+    fig.savefig(out / "text-diagnostics.png")
+    fig.savefig(out / "text-diagnostics.svg")
+    plt.close(fig)

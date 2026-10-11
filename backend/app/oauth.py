@@ -39,6 +39,11 @@ class AppInput(StrictInput):
     client_type: str = Field("public", pattern="^(public|confidential)$")
     scopes: list[str] = Field(default_factory=lambda: ["openid", "profile", "iam:permissions"], min_length=1, max_length=3)
     resource_ids: list[str] = Field(default_factory=list, max_length=12)
+    organization_id: str | None = Field(None, min_length=3, max_length=64, pattern=r"^[a-z0-9_-]+$")
+
+
+class EmptyInput(StrictInput):
+    pass
 
 
 class ConsentInput(StrictInput):
@@ -59,7 +64,7 @@ def valid_url(value: str, callback=False):
     if parsed.scheme != "https" and not (parsed.scheme == "http" and parsed.hostname in LOOPBACK):
         return False
     # Existing OAuth protocol keys in a callback could cause parameter confusion.
-    if callback and set(parse_qs(parsed.query)) & {"code", "state", "error", "iss", "error_description"}:
+    if callback and set(parse_qs(parsed.query, keep_blank_values=True)) & {"code", "state", "error", "iss", "error_description"}:
         return False
     return True
 
@@ -111,15 +116,18 @@ class OAuthProvider:
                 CREATE TABLE IF NOT EXISTS oauth_authorizations (id TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), redirect_uri TEXT NOT NULL, scopes TEXT NOT NULL, state TEXT NOT NULL, nonce TEXT NOT NULL, code_challenge TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS oauth_codes (code_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), user_id TEXT NOT NULL REFERENCES users(id), redirect_uri TEXT NOT NULL, scopes TEXT NOT NULL, nonce TEXT NOT NULL, code_challenge TEXT NOT NULL, auth_time INTEGER NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS oauth_tokens (token_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES oauth_apps(client_id), user_id TEXT NOT NULL REFERENCES users(id), scopes TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, code_hash TEXT);
+                CREATE TABLE IF NOT EXISTS oauth_session_bindings (code_hash TEXT PRIMARY KEY REFERENCES oauth_codes(code_hash) ON DELETE CASCADE, session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE);
             """)
             if "active" not in {r["name"] for r in db.execute("PRAGMA table_info(oauth_apps)")}:
                 db.execute("ALTER TABLE oauth_apps ADD COLUMN active INTEGER NOT NULL DEFAULT 1")
             if "code_hash" not in {r["name"] for r in db.execute("PRAGMA table_info(oauth_tokens)")}:
                 db.execute("ALTER TABLE oauth_tokens ADD COLUMN code_hash TEXT")
+            if "organization_id" not in {r["name"] for r in db.execute("PRAGMA table_info(oauth_apps)")}:
+                db.execute("ALTER TABLE oauth_apps ADD COLUMN organization_id TEXT")
 
     @staticmethod
     def app_dto(row):
-        return {"client_id": row["client_id"], "name": row["name"], "client_type": row["client_type"], "redirect_uris": json.loads(row["redirect_uris"]), "scopes": json.loads(row["scopes"]), "resource_ids": json.loads(row["resource_ids"]), "created_at": row["created_at"], "active": bool(row["active"])}
+        return {"client_id": row["client_id"], "name": row["name"], "client_type": row["client_type"], "redirect_uris": json.loads(row["redirect_uris"]), "scopes": json.loads(row["scopes"]), "resource_ids": json.loads(row["resource_ids"]), "created_at": row["created_at"], "active": bool(row["active"]), "organization_id": row["organization_id"]}
 
     def endpoints(self):
         return {"issuer": self.issuer, "authorization_endpoint": self.issuer+"/oauth/authorize", "token_endpoint": self.issuer+"/oauth/token", "userinfo_endpoint": self.issuer+"/oauth/userinfo", "jwks_uri": self.issuer+"/oauth/jwks", "revocation_endpoint": self.issuer+"/oauth/revoke"}
@@ -128,7 +136,7 @@ class OAuthProvider:
         if not value or len(value) > 256:
             raise HTTPException(401, "Invalid OAuth access token")
         with self.store.connection() as db:
-            row = db.execute("SELECT t.*,a.resource_ids,a.redirect_uris,u.name,u.role,u.department FROM oauth_tokens t JOIN oauth_apps a ON t.client_id=a.client_id JOIN users u ON t.user_id=u.id WHERE t.token_hash=? AND a.active=1", (secret_hash(value),)).fetchone()
+            row = db.execute("SELECT t.*,a.resource_ids,a.redirect_uris,a.organization_id,u.name,u.role,u.department,b.session_id source_session_id FROM oauth_tokens t JOIN oauth_apps a ON t.client_id=a.client_id JOIN users u ON t.user_id=u.id LEFT JOIN oauth_session_bindings b ON t.code_hash=b.code_hash WHERE t.token_hash=? AND a.active=1", (secret_hash(value),)).fetchone()
         if not row or row["expires_at"] <= stamp():
             raise HTTPException(401, "OAuth access token expired or invalid")
         return dict(row)
@@ -155,7 +163,12 @@ def install_oauth(api, authenticated, data_dir: Path):
         authorization = request.headers.get("Authorization", "")
         if not authorization.startswith("Bearer "):
             raise HTTPException(401, "OAuth Bearer token required")
-        return provider().access_token(authorization[7:])
+        token = provider().access_token(authorization[7:])
+        if not token['source_session_id'] or not api.state.identity.check_session(token['source_session_id']):
+            raise HTTPException(401, 'Source identity session expired, revoked or requires re-verification')
+        with provider().store.connection() as db:
+            api.state.developer.allow_subject(db, token, token['user_id'])
+        return token
 
     @api.get("/.well-known/openid-configuration")
     def discovery():
@@ -166,13 +179,19 @@ def install_oauth(api, authenticated, data_dir: Path):
         return JSONResponse({"keys": [provider().jwk]}, headers={"Cache-Control": "public, max-age=300"})
 
     @api.get("/api/apps")
-    def apps(identity=Depends(security)):
+    def apps(identity=Depends(authenticated)):
         with provider().store.connection() as db:
             rows = db.execute("SELECT * FROM oauth_apps ORDER BY created_at DESC").fetchall()
-        return {"items": [provider().app_dto(row) for row in rows], **provider().endpoints()}
+            rows = [row for row in rows if identity['user']['role'] == 'security_reviewer' or api.state.developer.role(db, row['organization_id'], identity['user']['id'])]
+            packets = [api.state.developer.app_dto(db, row, identity, provider()) for row in rows]
+        return {"items": packets, **provider().endpoints()}
 
     @api.post("/api/apps", status_code=201)
-    def register(body: AppInput, identity=Depends(security)):
+    def register(body: AppInput, identity=Depends(authenticated)):
+        if body.organization_id or not api.state.identity.context.demo_mode:
+            api.state.identity.require_recent(identity)
+        elif identity['user']['role'] != 'security_reviewer':
+            raise HTTPException(403, 'Legacy app registration requires a security reviewer; use an organization')
         if len(set(body.redirect_uris)) != len(body.redirect_uris) or not all(valid_url(uri, callback=True) for uri in body.redirect_uris):
             raise HTTPException(422, "Redirect URIs must be unique exact HTTPS URLs or loopback HTTP URLs, without credentials, fragments or reserved OAuth query fields")
         if "openid" not in body.scopes or not set(body.scopes) <= SCOPES or len(set(body.scopes)) != len(body.scopes):
@@ -183,12 +202,18 @@ def install_oauth(api, authenticated, data_dir: Path):
         secret = secrets.token_urlsafe(32) if body.client_type == "confidential" else None
         store = provider().store
         with store.connection(write=True) as db:
+            if body.organization_id:
+                api.state.developer.require_member(db, body.organization_id, identity['user']['id'], {'admin','developer'})
+                if not set(body.resource_ids) <= set(api.state.developer.resource_ids(db, body.organization_id)):
+                    raise HTTPException(422, 'Resource owner must belong to this organization before its resource can be mapped')
+            elif identity['user']['role'] != 'security_reviewer':
+                raise HTTPException(403, 'Select an organization that you administer')
             resources = {r["id"] for r in db.execute("SELECT id FROM resources")}
             if not set(body.resource_ids) <= resources:
                 raise HTTPException(422, "Unknown resource mapping")
             if db.execute("SELECT COUNT(*) FROM oauth_apps").fetchone()[0] >= 100:
                 raise HTTPException(429, "Research provider supports at most 100 registered applications")
-            db.execute("INSERT INTO oauth_apps (client_id,name,client_type,redirect_uris,scopes,resource_ids,secret_hash,created_at,created_by) VALUES (?,?,?,?,?,?,?,?,?)", (client_id, body.name, body.client_type, canonical(body.redirect_uris), canonical(body.scopes), canonical(body.resource_ids), secret_hash(secret) if secret else None, stamp(), identity["user"]["id"]))
+            db.execute("INSERT INTO oauth_apps (client_id,name,client_type,redirect_uris,scopes,resource_ids,secret_hash,created_at,created_by,organization_id) VALUES (?,?,?,?,?,?,?,?,?,?)", (client_id, body.name, body.client_type, canonical(body.redirect_uris), canonical(body.scopes), canonical(body.resource_ids), secret_hash(secret) if secret else None, stamp(), identity["user"]["id"], body.organization_id))
             store.audit(db, "oauth_app_registered", identity["user"]["id"], {"client_id": client_id, "name": body.name, "client_type": body.client_type, "resource_ids": body.resource_ids})
             result = provider().app_dto(db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (client_id,)).fetchone())
         if secret:
@@ -196,17 +221,39 @@ def install_oauth(api, authenticated, data_dir: Path):
         return JSONResponse(result, status_code=201, headers={"Cache-Control": "no-store"})
 
     @api.delete("/api/apps/{client_id}")
-    def disable(client_id: str, identity=Depends(security)):
+    def disable(client_id: str, identity=Depends(authenticated)):
         store = provider().store
         with store.connection(write=True) as db:
             app = db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (client_id,)).fetchone()
             if not app:
                 raise HTTPException(404, "Application not found")
+            api.state.developer.require_app_manager(db, app, identity)
+            if app['organization_id'] or not api.state.identity.context.demo_mode:
+                api.state.identity.require_recent(identity)
             db.execute("UPDATE oauth_apps SET active=0 WHERE client_id=?", (client_id,))
             db.execute("DELETE FROM oauth_tokens WHERE client_id=?", (client_id,))
             db.execute("UPDATE oauth_authorizations SET consumed=1 WHERE client_id=?", (client_id,))
             store.audit(db, "oauth_app_disabled", identity["user"]["id"], {"client_id": client_id, "tokens_revoked": True})
         return {"client_id": client_id, "active": False, "tokens_revoked": True}
+
+    @api.post('/api/apps/{client_id}/rotate-secret')
+    def rotate_secret(client_id: str, body: EmptyInput, identity=Depends(authenticated)):
+        api.state.identity.require_recent(identity)
+        store = provider().store
+        secret = secrets.token_urlsafe(32)
+        with store.connection(write=True) as db:
+            application = db.execute('SELECT * FROM oauth_apps WHERE client_id=?', (client_id,)).fetchone()
+            if not application:
+                raise HTTPException(404, 'Application not found')
+            api.state.developer.require_app_manager(db, application, identity)
+            if not application['active'] or application['client_type'] != 'confidential':
+                raise HTTPException(409, 'Only an active confidential application has a secret to rotate')
+            db.execute('UPDATE oauth_apps SET secret_hash=? WHERE client_id=?', (secret_hash(secret), client_id))
+            db.execute('DELETE FROM oauth_tokens WHERE client_id=?', (client_id,))
+            db.execute('UPDATE oauth_codes SET consumed=1 WHERE client_id=?', (client_id,))
+            db.execute('UPDATE oauth_authorizations SET consumed=1 WHERE client_id=?', (client_id,))
+            store.audit(db, 'oauth_secret_rotated', identity['user']['id'], {'client_id': client_id, 'tokens_revoked': True})
+        return JSONResponse({'client_id': client_id, 'client_secret': secret, 'rotated': True, 'tokens_revoked': True}, headers={'Cache-Control':'no-store','Pragma':'no-cache'})
 
     @api.get("/oauth/authorize")
     def authorize(request: Request):
@@ -255,6 +302,8 @@ def install_oauth(api, authenticated, data_dir: Path):
             db.execute("UPDATE oauth_authorizations SET consumed=1 WHERE id=?", (body.request_id,))
             parameters = {"state": record["state"], "iss": provider().issuer}
             if body.approve:
+                application = db.execute('SELECT * FROM oauth_apps WHERE client_id=?', (record['client_id'],)).fetchone()
+                api.state.developer.allow_subject(db, application, identity['user']['id'])
                 code = secrets.token_urlsafe(32)
                 session = db.execute("SELECT created_at FROM sessions WHERE id=?", (identity["session"]["id"],)).fetchone()
                 if not session:
@@ -262,6 +311,7 @@ def install_oauth(api, authenticated, data_dir: Path):
                 from datetime import datetime
                 auth_time = int(datetime.fromisoformat(session["created_at"]).timestamp())
                 db.execute("INSERT INTO oauth_codes VALUES (?,?,?,?,?,?,?,?,?,?,0)", (secret_hash(code), record["client_id"], identity["user"]["id"], record["redirect_uri"], record["scopes"], record["nonce"], record["code_challenge"], auth_time, stamp(), stamp(now()+timedelta(seconds=90))))
+                db.execute('INSERT INTO oauth_session_bindings VALUES (?,?)', (secret_hash(code), identity['session']['id']))
                 parameters["code"] = code
             else:
                 parameters["error"] = "access_denied"
@@ -311,6 +361,13 @@ def install_oauth(api, authenticated, data_dir: Path):
                 db.execute("DELETE FROM oauth_tokens WHERE code_hash=?", (code["code_hash"],))
                 store.audit(db, "oauth_code_replay_denied", code["user_id"], {"client_id": code["client_id"], "issued_access_tokens_revoked": True})
                 return protocol_json({"error": "invalid_grant"}, status_code=400)
+            binding = db.execute('SELECT session_id FROM oauth_session_bindings WHERE code_hash=?', (code['code_hash'],)).fetchone()
+            if not binding or not api.state.identity.check_session(binding['session_id'], db=db):
+                return protocol_json({'error': 'invalid_grant'}, status_code=400)
+            try:
+                api.state.developer.allow_subject(db, app, code['user_id'])
+            except HTTPException:
+                return protocol_json({'error':'access_denied'}, status_code=403)
             db.execute("UPDATE oauth_codes SET consumed=1 WHERE code_hash=?", (code["code_hash"],))
             access_token = secrets.token_urlsafe(32)
             db.execute("INSERT INTO oauth_tokens VALUES (?,?,?,?,?,?,?)", (secret_hash(access_token), code["client_id"], code["user_id"], code["scopes"], stamp(), stamp(now()+timedelta(seconds=600)), code["code_hash"]))
@@ -373,6 +430,8 @@ def install_oauth(api, authenticated, data_dir: Path):
             raise HTTPException(403, "Resource is not mapped to this OAuth application")
         store = provider().store
         with store.connection(write=True) as db:
+            if token['organization_id'] and resource_id not in api.state.developer.resource_ids(db, token['organization_id']):
+                raise HTTPException(403, 'Resource owner is no longer a member of this application organization')
             store.expire(db)
             grant = db.execute("SELECT * FROM grants WHERE user_id=? AND resource_id=? AND status='active' AND expires_at>? ORDER BY expires_at DESC LIMIT 1", (token["user_id"], resource_id, stamp())).fetchone()
             chain = api.state.blockchain.check_grant(dict(grant)) if grant else {"required": api.state.blockchain.enabled, "allowed": False, "status": "no_local_grant"}

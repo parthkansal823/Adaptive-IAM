@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -12,6 +13,7 @@ from urllib.parse import urlsplit
 from fastapi import Depends, HTTPException
 
 from .store import stamp
+from .chain_signer import RegistrySigner
 
 CHAIN_ID = 31337
 ZERO = "0"*64
@@ -28,11 +30,13 @@ def identity_hash(value: str):
     return hashlib.sha256(value.encode()).digest()
 
 
-def permitted_rpc(value: str):
+def permitted_rpc(value: str, mode="ganache"):
     try:
         parsed = urlsplit(value)
         _ = parsed.port
-        return (parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", "::1", "chain"}
+        hosts = {"qbft1", "qbft2", "qbft3", "qbft4"} if mode == "qbft" else {"127.0.0.1", "localhost", "::1", "chain"}
+        return (parsed.scheme == "http" and parsed.hostname in hosts
+                and (mode != "qbft" or parsed.port == 8545)
                 and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment
                 and parsed.path in {"", "/"})
     except ValueError:
@@ -44,8 +48,18 @@ class BlockchainMirror:
         self.store, self.data_dir = store, data_dir
         self.rpc_url = os.getenv("IAM_WEB3_RPC_URL", "") if rpc_url is None else rpc_url
         self.address = os.getenv("IAM_WEB3_CONTRACT_ADDRESS", "") if contract_address is None else contract_address
-        self.enabled = bool(self.rpc_url)
-        self.configuration_error = None if not self.enabled or permitted_rpc(self.rpc_url) else "Only loopback or internal Docker chain HTTP RPC is allowed"
+        self.mode = os.getenv("IAM_WEB3_NETWORK", "ganache")
+        self.signer = None
+        self.validator_health = None
+        self.enabled = bool(self.rpc_url) or self.mode == "qbft"
+        self.configuration_error = None if not self.enabled or permitted_rpc(self.rpc_url, self.mode) else "Only exact private research RPC aliases are allowed"
+        if self.mode not in {"ganache", "qbft"}:
+            self.configuration_error = "Unknown research blockchain network mode"
+        if self.enabled and self.mode == "qbft" and not self.configuration_error:
+            try:
+                self.signer = RegistrySigner(os.getenv("IAM_WEB3_SIGNER_URL", "http://registry-signer:9100"), Path(os.getenv("IAM_WEB3_SIGNER_TOKEN_FILE", "/run/iam-signer/token")))
+            except RuntimeError as error:
+                self.configuration_error = str(error)
         self.lock = threading.RLock()
         self.w3 = None
 
@@ -53,11 +67,18 @@ class BlockchainMirror:
         if not self.enabled or self.configuration_error:
             raise RuntimeError(self.configuration_error or "Web3 is disabled")
         from web3 import Web3
+        if self.mode == "qbft":
+            self.require_quorum()
         if self.w3 is None:
             self.w3 = Web3(Web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 1.5}, exception_retry_configuration=None))
         if self.w3.eth.chain_id != CHAIN_ID:
             raise RuntimeError("Refusing any chain except local research chain 31337")
         address = self.address
+        if self.mode == "qbft" and not address:
+            metadata = self.signer.registry()
+            if metadata.get("chain_id") != CHAIN_ID:
+                raise RuntimeError("Signer deployment is not research chain 31337")
+            address = metadata.get("contract_address", "")
         if not address:
             metadata_path = self.data_dir / "deployment.json"
             if metadata_path.exists():
@@ -73,10 +94,55 @@ class BlockchainMirror:
         contract = self.w3.eth.contract(address=address, abi=ABI)
         if contract.functions.REGISTRY_VERSION().call() != Web3.keccak(text="AdaptiveIAM.AccessGrantRegistry.v1"):
             raise RuntimeError("Configured contract is not the expected research registry")
+        if self.mode == "qbft":
+            metadata = self.signer.registry()
+            writer = metadata.get("writer_address", "")
+            if not Web3.is_address(writer) or contract.functions.writer().call().lower() != writer.lower():
+                raise RuntimeError("Registry writer does not match the isolated signer")
+            return self.w3, contract, Web3.to_checksum_address(writer)
         accounts = self.w3.eth.accounts
         if not accounts or contract.functions.writer().call().lower() != accounts[0].lower():
             raise RuntimeError("Registry writer must be the unlocked local test account")
         return self.w3, contract, accounts[0]
+
+    def require_quorum(self):
+        """Three responsive validators with a shared recent finalized head; no cache."""
+        from concurrent.futures import ThreadPoolExecutor
+        from urllib.request import Request, urlopen
+
+        def read_node(host):
+            def rpc(method, params):
+                request = Request(f"http://{host}:8545", data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(), headers={"Content-Type": "application/json"})
+                with urlopen(request, timeout=1.2) as response:
+                    packet = json.loads(response.read(65536))
+                if "error" in packet or "result" not in packet:
+                    raise RuntimeError("Validator RPC failure")
+                return packet["result"]
+            try:
+                if int(rpc("eth_chainId", []), 16) != CHAIN_ID:
+                    return None
+                block = rpc("eth_getBlockByNumber", ["latest", False])
+                age = time.time() - int(block["timestamp"], 16) if block else float("inf")
+                if age > 8 or age < -2:
+                    return None
+                return (host, int(block["number"], 16), rpc)
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            nodes = [node for node in pool.map(read_node, ("qbft1", "qbft2", "qbft3", "qbft4")) if node]
+        self.validator_health = len(nodes)
+        if len(nodes) < 3:
+            raise RuntimeError("Fewer than three fresh private validators; access denied")
+        height = min(node[1] for node in nodes)
+        hashes = []
+        for _, _, rpc in nodes:
+            try:
+                hashes.append(rpc("eth_getBlockByNumber", [hex(height), False])["hash"])
+            except Exception:
+                pass
+        if len(hashes) < 3 or max(hashes.count(value) for value in hashes) < 3:
+            raise RuntimeError("Private validators disagree on the finalized block; access denied")
 
     def local_events(self):
         with self.store.connection() as db:
@@ -88,10 +154,16 @@ class BlockchainMirror:
             pending_grants = db.execute("SELECT COUNT(*) FROM blockchain_outbox WHERE kind IN ('grant','revoke') AND status!='confirmed'").fetchone()[0]
             failures = db.execute("SELECT COUNT(*) FROM blockchain_outbox WHERE status='failed'").fetchone()[0]
         result = {"enabled": self.enabled, "connected": False, "ready": False, "chain_id": None, "contract_address": self.address or None, "audit_count": 0, "head_hash": ZERO, "local_audit_count": len(events), "pending_audit_events": len(events) if self.enabled else 0, "pending_grants": pending_grants if self.enabled else 0, "failed_outbox_items": failures if self.enabled else 0, "error": self.configuration_error, "limitation": "Single local Ganache validator and public development writer. Actual EVM hash anchors and timed grants; not decentralized production consensus. Identity/resource hashes can be guessable; no text, passwords or tokens are written on-chain."}
+        result["network"] = self.mode
+        if self.mode == "qbft":
+            result["limitation"] = "Four Besu QBFT validators on one administrative Docker host. Separate node keys and isolated encrypted registry signer; independent administration and Byzantine behavior remain unmeasured. Hashes can be guessable; no credentials or request text are anchored."
+            result["responsive_validators"] = self.validator_health
         if not self.enabled:
             return result
         try:
             _, contract, _ = self.connect()
+            if self.mode == "qbft":
+                result["responsive_validators"] = self.validator_health
             count = contract.functions.auditCount().call()
             head = contract.functions.auditHead().call().hex()
             if count > len(events) or (count and events[count-1]["hash"] != head):
@@ -129,6 +201,16 @@ class BlockchainMirror:
             db.execute("INSERT INTO blockchain_outbox (kind,local_id,status,transaction_hash,block_number,error,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(kind,local_id) DO UPDATE SET status=excluded.status,transaction_hash=COALESCE(excluded.transaction_hash,blockchain_outbox.transaction_hash),block_number=COALESCE(excluded.block_number,blockchain_outbox.block_number),error=excluded.error,updated_at=excluded.updated_at", (kind, str(local_id), status, tx_hash, block, error, stamp()))
 
     def transact(self, w3, call, writer, kind, local_id):
+        if self.mode == "qbft":
+            self.require_quorum()
+            args = ["0x" + value.hex() if isinstance(value, bytes) else value for value in call.args]
+            result = self.signer.submit(kind, args)
+            tx_hash = result["transaction_hash"]
+            receipt = w3.eth.get_transaction_receipt(tx_hash)
+            if receipt["status"] != 1 or receipt["to"].lower() != call.address.lower() or receipt["from"].lower() != writer.lower():
+                raise RuntimeError("Isolated signer receipt does not match registry writer")
+            self.update(kind, local_id, "confirmed", tx_hash, receipt["blockNumber"])
+            return {"kind": kind, "local_id": str(local_id), "transaction_hash": tx_hash, "block_number": receipt["blockNumber"], "confirmation_ms": result["confirmation_ms"]}
         tx_hash = w3.to_hex(call.transact({"from": writer, "gas": 350000}))
         self.update(kind, local_id, "pending", tx_hash=tx_hash)
         receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=3, poll_latency=.05)

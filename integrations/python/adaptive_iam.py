@@ -157,6 +157,9 @@ class AdaptiveIamClient:
             key = jwt.PyJWK.from_dict(matches[0], algorithm="RS256").key
             claims = jwt.decode(token["id_token"], key, algorithms=["RS256"], issuer=self.issuer, audience=self.client_id, options={"require": ["sub", "exp", "iat", "nonce"]}, leeway=0)
             if (not isinstance(claims["sub"], str) or not claims["sub"] or not isinstance(claims["nonce"], str) or not hmac.compare_digest(claims["nonce"], nonce)
+                    or type(claims["iat"]) is not int or type(claims["exp"]) is not int
+                    or not 0 <= self.clock()-claims["iat"] <= 900
+                    or ("azp" in claims and claims["azp"] != self.client_id)
                     or (isinstance(claims.get("aud"), list) and len(claims["aud"]) > 1 and claims.get("azp") != self.client_id)):
                 raise ValueError("claims")
         except (jwt.PyJWTError, ValueError, KeyError, TypeError):

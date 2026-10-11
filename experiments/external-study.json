@@ -1,0 +1,218 @@
+{
+  "provenance_manifest": "external-data.json",
+  "source": "https://zenodo.org/records/6782156/files/rba-dataset.zip?download=1",
+  "sample_sha256": "f89528874e282776c60db26dd2f3c2cb28cec53ed87cc53c9d33633b0d8e18e3",
+  "rows": 200000,
+  "synthetic": true,
+  "independent_of_project_generator": true,
+  "raw_production_data": false,
+  "runtime_model_replaced": false,
+  "studies": [
+    {
+      "label": "Is Account Takeover",
+      "split": "chronological",
+      "partitions": {
+        "train": {
+          "events": 120000,
+          "positives": 3
+        },
+        "calibration": {
+          "events": 20000,
+          "positives": 0
+        },
+        "selection": {
+          "events": 20000,
+          "positives": 0
+        },
+        "test": {
+          "events": 40000,
+          "positives": 0
+        }
+      },
+      "status": "ineligible",
+      "reason": "All four partitions require both classes; no training or metrics fabricated."
+    },
+    {
+      "label": "Is Account Takeover",
+      "split": "user-disjoint",
+      "partitions": {
+        "train": {
+          "events": 77498,
+          "positives": 1
+        },
+        "calibration": {
+          "events": 12558,
+          "positives": 0
+        },
+        "selection": {
+          "events": 13054,
+          "positives": 1
+        },
+        "test": {
+          "events": 96890,
+          "positives": 1
+        }
+      },
+      "status": "ineligible",
+      "reason": "All four partitions require both classes; no training or metrics fabricated."
+    },
+    {
+      "label": "Is Attack IP",
+      "split": "chronological",
+      "partitions": {
+        "train": {
+          "events": 120000,
+          "positives": 10832
+        },
+        "calibration": {
+          "events": 20000,
+          "positives": 2507
+        },
+        "selection": {
+          "events": 20000,
+          "positives": 1711
+        },
+        "test": {
+          "events": 40000,
+          "positives": 3514
+        }
+      },
+      "status": "evaluated",
+      "report": "external-ip-chronological.json",
+      "baseline": {
+        "accuracy": 0.8614,
+        "precision": 0.103516,
+        "recall": 0.075413,
+        "f1": 0.087257,
+        "roc_auc": 0.582818,
+        "brier_score": 0.177771,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 34191,
+          "false_positive": 2295,
+          "false_negative": 3249,
+          "true_positive": 265
+        },
+        "friction_rate": 0.869475,
+        "legitimate_friction_rate": 0.862166,
+        "high_risk_block_rate": 0.0001,
+        "suspicious_direct_allow_rate": 0.054639,
+        "suspicious_challenge_or_block_recall": 0.945361,
+        "blocked_legitimate_rate": 0.00011,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.7598,
+        "precision": 0.102427,
+        "recall": 0.223392,
+        "f1": 0.140454,
+        "roc_auc": 0.582818,
+        "brier_score": 0.080476,
+        "threshold": 0.13,
+        "confusion_matrix": {
+          "true_negative": 29607,
+          "false_positive": 6879,
+          "false_negative": 2729,
+          "true_positive": 785
+        },
+        "friction_rate": 0.0,
+        "legitimate_friction_rate": 0.0,
+        "high_risk_block_rate": 0.0,
+        "suspicious_direct_allow_rate": 1.0,
+        "suspicious_challenge_or_block_recall": 0.0,
+        "blocked_legitimate_rate": 0.0,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "user_overlap_train_test": 2033
+    },
+    {
+      "label": "Is Attack IP",
+      "split": "user-disjoint",
+      "partitions": {
+        "train": {
+          "events": 77498,
+          "positives": 5746
+        },
+        "calibration": {
+          "events": 12558,
+          "positives": 867
+        },
+        "selection": {
+          "events": 13054,
+          "positives": 975
+        },
+        "test": {
+          "events": 96890,
+          "positives": 10976
+        }
+      },
+      "status": "evaluated",
+      "report": "external-ip-user-disjoint.json",
+      "baseline": {
+        "accuracy": 0.686252,
+        "precision": 0.111959,
+        "recall": 0.255284,
+        "f1": 0.155654,
+        "roc_auc": 0.503869,
+        "brier_score": 0.197026,
+        "threshold": 0.5,
+        "confusion_matrix": {
+          "true_negative": 63689,
+          "false_positive": 22225,
+          "false_negative": 8174,
+          "true_positive": 2802
+        },
+        "friction_rate": 0.815471,
+        "legitimate_friction_rate": 0.813372,
+        "high_risk_block_rate": 0.0,
+        "suspicious_direct_allow_rate": 0.168094,
+        "suspicious_challenge_or_block_recall": 0.831906,
+        "blocked_legitimate_rate": 0.0,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "candidate": {
+        "accuracy": 0.738518,
+        "precision": 0.121992,
+        "recall": 0.211097,
+        "f1": 0.154626,
+        "roc_auc": 0.503869,
+        "brier_score": 0.104216,
+        "threshold": 0.075,
+        "confusion_matrix": {
+          "true_negative": 69238,
+          "false_positive": 16676,
+          "false_negative": 8659,
+          "true_positive": 2317
+        },
+        "friction_rate": 0.0,
+        "legitimate_friction_rate": 0.0,
+        "high_risk_block_rate": 0.0,
+        "suspicious_direct_allow_rate": 1.0,
+        "suspicious_challenge_or_block_recall": 0.0,
+        "blocked_legitimate_rate": 0.0,
+        "policy_thresholds": {
+          "low": 0.3,
+          "high": 0.7
+        }
+      },
+      "user_overlap_train_test": 0
+    }
+  ],
+  "limitations": [
+    "Prefix convenience sample is not a representative population.",
+    "Attack IP is a proxy; these scores cannot be presented as takeover detection.",
+    "Candidate thresholds are validation-selected; all test regressions remain reported.",
+    "Unchanged 0.3/0.7 policy is an ablation, not the deployed policy: calibration can cause every event to be allowed.",
+    "Chronological split permits repeated users; user-disjoint split has overlapping time periods.",
+    "Independent human language annotations and real organizational outcomes remain pending."
+  ]
+}

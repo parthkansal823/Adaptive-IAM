@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, brier_score_loss, confusion_matrix, f1_score, precision_score, recall_score
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import FeatureUnion, make_pipeline
 
 GOOD = [
     "I require read access to {resource} for the {project} project review due {day}; my manager confirmed this scope.",
@@ -36,6 +38,20 @@ BAD = [
 ]
 
 
+def text_metrics(y, probability, threshold):
+    prediction = probability >= threshold
+    tn, fp, fn, tp = confusion_matrix(y, prediction, labels=[0, 1]).ravel()
+    return {"accuracy": round(float(accuracy_score(y, prediction)), 6), "precision": round(float(precision_score(y, prediction, zero_division=0)), 6),
+            "recall": round(float(recall_score(y, prediction, zero_division=0)), 6), "f1": round(float(f1_score(y, prediction, zero_division=0)), 6),
+            "macro_f1": round(float(f1_score(y, prediction, average="macro", zero_division=0)), 6), "brier_score": round(float(brier_score_loss(y, probability)), 6),
+            "threshold": float(threshold), "legitimate_flag_rate": round(float(fp / max(1, tn+fp)), 6),
+            "confusion_matrix": {"true_negative": int(tn), "false_positive": int(fp), "false_negative": int(fn), "true_positive": int(tp)}}
+
+
+def selection_threshold(y, probability):
+    return float(max(np.linspace(.05, .95, 181), key=lambda t: (f1_score(y, probability >= t, average="macro"), t)))
+
+
 class JustificationEngine:
     def __init__(self):
         # Partition template groups, not random near-duplicate rows. The lexical
@@ -53,13 +69,35 @@ class JustificationEngine:
                 texts.append(template.format(resource=f"dataset {rng.integers(10000, 99999)}", project=f"project {rng.integers(10000, 99999)}", day=f"day {rng.integers(1, 31)}"))
                 labels.append(suspicious)
             data.append((texts, np.asarray(labels)))
-        self.model = make_pipeline(TfidfVectorizer(max_features=5000, stop_words="english", ngram_range=(1, 2)), MultinomialNB(alpha=.6))
-        self.model.fit(*data[0])
+        baseline = make_pipeline(TfidfVectorizer(max_features=5000, stop_words="english", ngram_range=(1, 2)), MultinomialNB(alpha=.6))
+        candidate = make_pipeline(FeatureUnion([
+            ("word", TfidfVectorizer(max_features=5000, ngram_range=(1, 2), sublinear_tf=True)),
+            ("character", TfidfVectorizer(max_features=5000, analyzer="char_wb", ngram_range=(3, 5), min_df=2, sublinear_tf=True)),
+        ]), LogisticRegression(C=.8, class_weight="balanced", max_iter=400, random_state=20261009))
+        baseline.fit(*data[0])
+        candidate.fit(*data[0])
+        validation_y = data[1][1]
+        baseline_validation = baseline.predict_proba(data[1][0])[:, 1]
+        candidate_validation = candidate.predict_proba(data[1][0])[:, 1]
+        baseline_threshold = selection_threshold(validation_y, baseline_validation)
+        candidate_threshold = selection_threshold(validation_y, candidate_validation)
+        base_validation = text_metrics(validation_y, baseline_validation, baseline_threshold)
+        next_validation = text_metrics(validation_y, candidate_validation, candidate_threshold)
+        selected = next_validation["macro_f1"] > base_validation["macro_f1"] and next_validation["legitimate_flag_rate"] <= base_validation["legitimate_flag_rate"]
+        self.model = candidate if selected else baseline
+        self.threshold = candidate_threshold if selected else baseline_threshold
+        self.engine = "tfidf_word_char_logistic" if selected else "tfidf_naive_bayes"
         y_test = data[2][1]
-        p = self.model.predict_proba(data[2][0])[:, 1]
-        pred = p >= .5
-        tn, fp, fn, tp = confusion_matrix(y_test, pred, labels=[0, 1]).ravel()
-        self.report = {"name": "TF-IDF + Multinomial Naive Bayes", "synthetic": True, "train": 1200, "validation": 400, "test": 400, "split": "Disjoint template groups; random identifiers unique across splits", "accuracy": round(float(accuracy_score(y_test, pred)), 6), "precision": round(float(precision_score(y_test, pred, zero_division=0)), 6), "recall": round(float(recall_score(y_test, pred, zero_division=0)), 6), "f1": round(float(f1_score(y_test, pred, zero_division=0)), 6), "confusion_matrix": {"true_negative": int(tn), "false_positive": int(fp), "false_negative": int(fn), "true_positive": int(tp)}, "bert_measured": False, "limitation": "Synthetic phrasing and template groups are a functional benchmark, not generalization evidence. No BERT result is claimed."}
+        # Selection is frozen before revealing held-out template outcomes.
+        baseline_test = baseline.predict_proba(data[2][0])[:, 1]
+        candidate_test = candidate.predict_proba(data[2][0])[:, 1]
+        chosen_test = candidate_test if selected else baseline_test
+        self.report = {"name": "Word/character TF-IDF + logistic regression" if selected else "Validation-tuned TF-IDF + Naive Bayes", "synthetic": True, "train": 1200, "validation": 400, "test": 400,
+                       "split": "Disjoint template groups; random identifiers unique across splits", **text_metrics(y_test, chosen_test, self.threshold),
+                       "method": {"candidate_selected": bool(selected), "candidate": "Fixed C=0.8 balanced logistic regression over word and character TF-IDF", "threshold_selection": "Maximum macro F1 on validation only", "model_selection": "Candidate must improve validation macro F1 without increasing legitimate flag rate relative to validation-tuned baseline", "test_used_for_selection": False, "policy_flags_in_benchmark": False},
+                       "baseline": text_metrics(y_test, baseline_test, .5), "tuned_baseline": text_metrics(y_test, baseline_test, baseline_threshold), "candidate": text_metrics(y_test, candidate_test, candidate_threshold),
+                       "selection_scores": {"baseline": base_validation, "candidate": next_validation}, "bert_measured": False,
+                       "limitation": "Exploratory reanalysis of the original benchmark, whose template outcomes were already reported. Only two template groups per label are held out; no claim of a new untouched language test set. Selection uses validation, not test outcomes. Handwritten flags and runtime abstentions are excluded from binary classifier scores. No BERT result is claimed."}
         self.bert = None
         configured = os.getenv("IAM_BERT_MODEL_PATH")
         if configured and Path(configured).is_dir():
@@ -76,9 +114,10 @@ class JustificationEngine:
 
     def assess(self, text: str):
         p = float(self.model.predict_proba([text])[0, 1])
-        confidence = max(p, 1-p)
-        label = "suspicious" if p >= .5 else "legitimate"
-        engine = "tfidf_naive_bayes"
+        label = "suspicious" if p >= self.threshold else "legitimate"
+        classifier_label = label
+        confidence = p if label == "suspicious" else 1-p
+        engine = self.engine
         fallback_reason = None
         if confidence < .65:
             label = "uncertain"
@@ -94,7 +133,14 @@ class JustificationEngine:
                     label = "uncertain"
                     engine = "tfidf_naive_bayes_fallback"
                     fallback_reason = "local_bert_inference_failed"
-        policy_flags = [word for word in ("ignore the", "bypass", "disable logging", "remove the audit", "personal email", "private account") if word in text.lower()]
+        lowered = text.lower()
+        policy_flags = []
+        for phrase in ("ignore the", "bypass", "disable logging", "remove the audit", "personal email", "private account", "ignore previous instructions", "skip approval", "skip the owner", "unrestricted privileges"):
+            for match in re.finditer(re.escape(phrase), lowered):
+                prefix = lowered[max(0, match.start()-35):match.start()]
+                if not re.search(r"(?:do not|don't|never|without|avoid)\s+(?:\w+\s+){0,2}$", prefix):
+                    policy_flags.append(phrase)
+                    break
         if policy_flags:
             label = "suspicious"
-        return {"label": label, "confidence": round(confidence, 6), "suspicious_probability": round(p, 6), "engine": engine, "explanation": "Advisory text assessment; handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.", "bert_available": bool(self.bert), "fallback_reason": fallback_reason, "policy_flags": policy_flags, "confidence_source": "classifier_probability; policy flags are deterministic, not probabilistic"}
+        return {"label": label, "classifier_label": classifier_label, "classification_threshold": round(self.threshold, 6), "confidence": round(confidence, 6), "suspicious_probability": round(p, 6), "engine": engine, "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.", "bert_available": bool(self.bert), "fallback_reason": fallback_reason, "policy_flags": policy_flags, "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"}

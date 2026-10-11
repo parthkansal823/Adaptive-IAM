@@ -160,8 +160,8 @@
   "latency": {
     "scope": "Single-row model inference, local CPU, excludes HTTP and model training",
     "samples": 80,
-    "median_ms": 4.848,
-    "p95_ms": 7.138
+    "median_ms": 6.418,
+    "p95_ms": 9.542
   },
   "limitations": [
     "Synthetic labels measure this generator, not real-world credential theft detection.",
@@ -173,25 +173,119 @@
     "Validation recall target is not a guarantee of held-out or real-world detection."
   ],
   "nlp": {
-    "name": "TF-IDF + Multinomial Naive Bayes",
+    "name": "Validation-tuned TF-IDF + Naive Bayes",
     "synthetic": true,
     "train": 1200,
     "validation": 400,
     "test": 400,
     "split": "Disjoint template groups; random identifiers unique across splits",
-    "accuracy": 0.6025,
+    "accuracy": 0.81,
     "precision": 1.0,
-    "recall": 0.00625,
-    "f1": 0.012422,
+    "recall": 0.525,
+    "f1": 0.688525,
+    "macro_f1": 0.775917,
+    "brier_score": 0.273871,
+    "threshold": 0.15999999999999998,
+    "legitimate_flag_rate": 0.0,
     "confusion_matrix": {
       "true_negative": 240,
       "false_positive": 0,
-      "false_negative": 159,
-      "true_positive": 1
+      "false_negative": 76,
+      "true_positive": 84
+    },
+    "method": {
+      "candidate_selected": false,
+      "candidate": "Fixed C=0.8 balanced logistic regression over word and character TF-IDF",
+      "threshold_selection": "Maximum macro F1 on validation only",
+      "model_selection": "Candidate must improve validation macro F1 without increasing legitimate flag rate relative to validation-tuned baseline",
+      "test_used_for_selection": false,
+      "policy_flags_in_benchmark": false
+    },
+    "baseline": {
+      "accuracy": 0.6025,
+      "precision": 1.0,
+      "recall": 0.00625,
+      "f1": 0.012422,
+      "macro_f1": 0.381798,
+      "brier_score": 0.273871,
+      "threshold": 0.5,
+      "legitimate_flag_rate": 0.0,
+      "confusion_matrix": {
+        "true_negative": 240,
+        "false_positive": 0,
+        "false_negative": 159,
+        "true_positive": 1
+      }
+    },
+    "tuned_baseline": {
+      "accuracy": 0.81,
+      "precision": 1.0,
+      "recall": 0.525,
+      "f1": 0.688525,
+      "macro_f1": 0.775917,
+      "brier_score": 0.273871,
+      "threshold": 0.15999999999999998,
+      "legitimate_flag_rate": 0.0,
+      "confusion_matrix": {
+        "true_negative": 240,
+        "false_positive": 0,
+        "false_negative": 76,
+        "true_positive": 84
+      }
+    },
+    "candidate": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "macro_f1": 1.0,
+      "brier_score": 0.07157,
+      "threshold": 0.285,
+      "legitimate_flag_rate": 0.0,
+      "confusion_matrix": {
+        "true_negative": 240,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_positive": 160
+      }
+    },
+    "selection_scores": {
+      "baseline": {
+        "accuracy": 0.815,
+        "precision": 0.977778,
+        "recall": 0.55,
+        "f1": 0.704,
+        "macro_f1": 0.784727,
+        "brier_score": 0.18797,
+        "threshold": 0.15999999999999998,
+        "legitimate_flag_rate": 0.008333,
+        "confusion_matrix": {
+          "true_negative": 238,
+          "false_positive": 2,
+          "false_negative": 72,
+          "true_positive": 88
+        }
+      },
+      "candidate": {
+        "accuracy": 0.7,
+        "precision": 0.571429,
+        "recall": 1.0,
+        "f1": 0.727273,
+        "macro_f1": 0.69697,
+        "brier_score": 0.224157,
+        "threshold": 0.285,
+        "legitimate_flag_rate": 0.5,
+        "confusion_matrix": {
+          "true_negative": 120,
+          "false_positive": 120,
+          "false_negative": 0,
+          "true_positive": 160
+        }
+      }
     },
     "bert_measured": false,
-    "limitation": "Synthetic phrasing and template groups are a functional benchmark, not generalization evidence. No BERT result is claimed."
+    "limitation": "Exploratory reanalysis of the original benchmark, whose template outcomes were already reported. Only two template groups per label are held out; no claim of a new untouched language test set. Selection uses validation, not test outcomes. Handwritten flags and runtime abstentions are excluded from binary classifier scores. No BERT result is claimed."
   },
-  "generated_at": "2026-10-09T13:07:30.567256+00:00",
+  "generated_at": "2026-10-10T02:13:41.753241+00:00",
   "model_version": "risk-v4-20261009"
 }

@@ -17,6 +17,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .models import AssessmentInput, LoginInput, RequestInput, VerifyInput, VoteInput
 from .blockchain import BlockchainMirror, install_blockchain
+from .identity import IdentitySecurity, install_identity
+from .developer import DeveloperPortal, install_developer
+from .lab import install_lab
 from .nlp import JustificationEngine
 from .oauth import OAuthProvider, install_oauth
 from .reviewers import ReviewerSelector
@@ -38,21 +41,45 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         application.state.nlp = JustificationEngine()
         application.state.reviewers = ReviewerSelector()
         application.state.oauth = OAuthProvider(application.state.store, data_dir)
+        application.state.identity = IdentitySecurity(application.state.store, data_dir)
+        application.state.developer = DeveloperPortal(application.state.store)
         application.state.blockchain = BlockchainMirror(application.state.store, data_dir)
         yield
 
     api = FastAPI(title="Adaptive IAM research API", version="1.0.0", lifespan=lifespan)
     rate_state, rate_lock = defaultdict(deque), threading.Lock()
+    # In-process isolated test fixtures can reset this limiter; no HTTP access exposes it.
+    api.state.login_rate_state = rate_state
 
     def authenticated(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
         if not credentials or credentials.scheme.lower() != "bearer":
             raise HTTPException(401, "A valid session is required")
-        return request.app.state.store.session(credentials.credentials)
+        identity = request.app.state.store.session(credentials.credentials)
+        return request.app.state.identity.guard(identity, request)
+
+    @api.middleware("http")
+    async def private_auth_responses(request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/auth/") or request.url.path == "/api/bootstrap":
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+    def identity_context(request, user_id, db):
+        # Secure mode uses observed request and stored event features, not browser claims.
+        fingerprint = api.state.identity.context.fingerprint(request)
+        known = bool(db.execute("SELECT 1 FROM session_security ss JOIN sessions s ON ss.session_id=s.id WHERE s.user_id=? AND ss.fingerprint=? LIMIT 1", (user_id, fingerprint)).fetchone())
+        velocity = db.execute("SELECT COUNT(*) FROM sessions WHERE user_id=? AND created_at>?", (user_id, stamp(now()-timedelta(minutes=10)))).fetchone()[0]
+        failure = db.execute("SELECT count,window_started FROM auth_failures WHERE user_id=?", (user_id,)).fetchone()
+        failures = failure["count"] if failure and failure["window_started"] > stamp(now()-timedelta(minutes=15)) else 0
+        return {"known_device": known, "known_location": True, "vpn": False, "failed_attempts": min(20, failures), "hour": now().hour, "login_velocity": min(30, max(1, velocity)), "account_age_days": 365, "travel_distance_km": 0, "sensitivity": 0.5, "prior_risk": 0.1}
+
+    api.state.identity_context = identity_context
 
     def capabilities():
         selector = api.state.reviewers
         chain = api.state.blockchain.status()
-        return {"demo_mode": True, "risk_model": "calibrated_lr_random_forest", "nlp": "tfidf_naive_bayes", "bert_available": bool(api.state.nlp.bert), "llm_available": selector.enabled, "llm_engine": "ollama_optional" if selector.enabled else "deterministic_policy", "llm_calls_used": selector.calls, "llm_call_budget": selector.max_calls, "ledger": "local_sha256_hash_chain", "blockchain": chain["ready"], "web3": {key: chain[key] for key in ("enabled", "connected", "ready", "chain_id", "contract_address", "error")}, "distributed_blockchain": False, "human_approval_required": True, "context_source": "client_simulated_research_only"}
+        return {"demo_mode": api.state.identity.context.demo_mode, "passkeys": True, "totp": True, "continuous_session_checks": True, "risk_model": "calibrated_lr_random_forest", "nlp": "tfidf_naive_bayes", "bert_available": bool(api.state.nlp.bert), "llm_available": selector.enabled, "llm_engine": "ollama_optional" if selector.enabled else "deterministic_policy", "llm_calls_used": selector.calls, "llm_call_budget": selector.max_calls, "ledger": "local_sha256_hash_chain", "blockchain": chain["ready"], "web3": {key: chain[key] for key in ("enabled", "connected", "ready", "chain_id", "contract_address", "error")}, "distributed_blockchain": False, "human_approval_required": True, "context_source": "client_simulated_research_only" if api.state.identity.context.demo_mode else "server_request_observed_partial_features"}
 
     def visible_requests(db, identity):
         actor, role = identity["user"]["id"], identity["user"]["role"]
@@ -74,12 +101,12 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
 
     @api.get("/api/health")
     def health():
-        return {"status": "ok", "ready": True, "version": "1.0.0", "demo_mode": True, "model_version": api.state.risk.version}
+        return {"status": "ok", "ready": True, "version": "1.0.0", "demo_mode": api.state.identity.context.demo_mode, "model_version": api.state.risk.version}
 
     @api.get("/api/bootstrap")
     def bootstrap():
         with api.state.store.connection() as db:
-            return {"demo_mode": True, "notice": "Offline research demo: these seeded credentials are public. Use synthetic identities only. Run on loopback.", "users": [{**user, "password": PASSWORD} for user in api.state.store.users(db)], "resources": api.state.store.resources(db), "reviewer_weights": {"owner": 1.5, "peer": 1}, "risk_thresholds": {"low": round(api.state.risk.low_threshold, 6), "high": api.state.risk.high_threshold}, "capabilities": capabilities()}
+            return {"demo_mode": api.state.identity.context.demo_mode, "notice": "Research prototype with public synthetic demo credentials" if api.state.identity.context.demo_mode else "Server-observed context; operator-provisioned identities and verified factors", "users": [{**user, "password": PASSWORD} for user in api.state.store.users(db)] if api.state.identity.context.demo_mode else [], "resources": api.state.store.resources(db), "reviewer_weights": {"owner": 1.5, "peer": 1}, "risk_thresholds": {"low": round(api.state.risk.low_threshold, 6), "high": api.state.risk.high_threshold}, "capabilities": capabilities()}
 
     @api.post("/api/risk/assess")
     def assess(body: AssessmentInput):
@@ -110,7 +137,8 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
                 store.audit(db, "login_locked", body.user_id, {"action": "deny"})
             else:
                 correct = verify_password(body.password, row["password_hash"] if row else store.dummy_password)
-                if not correct or not row:
+                demo_mode = api.state.identity.context.demo_mode
+                if not correct or not row or (not demo_mode and secrets.compare_digest(body.password.encode(), PASSWORD.encode())):
                     if row:
                         count = failure["count"]+1 if failure and failure["window_started"] > stamp(now()-timedelta(minutes=15)) else 1
                         start = failure["window_started"] if failure and count > 1 else current
@@ -119,42 +147,79 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
                     store.audit(db, "login_failed", body.user_id if row else None, {"action": "deny", "reason": "invalid_credentials"})
                     rejection = (401, "Invalid credentials")
                 else:
-                    context = body.context.model_dump()
+                    context = body.context.model_dump() if demo_mode else identity_context(request, body.user_id, db)
                     # Simulation can increase risk, but cannot hide server-observed failures.
                     server_failures = failure["count"] if failure and failure["window_started"] > stamp(now()-timedelta(minutes=15)) else 0
                     context["failed_attempts"] = min(20, max(context["failed_attempts"], server_failures))
                     risk = api.state.risk.assess(context)
                     risk["context"] = context
-                    risk["context_source"] = "client_simulated_with_server_failure_floor"
+                    risk["context_source"] = "client_simulated_with_server_failure_floor" if demo_mode else "server_request_observed_partial_features"
+                    if not demo_mode:
+                        risk["unavailable_features"] = ["geolocation", "vpn_detection", "travel_distance", "verified_device_identity", "account_age", "behavioral_prior"]
                     db.execute("DELETE FROM auth_failures WHERE user_id=?", (body.user_id,))
                     store.audit(db, "login_assessed", body.user_id, {"tier": risk["tier"], "risk_score": risk["score"], "action": risk["action"], "server_failures": server_failures})
                     if risk["tier"] == "high":
                         result = {"status": "blocked", "risk": risk, "message": "High-risk authentication denied. Choose a trusted context to try again."}
-                    elif risk["tier"] == "medium":
+                    elif not demo_mode and not api.state.identity.factor_enrolled(body.user_id, db):
+                        # A private operator-provisioned password starts only a short,
+                        # restricted enrollment ceremony. It grants no app/resource authority.
+                        result = store.make_session(db, body.user_id, risk)
+                        api.state.identity.bind_session(db, result, request, "password")
+                        store.audit(db, "factor_enrollment_session_started", body.user_id, {"scope": "factor_enrollment", "session_expires_at": result["expires_at"]})
+                    elif risk["tier"] == "medium" or api.state.identity.factor_enrolled(body.user_id, db):
+                        enrolled = api.state.identity.factor_enrolled(body.user_id, db)
+                        if not enrolled and not demo_mode:
+                            rejection = (403, {"code": "factor_enrollment_required", "message": "Enroll a passkey or authenticator from an existing trusted session before this login"})
+                            continue_login = False
+                        else:
+                            continue_login = True
                         challenge_id, code = secrets.token_urlsafe(24), f"{secrets.randbelow(1000000):06d}"
                         expiry = stamp(now()+timedelta(seconds=120))
-                        db.execute("INSERT INTO challenges (id,user_id,code_hash,created_at,expires_at,risk_json) VALUES (?,?,?,?,?,?)", (challenge_id, body.user_id, secret_hash(challenge_id+":"+code), current, expiry, canonical(risk)))
-                        store.audit(db, "mfa_issued", body.user_id, {"expires_at": expiry, "delivery": "demo_ui_only"})
-                        result = {"status": "mfa_required", "risk": risk, "challenge_id": challenge_id, "demo_code": code, "expires_at": expiry, "message": "Research demo code. Production requires an independent MFA channel or passkey."}
+                        if continue_login:
+                            method = "factor" if enrolled else "demo"
+                            db.execute("DELETE FROM challenges WHERE expires_at<=? OR (user_id=? AND consumed=0)", (current, body.user_id))
+                            db.execute("INSERT INTO challenges (id,user_id,code_hash,created_at,expires_at,risk_json,fingerprint,method) VALUES (?,?,?,?,?,?,?,?)", (challenge_id, body.user_id, secret_hash(challenge_id+":"+code), current, expiry, canonical(risk), api.state.identity.context.fingerprint(request), method))
+                            store.audit(db, "mfa_issued", body.user_id, {"expires_at": expiry, "delivery": "enrolled_factor" if enrolled else "demo_ui_only"})
+                            methods = []
+                            if enrolled:
+                                if api.state.identity.totp_enabled(body.user_id, db):
+                                    methods.append("totp")
+                                if db.execute("SELECT 1 FROM passkeys WHERE user_id=? LIMIT 1", (body.user_id,)).fetchone():
+                                    methods.append("passkey")
+                                if db.execute("SELECT 1 FROM recovery_codes WHERE user_id=? AND used_at IS NULL LIMIT 1", (body.user_id,)).fetchone():
+                                    methods.append("recovery")
+                            else:
+                                methods = ["demo"]
+                            result = {"status": "mfa_required", "risk": risk, "challenge_id": challenge_id, "expires_at": expiry, "methods": methods, "message": "Verify your enrolled authenticator or use passkey sign-in" if enrolled else "Research demo code only"}
+                            if not enrolled:
+                                result["demo_code"] = code
                     else:
                         result = store.make_session(db, body.user_id, risk)
+                        api.state.identity.bind_session(db, result, request, "password")
                         store.audit(db, "login_authenticated", body.user_id, {"tier": risk["tier"], "method": "password", "session_expires_at": result["expires_at"]})
         if rejection:
             raise HTTPException(*rejection)
         return result
 
     @api.post("/api/auth/verify")
-    def verify(body: VerifyInput):
+    def verify(body: VerifyInput, request: Request):
         store = api.state.store
+        api.state.identity.throttle("login-factor:" + api.state.identity.context.fingerprint(request), 30)
         rejection, result = None, None
         with store.connection(write=True) as db:
             row = db.execute("SELECT * FROM challenges WHERE id=?", (body.challenge_id,)).fetchone()
-            if not row or row["consumed"] or row["expires_at"] <= stamp() or row["attempts"] >= 5:
+            if not row or row["consumed"] or row["expires_at"] <= stamp() or row["attempts"] >= 5 or row["method"] == "legacy":
                 rejection = (401, "MFA challenge invalid, expired or already used")
             else:
-                code_hash = secret_hash(body.challenge_id+":"+body.code)
                 import hmac
-                if not hmac.compare_digest(code_hash, row["code_hash"]):
+                same_context = hmac.compare_digest(row["fingerprint"], api.state.identity.context.fingerprint(request))
+                method = None
+                if same_context and row["method"] == "factor":
+                    method = api.state.identity.factor_verify(db, row["user_id"], body.code, body.recovery_code)
+                elif same_context and row["method"] == "demo" and api.state.identity.context.demo_mode and body.code and not body.recovery_code:
+                    if hmac.compare_digest(secret_hash(body.challenge_id+":"+body.code), row["code_hash"]):
+                        method = "demo_mfa"
+                if not method:
                     db.execute("UPDATE challenges SET attempts=attempts+1,consumed=CASE WHEN attempts+1>=5 THEN 1 ELSE 0 END WHERE id=?", (body.challenge_id,))
                     store.audit(db, "mfa_failed", row["user_id"], {"action": "deny"})
                     rejection = (401, "Incorrect MFA code")
@@ -162,7 +227,8 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
                     db.execute("UPDATE challenges SET consumed=1 WHERE id=?", (body.challenge_id,))
                     risk = json.loads(row["risk_json"])
                     result = store.make_session(db, row["user_id"], risk)
-                    store.audit(db, "login_authenticated", row["user_id"], {"tier": risk["tier"], "method": "password_plus_demo_mfa", "session_expires_at": result["expires_at"]})
+                    api.state.identity.bind_session(db, result, request, method)
+                    store.audit(db, "login_authenticated", row["user_id"], {"tier": risk["tier"], "method": method, "session_expires_at": result["expires_at"]})
         if rejection:
             raise HTTPException(*rejection)
         return result
@@ -309,7 +375,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
 
     @api.get("/api/audit/verify")
     def verify_ledger(identity=Depends(authenticated)):
-        return api.state.store.verify_audit()
+        return {**api.state.store.verify_audit(), "blockchain": api.state.blockchain.status()}
 
     @api.get("/api/evaluation")
     def evaluation():
@@ -320,6 +386,9 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         return report
 
     install_oauth(api, authenticated, data_dir)
+    install_identity(api, authenticated)
+    install_developer(api, authenticated)
+    install_lab(api, authenticated)
     install_blockchain(api, authenticated)
     return api
 

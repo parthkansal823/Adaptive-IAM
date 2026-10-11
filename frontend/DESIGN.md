@@ -30,6 +30,9 @@ Access requests  Workspace metrics, separated by quiet rules
 Audit ledger     Recent decisions                 Policy boundaries
 Experiments      Requests in motion
 Connected apps   Research evidence
+Security         Factors, recent verification, and active sessions
+Developer portal Organization → callbacks → permission scope
+Attack lab       Scenario → actual model and policy observations
 ```
 
 ## Brief review and refinement
@@ -44,6 +47,7 @@ Identical metric cards and decorative charts would feel like an ordinary admin t
 - Public assessments do not create sessions. MFA, votes, grants, and resource reads remain server-enforced.
 - Connected apps use exact registered callbacks and PKCE. Consent never creates a resource grant.
 - Support visible keyboard focus, modal focus containment, semantic forms, reduced motion, and narrow screens.
+- Security groups enrollment and recovery around server verification state. Developer setup uses numbered steps because it is sequential. Attack diagnostics use a recorded policy journey; no decorative success states or simulated votes.
 
 ## Verification
 

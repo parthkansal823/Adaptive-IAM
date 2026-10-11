@@ -104,7 +104,9 @@ class OAuthIntegrationTests(unittest.TestCase):
         body = {"name": "Client", "redirect_uris": [CALLBACK], "resource_ids": []}
         self.assertEqual(self.client.post("/api/apps", json=body).status_code, 401)
         self.assertEqual(self.client.post("/api/apps", headers=self.headers(), json=body).status_code, 403)
-        self.assertEqual(self.client.get("/api/apps", headers=self.headers()).status_code, 403)
+        listing = self.client.get("/api/apps", headers=self.headers())
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.json()["items"], [])
         app = self.register(confidential=True)
         self.assertIn("client_secret", app)
         listing = self.client.get("/api/apps", headers=self.headers("kavya")).json()
@@ -114,7 +116,7 @@ class OAuthIntegrationTests(unittest.TestCase):
         self.assertNotEqual(stored, app["client_secret"])
 
     def test_registration_rejects_unsafe_redirects_scopes_and_resources(self):
-        for uri in ("http://external.example/callback", "https://user:pass@example.com/callback", "https://example.com/callback#fragment", "https://example.com/callback?code=confuse", "https://example.com\\@evil.test/cb"):
+        for uri in ("http://external.example/callback", "https://user:pass@example.com/callback", "https://example.com/callback#fragment", "https://example.com/callback?code=confuse", "https://example.com/callback?code=", "https://example.com/callback?state", "https://example.com\\@evil.test/cb"):
             with self.subTest(uri=uri):
                 response = self.client.post("/api/apps", headers=self.headers("kavya"), json={"name": "Bad URL", "redirect_uris": [uri]})
                 self.assertEqual(response.status_code, 422)

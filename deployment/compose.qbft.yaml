@@ -1,0 +1,154 @@
+# Standalone opt-in network. Never merges its state into the Ganache stack.
+name: adaptive-iam-qbft
+x-private: &private
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  init: true
+  pids_limit: 256
+  networks: [qbft_private]
+  logging: {driver: json-file, options: {max-size: 5m, max-file: '2'}}
+x-node: &node
+  <<: *private
+  build: {context: .., dockerfile: deployment/Dockerfile.qbft-node}
+  image: adaptive-iam-qbft-node:local
+  user: '10001:10001'
+  restart: unless-stopped
+  # Besu extracts packaged JNA/RocksDB native libraries here; exec is required.
+  tmpfs: ['/tmp:rw,exec,nosuid,size=64m']
+  mem_limit: 768m
+  depends_on: {qbft-init: {condition: service_completed_successfully}}
+  healthcheck:
+    test: [CMD-SHELL, 'curl --fail --silent -H "Content-Type: application/json" --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_chainId\",\"params\":[]}" http://localhost:8545 | grep -q 0x7a69']
+    interval: 5s
+    timeout: 3s
+    retries: 30
+    start_period: 20s
+services:
+  qbft-init:
+    <<: *private
+    build: {context: .., dockerfile: deployment/Dockerfile.qbft-tools}
+    image: adaptive-iam-qbft-tools:local
+    user: '10001:10001'
+    command: [node, scripts/qbft-init.mjs]
+    mem_limit: 512m
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m']
+    volumes: [network_config:/network, validator1_key:/validator1, validator2_key:/validator2, validator3_key:/validator3, validator4_key:/validator4, registry_writer:/signer, signer_auth:/auth, qbft_test_state:/test-state]
+  qbft1:
+    <<: *node
+    environment: {NODE_ALIAS: qbft1, NODE_IPV4: '${IAM_QBFT_PREFIX:-172.29.83}.10', QBFT_PREFIX: '${IAM_QBFT_PREFIX:-172.29.83}'}
+    networks: {qbft_private: {ipv4_address: '${IAM_QBFT_PREFIX:-172.29.83}.10'}}
+    volumes: [network_config:/network:ro, validator1_key:/node-key:ro, validator1_data:/var/lib/besu]
+  qbft2:
+    <<: *node
+    environment: {NODE_ALIAS: qbft2, NODE_IPV4: '${IAM_QBFT_PREFIX:-172.29.83}.11', QBFT_PREFIX: '${IAM_QBFT_PREFIX:-172.29.83}'}
+    networks: {qbft_private: {ipv4_address: '${IAM_QBFT_PREFIX:-172.29.83}.11'}}
+    volumes: [network_config:/network:ro, validator2_key:/node-key:ro, validator2_data:/var/lib/besu]
+  qbft3:
+    <<: *node
+    environment: {NODE_ALIAS: qbft3, NODE_IPV4: '${IAM_QBFT_PREFIX:-172.29.83}.12', QBFT_PREFIX: '${IAM_QBFT_PREFIX:-172.29.83}'}
+    networks: {qbft_private: {ipv4_address: '${IAM_QBFT_PREFIX:-172.29.83}.12'}}
+    volumes: [network_config:/network:ro, validator3_key:/node-key:ro, validator3_data:/var/lib/besu]
+  qbft4:
+    <<: *node
+    environment: {NODE_ALIAS: qbft4, NODE_IPV4: '${IAM_QBFT_PREFIX:-172.29.83}.13', QBFT_PREFIX: '${IAM_QBFT_PREFIX:-172.29.83}'}
+    networks: {qbft_private: {ipv4_address: '${IAM_QBFT_PREFIX:-172.29.83}.13'}}
+    volumes: [network_config:/network:ro, validator4_key:/node-key:ro, validator4_data:/var/lib/besu]
+  registry-signer:
+    <<: *private
+    image: adaptive-iam-qbft-tools:local
+    user: '10001:10001'
+    restart: unless-stopped
+    command: [node, scripts/registry-signer.mjs]
+    volumes: [registry_writer:/signer, signer_auth:/auth:ro]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m']
+    mem_limit: 512m
+    depends_on:
+      qbft1: {condition: service_healthy}
+      qbft2: {condition: service_healthy}
+      qbft3: {condition: service_healthy}
+      qbft4: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:9100/registry').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  # Additional isolated integration test image; no host port or Docker socket.
+  qbft-tests:
+    <<: *private
+    image: adaptive-iam-analysis:local
+    user: '10001:10001'
+    working_dir: /workspace
+    profiles: [test]
+    command: [python, scripts/run_tests.py, -s, backend/tests, -p, test_qbft.py]
+    environment: {IAM_TEST_QBFT: '1', IAM_WEB3_NETWORK: qbft, IAM_WEB3_RPC_URL: 'http://qbft1:8545', IAM_WEB3_SIGNER_TOKEN_FILE: /run/iam-signer/token}
+    volumes: ['../backend:/workspace/backend:ro', '../scripts:/workspace/scripts:ro', 'signer_auth:/run/iam-signer:ro', 'qbft_test_state:/test-state', '../experiments:/results']
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=128m']
+    mem_limit: 1g
+    depends_on: {registry-signer: {condition: service_healthy}}
+  api:
+    <<: *private
+    profiles: [console]
+    build: {context: .., dockerfile: deployment/Dockerfile.api}
+    image: adaptive-iam-api:local
+    user: '10001:10001'
+    restart: unless-stopped
+    networks: [qbft_private, qbft_edge]
+    environment:
+      IAM_WEB3_NETWORK: qbft
+      IAM_WEB3_RPC_URL: http://qbft1:8545
+      IAM_WEB3_SIGNER_URL: http://registry-signer:9100
+      IAM_WEB3_SIGNER_TOKEN_FILE: /run/iam-signer/token
+      IAM_DATA_DIR: /var/lib/iam
+      IAM_OAUTH_ISSUER: http://127.0.0.1:18000
+      IAM_FRONTEND_URL: http://127.0.0.1:15173
+      IAM_WEBAUTHN_ORIGIN: http://127.0.0.1:15173
+      IAM_WEBAUTHN_RP_ID: 127.0.0.1
+    ports: ['127.0.0.1:18000:8000']
+    volumes: [qbft_iam_data:/var/lib/iam, qbft_model_cache:/app/backend/artifacts, signer_auth:/run/iam-signer:ro, network_config:/run/iam-network:ro]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
+    mem_limit: 1g
+    depends_on: {registry-signer: {condition: service_healthy}}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).read()"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 40s
+  frontend:
+    <<: *private
+    profiles: [console]
+    build: {context: .., dockerfile: deployment/Dockerfile.frontend}
+    image: adaptive-iam-frontend:local
+    user: '101:101'
+    restart: unless-stopped
+    networks: [qbft_private, qbft_edge]
+    ports: ['127.0.0.1:15173:8080']
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/var/cache/nginx:rw,noexec,nosuid,size=8m,uid=101,gid=101', '/var/run:rw,noexec,nosuid,size=4m,uid=101,gid=101']
+    mem_limit: 128m
+    depends_on: {api: {condition: service_healthy}}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/health]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+networks:
+  qbft_private:
+    internal: true
+    ipam: {config: [{subnet: '${IAM_QBFT_SUBNET:-172.29.83.0/24}'}]}
+  qbft_edge: {}
+volumes:
+  network_config:
+  validator1_key:
+  validator2_key:
+  validator3_key:
+  validator4_key:
+  validator1_data:
+  validator2_data:
+  validator3_data:
+  validator4_data:
+  registry_writer:
+  signer_auth:
+  qbft_test_state:
+  qbft_iam_data:
+  qbft_model_cache:

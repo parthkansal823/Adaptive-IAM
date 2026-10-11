@@ -18,7 +18,7 @@ export function RiskView({ risk, onAssess, busy, thresholds }: { risk: Risk | nu
   ]
   return <>
     <PageTitle title="The context behind the decision." description="Change a sign-in scenario and inspect the model's actual response." action={<span className="quiet-tag"><Icon name="research" size={15} /> Synthetic research model</span>} />
-    <div className="preset-switch" role="group" aria-label="Risk scenario presets">{presets.map(item => <button key={item.id} className={preset === item.id ? 'selected' : ''} onClick={() => selectPreset(item.id)}>{item.name}</button>)}</div>
+    <div className="preset-switch" role="group" aria-label="Risk scenario presets">{presets.map(item => <button key={item.id} className={preset === item.id ? 'selected' : ''} aria-pressed={preset === item.id} onClick={() => selectPreset(item.id)}>{item.name}</button>)}</div>
     {thresholds && <p className="threshold-note">Current policy: allow below {(thresholds.low * 100).toFixed(1)}%, verify from {(thresholds.low * 100).toFixed(1)}% to {(thresholds.high * 100).toFixed(1)}%, and block at {(thresholds.high * 100).toFixed(1)}%.</p>}
     <div className="risk-layout">
       <section className="panel context-panel">
@@ -43,3 +43,4 @@ export function RiskView({ risk, onAssess, busy, thresholds }: { risk: Risk | nu
     <div className="research-footnote"><Icon name="research" size={18} /><p>The model is trained on generated scenarios. Its probability describes this research dataset; validate on real, consented telemetry before making operational access decisions.</p></div>
   </>
 }
+

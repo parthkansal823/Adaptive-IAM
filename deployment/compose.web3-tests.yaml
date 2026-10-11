@@ -1,0 +1,60 @@
+# Isolated test state; never connects to the application's research chain/volumes.
+name: adaptive-iam-web3-tests
+
+x-test-container: &test-container
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  init: true
+  networks: [test_internal]
+  pids_limit: 256
+  mem_limit: 1g
+
+services:
+  chain:
+    <<: *test-container
+    image: adaptive-iam-chain:local
+    environment: {IAM_DOCKER_CHAIN: '1', CHAIN_HOST: 0.0.0.0, CHAIN_DATA_DIR: /var/lib/chain}
+    user: '10001:10001'
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/var/lib/chain:rw,nosuid,size=64m,uid=10001,gid=10001']
+    healthcheck:
+      test: [CMD, node, scripts/healthcheck.mjs]
+      interval: 2s
+      timeout: 3s
+      retries: 12
+
+  registry-deploy:
+    <<: *test-container
+    image: adaptive-iam-chain:local
+    user: '10001:10001'
+    command: [node, scripts/deploy.mjs]
+    environment: {IAM_WEB3_RPC_URL: 'http://chain:8545', IAM_WEB3_DEPLOYMENT_FILE: /var/lib/iam/deployment.json}
+    volumes: [iam_test_data:/var/lib/iam]
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/app/blockchain/artifacts:rw,nosuid,size=4m,uid=10001,gid=10001']
+    depends_on:
+      chain: {condition: service_healthy}
+
+  tests:
+    <<: *test-container
+    image: adaptive-iam-analysis:local
+    user: '10001:10001'
+    working_dir: /workspace
+    command: [python, scripts/run_tests.py, -s, backend/tests, -p, test_blockchain.py]
+    environment: {IAM_TEST_WEB3_RPC_URL: 'http://chain:8545', IAM_TEST_WEB3_DEPLOYMENT_FILE: /var/lib/iam/deployment.json}
+    volumes: ['../backend:/workspace/backend:ro', '../scripts:/workspace/scripts:ro', 'iam_test_data:/var/lib/iam:ro']
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=128m']
+    depends_on:
+      registry-deploy: {condition: service_completed_successfully}
+
+  contract-tests:
+    <<: *test-container
+    image: adaptive-iam-chain:local
+    user: '10001:10001'
+    command: [npm, test]
+    volumes: ['../blockchain/tests:/app/blockchain/tests:ro']
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/app/blockchain/artifacts:rw,nosuid,size=4m,uid=10001,gid=10001']
+
+networks:
+  test_internal: {internal: true}
+volumes:
+  iam_test_data:

@@ -66,6 +66,11 @@ export const presets = [
   { id: 'device', name: 'New device', description: 'An unfamiliar device with otherwise usual behavior.', context: { ...defaultContext, known_device: false } },
   { id: 'travel', name: 'Travel', description: 'A familiar device after a large location change.', context: { ...defaultContext, known_location: false, login_velocity: 2, travel_distance_km: 6500 } },
   { id: 'attack', name: 'Suspicious activity', description: 'New device, rapid retries, and a large location change.', context: { known_device: false, known_location: false, vpn: true, failed_attempts: 8, hour: 2, login_velocity: 20, account_age_days: 1, travel_distance_km: 12000 } },
+  { id: 'location', name: 'New location', description: 'A familiar device signs in from an unfamiliar location.', context: { ...defaultContext, known_location: false, travel_distance_km: 1800 } },
+  { id: 'retries', name: 'Rapid retries', description: 'Repeated failed attempts and a burst of sign-in activity.', context: { ...defaultContext, failed_attempts: 6, login_velocity: 18 } },
+  { id: 'vpn', name: 'VPN connection', description: 'A familiar identity connects through a VPN.', context: { ...defaultContext, vpn: true } },
+  { id: 'night', name: 'After hours', description: 'An otherwise familiar sign-in at 02:00 local time.', context: { ...defaultContext, hour: 2 } },
+  { id: 'new-account', name: 'New account', description: 'An account created one day ago, with familiar device and location.', context: { ...defaultContext, account_age_days: 1 } },
 ]
 
 export function RiskWave({ risk }: { risk: Risk | null }) {

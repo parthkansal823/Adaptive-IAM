@@ -1,4 +1,4 @@
-param([switch]$SkipFrontend, [switch]$SkipHooks, [switch]$SkipIntegration)
+param([switch]$SkipFrontend, [switch]$SkipHooks, [switch]$SkipIntegration, [switch]$SkipBlockchain)
 $ErrorActionPreference = 'Stop'
 $repoPath = Split-Path -Parent $PSScriptRoot
 Push-Location $repoPath
@@ -18,6 +18,10 @@ try {
         if (Test-Path -LiteralPath 'integrations/node/package-lock.json') { npm.cmd --prefix integrations/node ci }
         else { npm.cmd --prefix integrations/node install }
         if ($LASTEXITCODE -ne 0) { throw 'Website integration dependency installation failed.' }
+    }
+    if (-not $SkipBlockchain) {
+        npm.cmd --prefix blockchain ci
+        if ($LASTEXITCODE -ne 0) { throw 'Local contract dependency installation failed.' }
     }
     if (-not $SkipHooks) {
         git config --local core.hooksPath .githooks

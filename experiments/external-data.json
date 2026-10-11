@@ -1,0 +1,36 @@
+{
+  "source": "https://zenodo.org/records/6782156/files/rba-dataset.zip?download=1",
+  "authors_repository": "https://github.com/das-group/rba-dataset",
+  "doi": "10.5281/zenodo.6782156",
+  "license": "CC BY 4.0",
+  "synthetic": true,
+  "independent_of_project_generator": true,
+  "raw_production_data": false,
+  "sampling": "First archive CSV rows, then sorted by login timestamp. Prefix convenience sample; not a representative population.",
+  "rows": 200000,
+  "row_limit": 200000,
+  "label_counts": {
+    "Is Account Takeover": 3,
+    "Is Attack IP": 18564
+  },
+  "sample_sha256": "f89528874e282776c60db26dd2f3c2cb28cec53ed87cc53c9d33633b0d8e18e3",
+  "downloaded_bytes": 8424171,
+  "archive_bytes": 1093700330,
+  "full_archive_checksum_verified": false,
+  "member_crc_fully_verified": false,
+  "limitations": [
+    "Entire archive and member were not downloaded, so published full checksum and final CRC were not verified.",
+    "HTTPS ranges and bounded schema were checked; sample SHA-256 is reproducible for the obtained bytes.",
+    "Authors describe all values as artificial; this is an external synthesized-data study.",
+    "Is Attack IP is a threat-intelligence proxy, not a confirmed takeover label.",
+    "A prefix may contain insufficient positives for a valid study; the evaluator rejects such partitions."
+  ],
+  "license_url": "https://github.com/das-group/rba-dataset/blob/main/LICENSE",
+  "citation_doi": "10.1145/3546069",
+  "authors": [
+    "Stephan Wiefling",
+    "Paul René Jørgensen",
+    "Sigurd Thunem",
+    "Luigi Lo Iacono"
+  ]
+}

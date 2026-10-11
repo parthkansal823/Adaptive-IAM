@@ -1,0 +1,49 @@
+services:
+  website-register:
+    profiles: [website]
+    build: {context: ., dockerfile: deployment/Dockerfile.website}
+    image: adaptive-iam-website:local
+    user: '10001:10001'
+    command: [node, deployment/configure-site.mjs]
+    environment: {IAM_DOCKER_SITE: '1'}
+    volumes: [website_config:/var/lib/site]
+    networks: [iam_internal]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    pids_limit: 128
+    mem_limit: 128m
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m']
+    depends_on:
+      api: {condition: service_healthy}
+  website:
+    profiles: [website]
+    image: adaptive-iam-website:local
+    user: '10001:10001'
+    environment:
+      IAM_DOCKER_SITE: '1'
+      IAM_ISSUER: http://127.0.0.1:8000
+      IAM_CLIENT_CONFIG_FILE: /var/lib/site/client.json
+      IAM_ALLOW_LOCAL_HTTP: '1'
+      SITE_ORIGIN: http://127.0.0.1:3001
+    ports: ['127.0.0.1:3001:3001']
+    volumes: [website_config:/var/lib/site:ro]
+    networks: [iam_internal, iam_edge]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    restart: unless-stopped
+    pids_limit: 128
+    mem_limit: 128m
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=16m']
+    depends_on:
+      website-register: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+volumes:
+  website_config:

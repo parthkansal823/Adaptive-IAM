@@ -1,17 +1,15 @@
 # Roadmap
 
-## Local research milestone
+## Implemented research milestone
 
-Paper-inspired authentication, reviewer authorization, timed grants, audit verification, registered OAuth/OIDC website login, server permission SDKs, responsive dark/light console, reproducible measured comparisons and developer tooling.
+Adaptive authentication and owner/quorum authorization; timed grants/revocation; registered OIDC websites with Node/Python permission SDKs; verified passkeys/TOTP/recovery; private first-factor onboarding; request-observed session gating and source-session-linked website authority; organization app onboarding/rotation/callback diagnostics; 12-scenario read-only Attack Lab; responsive dark/light console; Docker isolation; local Ethereum registry and optional four-validator Besu QBFT with isolated signer and measured crash/outage recovery.
 
-## Better evidence
+Research includes five full retraining runs with matched validation controls/reliability bins, an independently sourced 200,000-row synthesized RBA prefix with temporal/user-disjoint proxy studies, 18 multilingual author diagnostics, blind human annotation/adjudication workflow, measured reports, figures, readings and a manuscript. Regressions and ineligible studies remain visible. Original assets remain preserved.
 
-Real login data adapter, user/time split, independent text corpus, repeated seeds and confidence intervals, calibration ablations, threshold sensitivity and policy friction metrics. Improve candidate models only when the held-out evidence supports the change.
+## Evidence requiring independent collection
 
-## Enterprise integration
+Real organizational outcomes and trusted telemetry; representative rare takeover labels; at least two independent human language annotators and separate adjudication; physical-device passkey usability; independently configured BERT measurements; subgroup/fairness and privacy/retention studies. Human access votes must never substitute for attack truth. Improve deployment models only from prespecified validation, then disclose untouched test performance.
 
-OIDC conformance/interoperability validation, verified WebAuthn/MFA, trusted device telemetry, resource administration, database migrations, organization tenancy, shared website session storage, external audit anchoring and independently reviewed deployment hardening.
+## Deployment and interoperability
 
-## Research extensions
-
-Distributed permissioned ledger, privacy-preserving federated learning, continuous authentication, validated BERT fallback and reviewer-selection experiments. Each extension needs its own measured benefit and failure analysis.
+OIDC conformance/security review; invitation-based/private tenant directory and resource ownership; complete tenant isolation; shared durable website sessions; HTTPS/managed secrets and factor recovery; migration/backup/retention tests; stronger trusted device signals; independent validator operators, Byzantine fault testing, HSM signer and resilient RPC submission. Local Docker demonstrations and synthesized scores do not certify these properties.

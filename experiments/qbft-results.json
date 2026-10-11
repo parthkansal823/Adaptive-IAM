@@ -1,0 +1,60 @@
+{
+  "measured_at": "2026-10-10T11:40:49.913039+00:00",
+  "environment": "Four Besu 26.9.0 validators on one Docker Desktop Linux host; chain 31337; synthetic IAM policy state",
+  "independent_administration": false,
+  "security": "No published RPC; distinct validator keys; signer-only encrypted writer keystore; authenticated fixed registry operations; API never receives writer key",
+  "validator_count": 4,
+  "block_period_seconds": 1,
+  "phases": {
+    "baseline": {
+      "passed": true,
+      "responsive_validators": 4,
+      "identity_bound_grant": true,
+      "authenticated_narrow_signer": true,
+      "unlocked_accounts": 0,
+      "anchored_events": 2
+    },
+    "one_down": {
+      "passed": true,
+      "responsive_validators": 3,
+      "grant_allowed": true,
+      "new_anchor_confirmed": true
+    },
+    "two_down": {
+      "passed": true,
+      "grant_allowed": false,
+      "new_anchors_denied": true,
+      "block_height_before": 21,
+      "block_height_after": 21,
+      "stall_observation_seconds": 4
+    },
+    "recovered": {
+      "passed": true,
+      "responsive_validators": 4,
+      "access_restored_after_recovery": true,
+      "onchain_revoke_denies": true,
+      "recovery_and_revocation_elapsed_seconds": 44.552,
+      "poll_timeout_seconds": 90
+    }
+  },
+  "confirmation_ms": [
+    1086.81,
+    934.08,
+    775.06,
+    1415.76,
+    1092.14,
+    769.14
+  ],
+  "limitations": [
+    "Crash outages tested; no Byzantine or wide-area fault injection",
+    "Single host and administrator; encrypted keystore password co-resides in isolated signer volume, not HSM",
+    "Small sequential transaction sample; not a throughput benchmark",
+    "Fresh-head guard requires three responsive validators agreeing on a recent common block"
+  ],
+  "latency": {
+    "transactions": 6,
+    "median_ms": 1010.4449999999999,
+    "min_ms": 769.14,
+    "max_ms": 1415.76
+  }
+}

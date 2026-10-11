@@ -45,6 +45,10 @@ export interface Bootstrap {
 }
 
 export interface AuthResult {
+  enrollment_required?: boolean
+  session_scope?: 'factor_enrollment'
+  session_id?: string
+  factor_enrolled?: boolean
   status: 'authenticated' | 'mfa_required' | 'blocked'
   risk: Risk
   token?: string
@@ -52,6 +56,50 @@ export interface AuthResult {
   challenge_id?: string
   demo_code?: string
   expires_at?: string
+  methods?: string[]
+  verification_method?: string
+}
+
+export interface SessionInfo {
+  enrollment_required?: boolean
+  id?: string
+  expires_at: string
+  verification_method?: string
+  verified_at?: string | null
+  fresh_verification?: boolean
+  step_up_required?: boolean
+  factor_enrolled?: boolean
+}
+
+export interface Passkey {
+  id: string
+  label: string
+  created_at: string
+  last_used_at: string | null
+}
+
+export interface SecurityStatus {
+  passkeys_available: boolean
+  totp_enabled: boolean
+  passkeys: Passkey[]
+  recovery_codes_remaining: number
+  fresh_verification: boolean
+  enrollment_ready?: boolean
+  step_up_required: boolean
+  session: SessionInfo
+  rp_id: string
+  origin: string
+  demo_mode: boolean
+}
+
+export interface ActiveSession {
+  id: string
+  created_at: string
+  expires_at: string
+  last_seen_at: string
+  verification_method: string | null
+  step_up_required: boolean
+  current: boolean
 }
 
 export interface Vote {
@@ -93,8 +141,15 @@ export interface Grant {
   scope: string
   created_at: string
   expires_at: string
-  status: 'active' | 'expired'
+  status: 'active' | 'expired' | 'revoked'
+  can_revoke?: boolean
   blockchain?: { required: boolean; status: 'disabled' | 'pending' | 'confirmed' | 'failed'; transaction_hash?: string }
+}
+
+export interface GrantRevocation {
+  grant_id: string
+  status: 'revoked'
+  blockchain: { enabled: boolean; ready: boolean; receipts?: unknown[]; errors?: unknown[] }
 }
 
 export interface ChainStatus {
@@ -187,6 +242,54 @@ export interface ConnectedApp {
   created_at: string
   active: boolean
   client_secret?: string
+  organization_id?: string | null
+  can_manage?: boolean
+}
+
+export interface Organization {
+  id: string
+  name: string
+  role: string
+  can_manage: boolean
+  members: { user_id: string; name: string; role: string }[]
+  resource_ids: string[]
+}
+
+export interface DeveloperWorkspace {
+  notice?: string
+  organizations: Organization[]
+  apps: ConnectedApp[]
+  available_users: { id: string; name: string }[]
+  capabilities: { can_create_organization: boolean; recent_verification_required: boolean }
+}
+
+export interface CallbackDiagnostic {
+  valid: boolean
+  registered: boolean | null
+  origin: string | null
+  development_only: boolean
+  checks: { name: string; passed: boolean; message: string }[]
+}
+
+export interface AttackCase {
+  id: string
+  name: string
+  description: string
+  category: string
+}
+
+export interface LabRun {
+  notice?: string
+  id: string
+  case_id: string
+  created_at: string
+  mode: string
+  risk: Risk
+  nlp?: { label: string; confidence: number; engine: string; explanation: string } | null
+  stages: { name: string; status: string; detail: string }[]
+  checks: { name: string; passed: boolean; detail: string }[]
+  human_approval_required: boolean
+  grant_created: boolean
 }
 
 export interface AppRegistry {
@@ -209,31 +312,38 @@ export interface AuthorizationPacket {
 
 export class ApiError extends Error {
   status: number
-  constructor(message: string, status: number) {
+  code?: string
+  constructor(message: string, status: number, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
-export async function api<T>(path: string, token?: string | null, body?: unknown, method?: 'GET' | 'POST' | 'DELETE'): Promise<T> {
+export async function api<T>(path: string, token?: string | null, body?: unknown, method?: 'GET' | 'POST' | 'DELETE', timeoutMs = 30_000): Promise<T> {
   let response: Response
   try {
     response = await fetch(`/api${path}`, {
+      cache: 'no-store',
       method: method || (body === undefined ? 'GET' : 'POST'),
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     })
-  } catch {
+  } catch (failure) {
+    if (failure instanceof DOMException && failure.name === 'TimeoutError') throw new ApiError('The API timed out. The result could not be confirmed. Refresh before retrying.', 0)
     throw new ApiError('The API could not be reached. Start the backend and retry.', 0)
   }
   let data: unknown
-  try { data = await response.json() } catch {
+  try { data = await response.json() } catch (failure) {
+    if (failure instanceof DOMException && failure.name === 'TimeoutError') throw new ApiError('The response timed out. Refresh to check the latest state.', 0)
     throw new ApiError('The API returned an unreadable response. Check that the backend is running on port 8000.', response.status)
   }
   if (!response.ok) {
     const detail = (data as { detail?: unknown }).detail
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((item: { msg?: string }) => item.msg || 'Invalid input').join('. ') : 'The request could not be completed.'
-    throw new ApiError(message, response.status)
+    const structured = typeof detail === 'object' && detail !== null && !Array.isArray(detail) ? detail as { message?: unknown; code?: unknown } : null
+    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((item: { msg?: string }) => item.msg || 'Invalid input').join('. ') : typeof structured?.message === 'string' ? structured.message : 'The request could not be completed.'
+    throw new ApiError(message, response.status, typeof structured?.code === 'string' ? structured.code : undefined)
   }
   return data as T
 }

@@ -1,0 +1,624 @@
+{
+  "protocol": {
+    "mode": "author_diagnostics",
+    "catalog_sha256": "6f6ece2844b4fccce9e810b0426e4faf9deeae0e52fc2e0c1d25e34cd926da41",
+    "model_and_threshold_changed": false,
+    "human_authorization_required_for_all_cases": true,
+    "bert_measured": false,
+    "latency": "Five warm sequential CPU assessments per case; initialization excluded; full runtime path included",
+    "semantic_groups": 6,
+    "languages": [
+      "en",
+      "hi",
+      "hinglish"
+    ]
+  },
+  "annotation": {
+    "independent_human_labels_collected": false,
+    "status": "pending external human collection"
+  },
+  "environment": {
+    "python": "3.11.17",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.41",
+    "numpy": "2.4.6",
+    "scikit-learn": "1.9.1"
+  },
+  "classifier": {
+    "total": 18,
+    "reference_suspicious": 9,
+    "reference_legitimate": 9,
+    "reference_uncertain": 0,
+    "suspicious_flagged": 7,
+    "legitimate_flagged": 7,
+    "suspicious_flag_rate": 0.7777777777777778,
+    "legitimate_flag_rate": 0.7777777777777778,
+    "abstentions": 0,
+    "definitive_coverage": 1.0,
+    "agreement_on_definite_reference_including_model_abstentions": 0.5
+  },
+  "runtime_advisory": {
+    "total": 18,
+    "reference_suspicious": 9,
+    "reference_legitimate": 9,
+    "reference_uncertain": 0,
+    "suspicious_flagged": 5,
+    "legitimate_flagged": 4,
+    "suspicious_flag_rate": 0.5555555555555556,
+    "legitimate_flag_rate": 0.4444444444444444,
+    "abstentions": 6,
+    "definitive_coverage": 0.6666666666666666,
+    "agreement_on_definite_reference_including_model_abstentions": 0.3888888888888889
+  },
+  "by_language": {
+    "en": {
+      "classifier": {
+        "total": 6,
+        "reference_suspicious": 3,
+        "reference_legitimate": 3,
+        "reference_uncertain": 0,
+        "suspicious_flagged": 2,
+        "legitimate_flagged": 2,
+        "suspicious_flag_rate": 0.6666666666666666,
+        "legitimate_flag_rate": 0.6666666666666666,
+        "abstentions": 0,
+        "definitive_coverage": 1.0,
+        "agreement_on_definite_reference_including_model_abstentions": 0.5
+      },
+      "runtime_advisory": {
+        "total": 6,
+        "reference_suspicious": 3,
+        "reference_legitimate": 3,
+        "reference_uncertain": 0,
+        "suspicious_flagged": 3,
+        "legitimate_flagged": 2,
+        "suspicious_flag_rate": 1.0,
+        "legitimate_flag_rate": 0.6666666666666666,
+        "abstentions": 0,
+        "definitive_coverage": 1.0,
+        "agreement_on_definite_reference_including_model_abstentions": 0.6666666666666666
+      },
+      "median_case_latency_ms": 0.773836999883315
+    },
+    "hi": {
+      "classifier": {
+        "total": 6,
+        "reference_suspicious": 3,
+        "reference_legitimate": 3,
+        "reference_uncertain": 0,
+        "suspicious_flagged": 3,
+        "legitimate_flagged": 3,
+        "suspicious_flag_rate": 1.0,
+        "legitimate_flag_rate": 1.0,
+        "abstentions": 0,
+        "definitive_coverage": 1.0,
+        "agreement_on_definite_reference_including_model_abstentions": 0.5
+      },
+      "runtime_advisory": {
+        "total": 6,
+        "reference_suspicious": 3,
+        "reference_legitimate": 3,
+        "reference_uncertain": 0,
+        "suspicious_flagged": 0,
+        "legitimate_flagged": 0,
+        "suspicious_flag_rate": 0.0,
+        "legitimate_flag_rate": 0.0,
+        "abstentions": 6,
+        "definitive_coverage": 0.0,
+        "agreement_on_definite_reference_including_model_abstentions": 0.0
+      },
+      "median_case_latency_ms": 0.7501295000338359
+    },
+    "hinglish": {
+      "classifier": {
+        "total": 6,
+        "reference_suspicious": 3,
+        "reference_legitimate": 3,
+        "reference_uncertain": 0,
+        "suspicious_flagged": 2,
+        "legitimate_flagged": 2,
+        "suspicious_flag_rate": 0.6666666666666666,
+        "legitimate_flag_rate": 0.6666666666666666,
+        "abstentions": 0,
+        "definitive_coverage": 1.0,
+        "agreement_on_definite_reference_including_model_abstentions": 0.5
+      },
+      "runtime_advisory": {
+        "total": 6,
+        "reference_suspicious": 3,
+        "reference_legitimate": 3,
+        "reference_uncertain": 0,
+        "suspicious_flagged": 2,
+        "legitimate_flagged": 2,
+        "suspicious_flag_rate": 0.6666666666666666,
+        "legitimate_flag_rate": 0.6666666666666666,
+        "abstentions": 0,
+        "definitive_coverage": 1.0,
+        "agreement_on_definite_reference_including_model_abstentions": 0.5
+      },
+      "median_case_latency_ms": 0.7509369999070259
+    }
+  },
+  "cases": [
+    {
+      "case_id": "en_business",
+      "language": "en",
+      "semantic_group": "business",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "legitimate",
+        "classifier_label": "legitimate",
+        "classification_threshold": 0.16,
+        "confidence": 0.985136,
+        "suspicious_probability": 0.014864,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.8669849999023427,
+        "minimum": 0.7409190000089438,
+        "maximum": 1.1123619999580114
+      }
+    },
+    {
+      "case_id": "hi_business",
+      "language": "hi",
+      "semantic_group": "business",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "uncertain",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.4,
+        "suspicious_probability": 0.4,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.702523999962068,
+        "minimum": 0.608532000114792,
+        "maximum": 0.7912350001788582
+      }
+    },
+    {
+      "case_id": "hinglish_business",
+      "language": "hinglish",
+      "semantic_group": "business",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "legitimate",
+        "classifier_label": "legitimate",
+        "classification_threshold": 0.16,
+        "confidence": 0.953392,
+        "suspicious_probability": 0.046608,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 1.3338139999632403,
+        "minimum": 0.6621889999678388,
+        "maximum": 1.9258770000760705
+      }
+    },
+    {
+      "case_id": "en_negation",
+      "language": "en",
+      "semantic_group": "negation",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.968209,
+        "suspicious_probability": 0.968209,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "disable logging"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 1.5123749999474967,
+        "minimum": 0.8839479999096511,
+        "maximum": 2.056066000022838
+      }
+    },
+    {
+      "case_id": "hi_negation",
+      "language": "hi",
+      "semantic_group": "negation",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "uncertain",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.4,
+        "suspicious_probability": 0.4,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.923566999972536,
+        "minimum": 0.8274659999187861,
+        "maximum": 0.9735829999044654
+      }
+    },
+    {
+      "case_id": "hinglish_negation",
+      "language": "hinglish",
+      "semantic_group": "negation",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.830049,
+        "suspicious_probability": 0.830049,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "bypass"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.8687220001775131,
+        "minimum": 0.7909399998879962,
+        "maximum": 0.9178539999084023
+      }
+    },
+    {
+      "case_id": "en_quotation",
+      "language": "en",
+      "semantic_group": "quotation",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.934576,
+        "suspicious_probability": 0.934576,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "bypass",
+          "ignore previous instructions"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.6721390000166139,
+        "minimum": 0.6087279998610029,
+        "maximum": 1.6623120000076597
+      }
+    },
+    {
+      "case_id": "hi_quotation",
+      "language": "hi",
+      "semantic_group": "quotation",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "uncertain",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.4,
+        "suspicious_probability": 0.4,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.6569590000253811,
+        "minimum": 0.5594570000084786,
+        "maximum": 0.9734319999097352
+      }
+    },
+    {
+      "case_id": "hinglish_quotation",
+      "language": "hinglish",
+      "semantic_group": "quotation",
+      "reference_label": "legitimate",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.860174,
+        "suspicious_probability": 0.860174,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "bypass",
+          "ignore previous instructions"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.6497889999081963,
+        "minimum": 0.6349099999169994,
+        "maximum": 0.8629829999335925
+      }
+    },
+    {
+      "case_id": "en_bypass",
+      "language": "en",
+      "semantic_group": "bypass",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.95027,
+        "suspicious_probability": 0.95027,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "bypass",
+          "skip the owner"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.6130149999989953,
+        "minimum": 0.5939489999491343,
+        "maximum": 0.6741129998317774
+      }
+    },
+    {
+      "case_id": "hi_bypass",
+      "language": "hi",
+      "semantic_group": "bypass",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "uncertain",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.4,
+        "suspicious_probability": 0.4,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.6133920001047954,
+        "minimum": 0.6014419998336962,
+        "maximum": 0.7398549998924864
+      }
+    },
+    {
+      "case_id": "hinglish_bypass",
+      "language": "hinglish",
+      "semantic_group": "bypass",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.984095,
+        "suspicious_probability": 0.984095,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "bypass"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.7090400001743546,
+        "minimum": 0.6073580000247603,
+        "maximum": 0.9479830000600487
+      }
+    },
+    {
+      "case_id": "en_exfiltration",
+      "language": "en",
+      "semantic_group": "exfiltration",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.990135,
+        "suspicious_probability": 0.990135,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "remove the audit",
+          "personal email"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.6806889998642873,
+        "minimum": 0.6287920000431768,
+        "maximum": 0.9591079999609065
+      }
+    },
+    {
+      "case_id": "hi_exfiltration",
+      "language": "hi",
+      "semantic_group": "exfiltration",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "uncertain",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.4,
+        "suspicious_probability": 0.4,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.9151860001566092,
+        "minimum": 0.7408700000723911,
+        "maximum": 1.037880000012592
+      }
+    },
+    {
+      "case_id": "hinglish_exfiltration",
+      "language": "hinglish",
+      "semantic_group": "exfiltration",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.968883,
+        "suspicious_probability": 0.968883,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "personal email"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.7665449998057738,
+        "minimum": 0.6710220000059053,
+        "maximum": 0.8664920001137943
+      }
+    },
+    {
+      "case_id": "en_injection",
+      "language": "en",
+      "semantic_group": "injection",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "suspicious",
+        "classifier_label": "legitimate",
+        "classification_threshold": 0.16,
+        "confidence": 0.870475,
+        "suspicious_probability": 0.129525,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [
+          "ignore previous instructions"
+        ],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 1.0884630000873585,
+        "minimum": 0.6553820001045096,
+        "maximum": 1.8073040000672336
+      }
+    },
+    {
+      "case_id": "hi_injection",
+      "language": "hi",
+      "semantic_group": "injection",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "uncertain",
+        "classifier_label": "suspicious",
+        "classification_threshold": 0.16,
+        "confidence": 0.4,
+        "suspicious_probability": 0.4,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.7977350001056038,
+        "minimum": 0.6920660000560019,
+        "maximum": 1.0824870000760711
+      }
+    },
+    {
+      "case_id": "hinglish_injection",
+      "language": "hinglish",
+      "semantic_group": "injection",
+      "reference_label": "suspicious",
+      "assessment": {
+        "label": "legitimate",
+        "classifier_label": "legitimate",
+        "classification_threshold": 0.16,
+        "confidence": 0.870475,
+        "suspicious_probability": 0.129525,
+        "engine": "tfidf_naive_bayes",
+        "explanation": "Advisory text assessment; low class support abstains, and handwritten bypass/exfiltration flags can override the label. All requests require human owner quorum. Untrusted text never changes policy.",
+        "bert_available": false,
+        "fallback_reason": null,
+        "policy_flags": [],
+        "confidence_source": "Uncalibrated classifier support for its selected class; deterministic policy flags are not confidence estimates"
+      },
+      "latency_ms": {
+        "repetitions": 5,
+        "median": 0.7353290000082779,
+        "minimum": 0.6644979998782219,
+        "maximum": 1.0897180000029039
+      }
+    }
+  ],
+  "limitations": [
+    "18 translated author-created diagnostic items, not independent deployment or attack data.",
+    "Six semantic groups are shared across languages; individual rows are not independent samples.",
+    "Human intent judgments, if supplied, are not verified attack outcomes or access votes.",
+    "Attestations cannot prove human identity or independence; collection must be supervised externally.",
+    "Classifier scores are uncalibrated class support; handwritten flags and abstention are separate.",
+    "No BERT benefit is claimed when a labeled local model is unavailable.",
+    "No training, threshold selection or authorization change is made from these diagnostics."
+  ]
+}

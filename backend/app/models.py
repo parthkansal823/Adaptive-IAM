@@ -1,5 +1,5 @@
 """Strict API input contracts; identity is always supplied by a session."""
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictInput(BaseModel):
@@ -31,7 +31,14 @@ class LoginInput(StrictInput):
 
 class VerifyInput(StrictInput):
     challenge_id: str = Field(min_length=1, max_length=128)
-    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    code: str | None = Field(None, min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+    recovery_code: str | None = Field(None, min_length=8, max_length=80)
+
+    @model_validator(mode="after")
+    def one_factor(self):
+        if bool(self.code) == bool(self.recovery_code):
+            raise ValueError("Supply exactly one verification code or recovery code")
+        return self
 
 
 class RequestInput(StrictInput):

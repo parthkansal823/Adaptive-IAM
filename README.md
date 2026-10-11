@@ -2,7 +2,35 @@
 
 A local implementation of the supplied adaptive IAM research idea: contextual authentication, natural-language access requests, human reviewer decisions, timed access grants, and a verifiable audit chain. The responsive React console supports dark and light themes.
 
-The paper's performance values are projections. This project measures its own baseline and improved candidates on reproducible synthetic data. Those scores do not establish real deployment performance. SQLite SHA-256 chaining is a local tamper-evident log; distributed blockchain consensus and smart contracts are future work.
+The paper's performance values are projections. This project measures its own baseline and candidates on reproducible synthetic data, including regressions. SQLite SHA-256 chaining is a local tamper-evident log; the Docker environment adds a real local Ethereum/Solidity registry for audit checkpoints and timed grants. A single development chain does not establish decentralized production trust.
+
+## Start in Docker
+
+Start Docker Desktop and run from this folder:
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Open [Adaptive IAM](http://127.0.0.1:5173/) and [API docs](http://127.0.0.1:8000/docs). Sign in with a listed demo identity and password `Demo@123!`. Containers run without root with read-only filesystems and restricted privileges; the Ethereum RPC remains inside the internal Docker network. The API and console are published only to this computer. [Deployment guide](deployment/README.md) explains persistence, grant confirmation, revocation and safe shutdown. Stop host development servers before using the same ports in Docker.
+
+```powershell
+docker compose stop
+docker compose up -d
+```
+
+For the provider plus a separately protected demonstration website on port 3001:
+
+```powershell
+docker compose -f compose.yaml -f deployment/compose.website.yaml --profile website up --build -d --wait
+```
+
+The [integration guide](docs/INTEGRATION.md) explains consent, human grants and reusable Node/Python SDKs. Security now supports verified passkeys, TOTP, single-use recovery codes and server-observed session checks. Public passwords/displayed challenges remain explicit demo features until a real factor is enrolled. [Authentication](docs/AUTHENTICATION.md) documents enrollment, private operator provisioning and `IAM_DEMO_MODE=false`; private first sign-in is limited to five minutes of factor setup before it can access protected APIs.
+
+The Developer portal adds organizations, an application wizard, exact callback diagnostics and confidential-secret rotation. New organization/app security changes require recent real-factor verification. The Attack lab provides 12 recorded diagnostics from the running model and current owned permissions; it cannot create grants or cast votes. Organization membership scopes app management but seeded resources remain shared research infrastructure, not complete tenant isolation.
+
+An optional [four-validator QBFT network](docs/WEB3_NETWORK.md) uses Besu and an isolated narrow signer; its console runs separately on port 15173. Actual outage/latency readings are in `experiments/qbft-results.json`. All local validators still share one administrative host.
 
 ## Start on Windows
 
@@ -30,6 +58,7 @@ python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r backend/requirements-dev.txt
 npm.cmd --prefix frontend ci
 npm.cmd --prefix integrations/node ci
+npm.cmd --prefix blockchain ci
 .venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 npm.cmd --prefix frontend run dev
 ```
@@ -41,6 +70,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r backend/requirements-dev.txt
 npm --prefix frontend ci
 npm --prefix integrations/node ci
+npm --prefix blockchain ci
 npm run dev
 ```
 
@@ -52,7 +82,7 @@ npm run dev
 python scripts/context.py
 ```
 
-Evaluation writes measured results to `experiments/results.json`; model artifacts and local SQLite runtime data are ignored by Git. [RESEARCH.md](docs/RESEARCH.md) explains comparison design and limitations. [DEVELOPMENT.md](docs/DEVELOPMENT.md) covers hooks, optional models and contribution workflow.
+Evaluation writes measured results to `experiments/results.json`; model artifacts and local SQLite runtime data are ignored by Git. [RESEARCH.md](docs/RESEARCH.md) explains comparison design and limitations, with [paired uncertainty](experiments/robustness.json), [independent candidate selection](experiments/candidate-study.json) and [32 runtime language cases](experiments/case-study.json). The [evidence report](reports/Adaptive%20IAM%20evidence%20study.md), [manuscript draft](docs/paper/MANUSCRIPT.md) and [verified readings](research_notes/Adaptive%20IAM%20evidence%20study/readings.md) support a new paper. [DEVELOPMENT.md](docs/DEVELOPMENT.md) covers network-free Docker analysis, hooks, optional models and contribution workflow.
 
 ## Repository guide
 
@@ -61,6 +91,8 @@ Evaluation writes measured results to `experiments/results.json`; model artifact
 | `backend/` | Python API, models, policy enforcement and security tests |
 | `frontend/` | React/TypeScript interface and theme system |
 | `integrations/` | Node/Python OIDC server SDKs, protected website examples and tests |
+| `blockchain/` | Solidity registry, local-chain deployment and contract tests |
+| `deployment/`, `compose.yaml` | Docker isolation, local Web3 stack and operations |
 | `experiments/` | Reproducible model evaluation and measured result reports |
 | `research/` | 31 preserved originals arranged by type |
 | `docs/` | Architecture, API, security, research, development and roadmap |
@@ -83,3 +115,5 @@ Source changes and Git commits remain yours to review and commit. Do not deploy 
 
 This project is a joint academic work developed as part of a college major project.
 No part of this repository may be used, copied, modified, or distributed without explicit written permission from ALL authors.
+
+The latest studies add [five complete retraining runs](experiments/risk-protocol.json), [external synthesized-data eligibility and proxy holdouts](experiments/external-study.json), [multilingual diagnostics](experiments/multilingual-results.json) and an [independent human annotation workflow](docs/ANNOTATION.md). Calibration improves probability error, while equally tuned raw/calibrated controls make identical decisions. External proxy results include a user-disjoint regression; only three takeover labels occur in the sample, so no takeover score is claimed. All readings and figures remain reviewable alongside the manuscript.

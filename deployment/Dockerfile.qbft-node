@@ -1,0 +1,10 @@
+# Official Besu 26.9.0, verified 10 October 2026. Immutable multiarch digest.
+FROM hyperledger/besu:26.9.0@sha256:fc1813d67d630d7660eea6ee555c01e73bfecda3e54d24f9484c1c4a52c6fcb0
+USER root
+RUN apt-get update && apt-get install --no-install-recommends -y curl && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /var/lib/besu /node-key /network && chown -R 10001:10001 /var/lib/besu /node-key /network
+COPY blockchain/scripts/qbft-node.sh /opt/qbft-node.sh
+RUN chmod 555 /opt/qbft-node.sh
+USER 10001:10001
+ENV JAVA_OPTS="-Xms128m -Xmx384m"
+ENTRYPOINT ["/opt/qbft-node.sh"]

@@ -20,6 +20,7 @@ jobs:
       - run: python scripts/check.py --all
       - run: python scripts/run_tests.py -s backend/tests
       - run: python scripts/run_tests.py -s scripts/tests
+      - run: python scripts/run_tests.py -s experiments/tests
       - run: python scripts/run_tests.py -s integrations/python/tests
       - run: python scripts/verify_research.py
       - name: Generate reproducible measured comparison
@@ -51,3 +52,14 @@ jobs:
           cache-dependency-path: integrations/node/package-lock.json
       - run: npm --prefix integrations/node ci
       - run: npm --prefix integrations/node test
+  local-evm-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: blockchain/package-lock.json
+      - run: npm --prefix blockchain ci
+      - run: npm --prefix blockchain test

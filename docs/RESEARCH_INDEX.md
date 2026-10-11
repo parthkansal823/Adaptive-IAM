@@ -13,18 +13,18 @@ All 31 original research files were moved with their original filenames and byte
 | `Phase 2.pptx` | [research/presentations/Phase 2.pptx](../research/presentations/Phase%202.pptx) |
 | `Phase 3.pptx` | [research/presentations/Phase 3.pptx](../research/presentations/Phase%203.pptx) |
 | `FINAL/Arch.drawio` | [research/diagrams/source/Arch.drawio](../research/diagrams/source/Arch.drawio) |
-| `FINAL/Arch.drawio (1).pdf` | [research/diagrams/exports/Arch.drawio (1).pdf](../research/diagrams/exports/Arch.drawio%20(1).pdf) |
-| `FINAL/Arch.drawio (2).pdf` | [research/diagrams/exports/Arch.drawio (2).pdf](../research/diagrams/exports/Arch.drawio%20(2).pdf) |
-| `FINAL/Arch.drawio (3).pdf` | [research/diagrams/exports/Arch.drawio (3).pdf](../research/diagrams/exports/Arch.drawio%20(3).pdf) |
+| `FINAL/Arch.drawio (1).pdf` | [research/diagrams/exports/Arch.drawio (1).pdf](../research/diagrams/exports/Arch.drawio%20%281%29.pdf) |
+| `FINAL/Arch.drawio (2).pdf` | [research/diagrams/exports/Arch.drawio (2).pdf](../research/diagrams/exports/Arch.drawio%20%282%29.pdf) |
+| `FINAL/Arch.drawio (3).pdf` | [research/diagrams/exports/Arch.drawio (3).pdf](../research/diagrams/exports/Arch.drawio%20%283%29.pdf) |
 | `FINAL/Arch.drawio.pdf` | [research/diagrams/exports/Arch.drawio.pdf](../research/diagrams/exports/Arch.drawio.pdf) |
 | `FINAL/Arch.drawio.png` | [research/diagrams/exports/Arch.drawio.png](../research/diagrams/exports/Arch.drawio.png) |
 | `FINAL/Auth.drawio` | [research/diagrams/source/Auth.drawio](../research/diagrams/source/Auth.drawio) |
 | `FINAL/Authur.drawio` | [research/diagrams/source/Authur.drawio](../research/diagrams/source/Authur.drawio) |
-| `FINAL/Authur.drawio (1).png` | [research/diagrams/exports/Authur.drawio (1).png](../research/diagrams/exports/Authur.drawio%20(1).png) |
+| `FINAL/Authur.drawio (1).png` | [research/diagrams/exports/Authur.drawio (1).png](../research/diagrams/exports/Authur.drawio%20%281%29.png) |
 | `FINAL/Authur.drawio.pdf` | [research/diagrams/exports/Authur.drawio.pdf](../research/diagrams/exports/Authur.drawio.pdf) |
 | `FINAL/block.drawio` | [research/diagrams/source/block.drawio](../research/diagrams/source/block.drawio) |
 | `FINAL/fig_architecture.png` | [research/diagrams/exports/fig_architecture.png](../research/diagrams/exports/fig_architecture.png) |
-| `FINAL/fig_auth_flow (1).png` | [research/diagrams/exports/fig_auth_flow (1).png](../research/diagrams/exports/fig_auth_flow%20(1).png) |
+| `FINAL/fig_auth_flow (1).png` | [research/diagrams/exports/fig_auth_flow (1).png](../research/diagrams/exports/fig_auth_flow%20%281%29.png) |
 | `FINAL/fig_auth_flow.drawio.png` | [research/diagrams/exports/fig_auth_flow.drawio.png](../research/diagrams/exports/fig_auth_flow.drawio.png) |
 | `FINAL/fig_auth_flow.png` | [research/diagrams/exports/fig_auth_flow.png](../research/diagrams/exports/fig_auth_flow.png) |
 | `FINAL/fig_authz_flow.png` | [research/diagrams/exports/fig_authz_flow.png](../research/diagrams/exports/fig_authz_flow.png) |

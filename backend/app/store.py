@@ -72,7 +72,15 @@ class Store:
                 CREATE TABLE IF NOT EXISTS grants (id TEXT PRIMARY KEY, request_id TEXT UNIQUE NOT NULL REFERENCES requests(id), user_id TEXT NOT NULL REFERENCES users(id), resource_id TEXT NOT NULL REFERENCES resources(id), scope TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, status TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, event_type TEXT NOT NULL, actor_id TEXT, payload TEXT NOT NULL, previous_hash TEXT NOT NULL, hash TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS blockchain_outbox (kind TEXT NOT NULL, local_id TEXT NOT NULL, status TEXT NOT NULL, transaction_hash TEXT, block_number INTEGER, error TEXT, updated_at TEXT NOT NULL, PRIMARY KEY(kind,local_id));
+                CREATE TABLE IF NOT EXISTS session_security (session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE, fingerprint TEXT NOT NULL, verified_at TEXT, verification_method TEXT NOT NULL, last_seen_at TEXT NOT NULL, step_up_required INTEGER NOT NULL DEFAULT 0, failures INTEGER NOT NULL DEFAULT 0);
             """)
+            challenge_columns = {row['name'] for row in db.execute('PRAGMA table_info(challenges)')}
+            for column, definition in (('fingerprint', "TEXT NOT NULL DEFAULT ''"), ('method', "TEXT NOT NULL DEFAULT 'legacy'")):
+                if column not in challenge_columns:
+                    db.execute(f'ALTER TABLE challenges ADD COLUMN {column} {definition}')
+            if 'authentication_mode' not in {row['name'] for row in db.execute('PRAGMA table_info(session_security)')}:
+                db.execute("ALTER TABLE session_security ADD COLUMN authentication_mode TEXT NOT NULL DEFAULT 'legacy'")
+            db.execute("CREATE INDEX IF NOT EXISTS audit_actor_event_time ON audit(actor_id,event_type,timestamp)")
             for user in USERS:
                 if not db.execute("SELECT id FROM users WHERE id=?", (user["id"],)).fetchone():
                     db.execute("INSERT INTO users VALUES (?,?,?,?,?)", (user["id"], user["name"], user["role"], user["department"], hash_password(PASSWORD)))
@@ -120,14 +128,20 @@ class Store:
             row = db.execute("SELECT s.*,u.name,u.role,u.department FROM sessions s JOIN users u ON s.user_id=u.id WHERE token_hash=?", (secret_hash(token),)).fetchone()
             if not row or row["expires_at"] <= stamp():
                 raise HTTPException(401, "Session is invalid or expired")
-            return {"user": {"id": row["user_id"], "name": row["name"], "role": row["role"], "department": row["department"]}, "session": {"id": row["id"], "expires_at": row["expires_at"]}, "risk": json.loads(row["risk_json"])}
+            security = db.execute("SELECT * FROM session_security WHERE session_id=?", (row["id"],)).fetchone()
+            packet = {"id": row["id"], "expires_at": row["expires_at"]}
+            if security:
+                packet.update({key: security[key] for key in ("verified_at", "verification_method", "step_up_required")})
+                packet["step_up_required"] = bool(packet["step_up_required"])
+            return {"user": {"id": row["user_id"], "name": row["name"], "role": row["role"], "department": row["department"]}, "session": packet, "risk": json.loads(row["risk_json"])}
 
     def make_session(self, db, user_id, risk):
         token = secrets.token_urlsafe(32)
         created, expiry = stamp(), stamp(now()+timedelta(minutes=30))
-        db.execute("INSERT INTO sessions VALUES (?,?,?,?,?,?)", (secrets.token_hex(16), user_id, secret_hash(token), created, expiry, canonical(risk)))
+        session_id = secrets.token_hex(16)
+        db.execute("INSERT INTO sessions VALUES (?,?,?,?,?,?)", (session_id, user_id, secret_hash(token), created, expiry, canonical(risk)))
         user = db.execute("SELECT id,name,role,department FROM users WHERE id=?", (user_id,)).fetchone()
-        return {"status": "authenticated", "token": token, "user": dict(user), "expires_at": expiry, "risk": risk}
+        return {"status": "authenticated", "token": token, "user": dict(user), "expires_at": expiry, "risk": risk, "session_id": session_id}
 
     def expire(self, db):
         current = stamp()
@@ -180,4 +194,4 @@ class Store:
                 broken = row["id"]
                 break
             previous = row["hash"]
-        return {"valid": broken is None, "checked_events": checked, "head_hash": previous, "broken_at": broken, "ledger_type": "local_sha256_hash_chain", "limitation": "Local tamper-evident chain; an administrator able to rewrite the full database can recompute it. No distributed blockchain or external checkpoint is implemented."}
+        return {"valid": broken is None, "checked_events": checked, "head_hash": previous, "broken_at": broken, "ledger_type": "local_sha256_hash_chain", "limitation": "SQLite verification only; an administrator able to rewrite the full database can recompute it. Consult blockchain status for the optional local Ethereum checkpoint. No distributed production consensus is implemented."}

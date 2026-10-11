@@ -7,7 +7,7 @@
     "start": "node scripts/start-chain.mjs",
     "compile": "node scripts/compile.mjs",
     "deploy": "node scripts/deploy.mjs",
-    "test": "node --test tests/contract.test.mjs"
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "ethers": "6.15.0",

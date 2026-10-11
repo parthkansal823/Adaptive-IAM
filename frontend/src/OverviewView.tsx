@@ -1,9 +1,14 @@
-import type { Bootstrap, Grant, Identity, Overview, Risk } from './api'
+import type { Bootstrap, Grant, Identity, Overview, Risk, SessionInfo } from './api'
 import { actionLabel, Badge, Empty, EventRows, formatDate, Icon, PageTitle, PanelTitle, RiskWave } from './components'
 
-export function OverviewView({ bootstrap, overview, user, risk, grants, onRisk, onRequests, onResearch, onLogin }: { bootstrap: Bootstrap | null; overview: Overview | null; user: Identity | null; risk: Risk | null; grants: Grant[]; onRisk: () => void; onRequests: () => void; onResearch: () => void; onLogin: () => void }) {
+export function OverviewView({ bootstrap, overview, user, risk, session, grants, onRisk, onRequests, onResearch, onLogin }: { bootstrap: Bootstrap | null; overview: Overview | null; user: Identity | null; risk: Risk | null; session: SessionInfo | null; grants: Grant[]; onRisk: () => void; onRequests: () => void; onResearch: () => void; onLogin: () => void }) {
   const metrics = [{ label: 'Waiting for review', value: overview?.stats.pending_requests, icon: 'access' as const }, { label: 'Active grants', value: overview?.stats.active_grants, icon: 'shield' as const }, { label: 'Your review queue', value: overview?.stats.review_queue, icon: 'check' as const }, { label: 'Recorded events', value: overview?.stats.audit_events, icon: 'audit' as const }]
   const active = grants.filter(grant => grant.status === 'active')
+  const gated = session?.step_up_required === true
+  const factor = session?.verification_method
+  const factorLabel = factor ? ({ passkey: 'Passkey verified', totp: 'Authenticator verified', recovery: 'Recovery code verified', demo_mfa: 'Verified with demo MFA', password_plus_demo_mfa: 'Verified with demo MFA' } as Record<string, string>)[factor] : undefined
+  const policyTitle = gated ? 'Verification required' : user && factorLabel ? factorLabel : risk ? actionLabel(risk.action) : 'A response that fits'
+  const policyDescription = gated ? 'Verify an enrolled factor to resume' : user && factorLabel ? factor === 'demo_mfa' || factor === 'password_plus_demo_mfa' ? 'Demo factor used for this session' : 'Enrolled factor verified by the server' : risk ? risk.tier === 'low' ? 'Low risk; enrolled factors still apply' : risk.tier === 'medium' ? 'Additional verification is required' : 'High-risk context blocks sign-in' : 'Allow, verify, or block'
   const lowThreshold = bootstrap ? (bootstrap.risk_thresholds.low * 100).toFixed(1) : '—'
   const highThreshold = bootstrap ? (bootstrap.risk_thresholds.high * 100).toFixed(1) : '—'
   return <>
@@ -11,13 +16,13 @@ export function OverviewView({ bootstrap, overview, user, risk, grants, onRisk, 
     <section className="decision-route panel" aria-label="Live decision journey">
       <div className="route-heading"><span className="route-title"><span className="live-dot" />{user ? 'Current session' : 'Decision journey'}</span><span>{user ? 'Evaluated at sign-in' : 'Identity → context → collective review'}</span></div>
       <div className="route-nodes">
-        <div className="route-node identity-node"><span className="route-step">Identity context</span><div className="route-icon"><Icon name="user" size={24} /></div><h3>{user?.name || 'Start with identity'}</h3><p>{user ? user.department : 'Device, location, and behavior'}</p>{user ? <Badge status="active">Authenticated</Badge> : <button className="text-button" onClick={onLogin}>Connect a session <Icon name="arrow" size={16} /></button>}</div>
+        <div className="route-node identity-node"><span className="route-step">Identity context</span><div className="route-icon"><Icon name="user" size={24} /></div><h3>{user?.name || 'Start with identity'}</h3><p>{user ? user.department : 'Device, location, and behavior'}</p>{user ? <Badge status={gated ? 'medium' : 'active'}>{gated ? 'Session gated' : 'Authenticated'}</Badge> : <button className="text-button" onClick={onLogin}>Connect a session <Icon name="arrow" size={16} /></button>}</div>
         <span className="route-connector"><Icon name="chevron" size={16} /></span>
         <div className="route-node probability-node"><span className="route-step">Contextual risk</span><div className={`route-score ${risk ? `text-${risk.tier}` : ''}`}>{risk ? (risk.score * 100).toFixed(1) : '—'}{risk && <small>%</small>}</div><RiskWave risk={risk} />{risk ? <Badge status={risk.tier}>{risk.tier} risk</Badge> : <span className="muted">Awaiting an assessment</span>}</div>
         <span className="route-connector"><Icon name="chevron" size={16} /></span>
-        <div className="route-node"><span className="route-step">Adaptive policy</span><div className="route-icon"><Icon name="shield" size={25} /></div><h3>{risk ? actionLabel(risk.action) : 'A response that fits'}</h3><p>{risk ? risk.tier === 'low' ? 'Low-risk context permits sign-in' : risk.tier === 'medium' ? 'Additional verification is required' : 'High-risk context blocks sign-in' : 'Allow, verify, or block'}</p><span className="route-meta">Calibrated ensemble</span></div>
+        <div className="route-node"><span className="route-step">Adaptive policy</span><div className="route-icon"><Icon name="shield" size={25} /></div><h3>{policyTitle}</h3><p>{policyDescription}</p><span className="route-meta">Calibrated ensemble and factor policy</span></div>
         <span className="route-connector"><Icon name="chevron" size={16} /></span>
-        <div className="route-node"><span className="route-step">Resource access</span><div className="route-icon"><Icon name="access" size={25} /></div><h3>{user ? `${active.length} active grant${active.length === 1 ? '' : 's'}` : 'People in the loop'}</h3><p>Owner and peer consensus</p><button className="text-button" onClick={onRequests}>View access requests <Icon name="arrow" size={16} /></button></div>
+        <div className="route-node"><span className="route-step">Resource access</span><div className="route-icon"><Icon name="access" size={25} /></div><h3>{gated ? 'Protected actions paused' : user ? `${active.length} active grant${active.length === 1 ? '' : 's'}` : 'People in the loop'}</h3><p>Owner and peer consensus</p><button className="text-button" onClick={onRequests}>View access requests <Icon name="arrow" size={16} /></button></div>
       </div>
     </section>
     <div className="metric-strip">{metrics.map(metric => <div className="metric" key={metric.label}><span className="metric-label">{metric.label}<Icon name={metric.icon} size={16} /></span><strong>{metric.value ?? '—'}</strong><span>{user ? metric.label === 'Your review queue' ? 'Assigned to your identity' : 'Current workspace' : 'Connect a session to view'}</span></div>)}</div>
@@ -29,3 +34,4 @@ export function OverviewView({ bootstrap, overview, user, risk, grants, onRisk, 
     <div className="research-banner"><span className="research-banner-icon"><Icon name="research" size={24} /></span><div><h3>Make the improvement measurable.</h3><p>Compare the paper-style baseline with the calibrated ensemble on a held-out synthetic test set.</p></div><button className="button secondary" onClick={onResearch}>Explore experiments <Icon name="arrow" size={17} /></button></div>
   </>
 }
+

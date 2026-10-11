@@ -3,8 +3,20 @@ import { before, test } from 'node:test'
 import { createHash } from 'node:crypto'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { AdaptiveIamClient, IamError, loginTransaction, safeEqual } from '../adaptive-iam.mjs'
+import { dockerTransport } from '../../examples/docker-transport.mjs'
 
 const issuer = 'https://iam.example'; const clientId = 'website-client'
+
+test('Docker transport preserves public issuer and maps only fixed provider endpoints', async () => {
+  let received
+  const transport = dockerTransport('http://127.0.0.1:8000', async (url, options) => { received = { url, options }; return json({ ok: true }) })
+  const options = { method: 'POST', redirect: 'error' }
+  await transport('http://127.0.0.1:8000/oauth/token', options)
+  assert.equal(received.url, 'http://api:8000/oauth/token')
+  assert.equal(received.options, options)
+  for (const url of ['http://evil.example/oauth/token', 'http://127.0.0.1:8000/api/auth/login', 'http://user:pass@127.0.0.1:8000/oauth/token']) assert.throws(() => transport(url, options))
+  assert.throws(() => dockerTransport('https://iam.example'))
+})
 const metadata = { issuer, authorization_endpoint: `${issuer}/oauth/authorize`, token_endpoint: `${issuer}/oauth/token`, userinfo_endpoint: `${issuer}/oauth/userinfo`, jwks_uri: `${issuer}/oauth/jwks`, revocation_endpoint: `${issuer}/oauth/revoke` }
 let publicKey, privateKey, jwk
 before(async () => { ({ publicKey, privateKey } = await generateKeyPair('RS256')); jwk = { ...await exportJWK(publicKey), kid: 'test-key', use: 'sig', alg: 'RS256' } })
@@ -12,8 +24,8 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), { stat
 const session = () => ({ accessToken: 'fixture-access-token', identity: { sub: 'aisha', name: 'Aisha' }, expiresAt: Date.now()+60000 })
 const permit = changes => ({ allowed: true, sub: 'aisha', client_id: clientId, resource_id: 'research-vault', scope: 'read', expires_at: new Date(Date.now()+60000).toISOString(), ...changes })
 const makeClient = (fetchImpl, overrides = {}) => new AdaptiveIamClient({ issuer, clientId, clientSecret: 'fixture-client-secret', redirectUri: 'https://website.example/callback', fetchImpl, ...overrides })
-async function signed({ nonce = 'nonce-fixture', aud = clientId, iss = issuer, exp = Math.floor(Date.now()/1000)+600 } = {}) {
-  return new SignJWT({ nonce }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setSubject('aisha').setIssuer(iss).setAudience(aud).setIssuedAt().setExpirationTime(exp).sign(privateKey)
+async function signed({ nonce = 'nonce-fixture', aud = clientId, iss = issuer, exp = Math.floor(Date.now()/1000)+600, iat = Math.floor(Date.now()/1000), ...claims } = {}) {
+  return new SignJWT({ nonce, ...claims }).setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setSubject('aisha').setIssuer(iss).setAudience(aud).setIssuedAt(iat).setExpirationTime(exp).sign(privateKey)
 }
 function provider(idToken, overrides = {}) {
   return async (url, options) => {
@@ -56,6 +68,13 @@ test('tampered signature and mismatched userinfo subject fail', async () => {
   const token = await signed(); const parts = token.split('.'); parts[2] = `${parts[2][0] === 'a' ? 'b' : 'a'}${parts[2].slice(1)}`
   await assert.rejects(makeClient(provider(parts.join('.'))).exchangeCode({ code: 'x', verifier: 'v'.repeat(43), nonce: 'nonce-fixture' }), IamError)
   await assert.rejects(makeClient(provider(token, { identity: { sub: 'other' } })).exchangeCode({ code: 'x', verifier: 'v'.repeat(43), nonce: 'nonce-fixture' }), error => error.code === 'subject_mismatch')
+})
+test('authorized party and recent issuance bind identity tokens to this login', async () => {
+  for (const changes of [{ azp: 'other-client' }, { aud: [clientId, 'other-client'] }, { aud: [clientId, 'other-client'], azp: 'other-client' }, { iat: Math.floor(Date.now()/1000)-901 }]) {
+    await assert.rejects(makeClient(provider(await signed(changes))).exchangeCode({ code: 'x', verifier: 'v'.repeat(43), nonce: 'nonce-fixture' }), error => error.code === 'invalid_id_token')
+  }
+  const result = await makeClient(provider(await signed({ aud: [clientId, 'other-client'], azp: clientId }))).exchangeCode({ code: 'x', verifier: 'v'.repeat(43), nonce: 'nonce-fixture' })
+  assert.equal(result.identity.sub, 'aisha')
 })
 test('valid resource grant must match subject, resource, scope and expiry', async () => {
   let calls = 0

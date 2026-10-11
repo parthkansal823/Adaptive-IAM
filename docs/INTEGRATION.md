@@ -6,6 +6,18 @@ The supplied Node and Python examples implement Authorization Code with S256 PKC
 
 ## Local setup
 
+For a complete Docker demonstration, start the provider and connected Node website together:
+
+```powershell
+docker compose -f compose.yaml -f deployment/compose.website.yaml --profile website up --build -d --wait
+```
+
+Open the IAM console at `http://127.0.0.1:5173` and the separate website at `http://127.0.0.1:3001`. A one-shot setup service registers the local demonstration website and retains its confidential-client configuration in a dedicated `website_config` volume. The website has no access to the provider's signing-key volume. Its public issuer remains `http://127.0.0.1:8000`; the container's fixed transport maps provider requests to the internal API. Website tokens still remain server-side, and protected content requires the same live grant checks. [Deployment operations](../deployment/README.md) explain the local trust boundary and persistence.
+
+Sign in as Aisha in the console before starting the website's sign-in flow, approve consent, then try `/protected`. It should deny before Aisha has an approved `research-vault` grant. Create that access request in the console; sign in as its assigned reviewers to complete the owner/peer quorum. When Web3 is enabled, confirm the grant transaction before expecting website access. The website session and console session are separate, so switching console reviewer identities does not change the identity in an existing website session.
+
+To register another website manually or run a host example, use the steps below.
+
 Run from the repository root with the dependencies installed by `scripts/setup.ps1`:
 
 ```powershell
@@ -42,9 +54,11 @@ Alternatively, start the Python website with the same environment instead of the
 .venv\Scripts\python.exe -m uvicorn integrations.examples.fastapi_site:app --host 127.0.0.1 --port 3001
 ```
 
-Run one example at a time on port 3001. Open `http://127.0.0.1:3001`, select **Sign in with Adaptive IAM**, sign in as Aisha, and approve the consent screen. The callback verifies the signed identity before creating a website session.
+Run one example at a time on port 3001. Switch the console from Kavya to Aisha before opening the website flow. Open `http://127.0.0.1:3001`, select **Sign in with Adaptive IAM** and approve consent as Aisha. The callback verifies the signed identity before creating a website session.
 
 `/protected` initially denies access without a grant. In the IAM console, Aisha requests `research-vault` access with a scoped business reason. Sign in as the selected reviewers and satisfy the owner/peer quorum. Once approved, the website serves its protected example content while the grant and site session remain valid. Logout removes the website session and attempts provider token revocation.
+
+The Node website's `/protected` page displays success or denial as readable HTML in a browser; API clients retain JSON responses. Every visit checks the live grant again, so expiry, revocation or an unavailable permission check denies the protected content even after successful sign-in.
 
 Use the same hostname everywhere: `localhost` and `127.0.0.1` are different redirect URIs and cookie hosts. The provider issuer defaults to `http://127.0.0.1:8000`. HTTP requires explicit loopback opt-in in the SDK; normal website deployments require HTTPS.
 
@@ -94,3 +108,11 @@ npm.cmd --prefix integrations/node test
 Tests sign real fixture ID tokens and cover wrong signatures, nonce/issuer/audience/expiry, subject mismatch, resource/client binding, denial, malformed responses, timeout and server-side revocation. The provider's own tests cover registration, consent, code/client binding and grants. Unit fixtures do not establish third-party certification or production interoperability.
 
 Protocol references: [PKCE RFC 7636](https://www.rfc-editor.org/info/rfc7636/), [OAuth security RFC 9700](https://www.rfc-editor.org/info/rfc9700/), [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html).
+
+## Organization onboarding
+
+The Developer portal replaces the earlier Connected apps screen. Enroll TOTP or a passkey in Security, verify it recently, create an organization and assign app administrators. The three-step wizard collects app name/type, exact callback URLs and eligible resource mappings; the confidential client secret is returned once. Callback diagnostics never contact the entered host. Rotation invalidates existing tokens and pending codes immediately.
+
+Organization apps require the signing-in identity to remain a member. Mapping a resource requires its owner to be a member, but membership itself never grants permission. The existing seed identities/resources are shared research fixtures, not private tenant isolation. Legacy demo registration by Kavya is retained for the loopback setup service; new organization setup requires real factor verification.
+
+OAuth app tokens now depend on the source IAM browser session. Logout, expiry, revocation, enrollment restrictions or detected step-up remove app authority. Website request headers are not compared to the original browser's headers. The website server must keep checking provider identity and live resource permissions; a cached name alone is not active authorization.

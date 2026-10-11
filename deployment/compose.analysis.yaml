@@ -1,0 +1,16 @@
+services:
+  analysis:
+    profiles: [analysis]
+    build: {context: ., dockerfile: deployment/Dockerfile.analysis}
+    image: adaptive-iam-analysis:local
+    user: '10001:10001'
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    init: true
+    pids_limit: 256
+    mem_limit: 1g
+    tmpfs: ['/tmp:rw,noexec,nosuid,size=128m']
+    volumes: ['./experiments:/workspace/experiments']
+    command: [python, experiments/plot_results.py]

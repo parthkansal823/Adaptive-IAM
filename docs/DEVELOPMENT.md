@@ -36,6 +36,20 @@ The project has compact root/scoped `AGENTS.md`, a bounded `scripts/context.py`,
 
 Project `.codex/` config and non-managed hooks must be reviewed and trusted using `/hooks`. Changed definitions need review again. No trust-bypass flag is used. Templates remain under `config/codex/` for review and recovery. Consult the [official hooks](https://learn.chatgpt.com/docs/hooks) and [custom agents](https://learn.chatgpt.com/docs/agent-configuration/subagents) documentation for current behavior.
 
+## Scientific figures in Linux Docker
+
+The analysis image supplies pinned scientific dependencies independently of the Windows Python installation. This also supports machines whose application-control policy blocks a native plotting extension; the workflow does not require changing that policy.
+
+```powershell
+docker compose -f compose.yaml -f deployment/compose.analysis.yaml --profile analysis run --rm --build analysis python experiments/evaluate.py
+docker compose -f compose.yaml -f deployment/compose.analysis.yaml --profile analysis run --rm analysis python experiments/robustness.py
+docker compose -f compose.yaml -f deployment/compose.analysis.yaml --profile analysis run --rm analysis python experiments/candidate_study.py
+docker compose -f compose.yaml -f deployment/compose.analysis.yaml --profile analysis run --rm analysis python experiments/cases.py
+docker compose -f compose.yaml -f deployment/compose.analysis.yaml --profile analysis run --rm analysis python experiments/plot_results.py
+```
+
+Run from the repository root. The container has no network and writes only the mounted experiment outputs plus temporary files. Figures in `experiments/figures/` derive from the checked-in JSON evidence; PNGs support preview and SVGs support publication. A new scientific dataset or training change requires regenerating the underlying experiment first, rather than redrawing old results as new evidence.
+
 ## Optional external dataset
 
 The [RBA dataset](https://github.com/das-group/rba-dataset) is a creator-synthesized public dataset, not raw organizational login telemetry; the creator cautions against production use. Download its plain CSV separately and review its license/provenance. Keep it under ignored `data/`.

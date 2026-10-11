@@ -1,0 +1,9 @@
+{
+  "name": "adaptive-iam-private-qbft-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {"ethers": "6.17.0", "solc": "0.8.37"},
+  "overrides": {"tmp": "0.2.7"},
+  "engines": {"node": ">=20"}
+}

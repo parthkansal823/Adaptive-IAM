@@ -113,7 +113,7 @@ export class AdaptiveIamClient {
       const key = await importJWK(matches[0], 'RS256')
       const verified = await jwtVerify(token.id_token, key, { issuer: this.issuer, audience: this.clientId, algorithms: ['RS256'], requiredClaims: ['sub', 'exp', 'iat', 'nonce'], maxTokenAge: 900, currentDate: new Date(this.clock()), clockTolerance: 0 })
       claims = verified.payload
-      if (typeof claims.sub !== 'string' || !claims.sub || !safeEqual(claims.nonce, nonce) || (Array.isArray(claims.aud) && claims.aud.length > 1 && claims.azp !== this.clientId)) throw new Error('claims')
+      if (typeof claims.sub !== 'string' || !claims.sub || !safeEqual(claims.nonce, nonce) || (claims.azp !== undefined && claims.azp !== this.clientId) || (Array.isArray(claims.aud) && claims.aud.length > 1 && claims.azp !== this.clientId)) throw new Error('claims')
     } catch (error) {
       if (error instanceof IamError) throw error
       throw new IamError('invalid_id_token', 401)

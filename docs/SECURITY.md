@@ -12,10 +12,11 @@ This is a local research prototype with synthetic data and demo identities. Do n
 - Validate optional model output against an allowlist. Fail back to deterministic selection when a model times out, returns invalid data or proposes an ineligible reviewer.
 - Avoid secrets in events and prompt logs. An access reason may contain sensitive business data; set retention and access policies before real use.
 - Verify audit links and canonical hashes. Local integrity detection does not prevent authorized database replacement, truncation or recomputation.
+- When Web3 is configured, require a live identity/resource-bound contract grant and a matching audit checkpoint. Deny access on chain outage, wrong chain/registry, mismatch, pending grant, expiry or revocation.
 
 ## Known prototype limitations
 
-Synthetic identity/context signals are demonstrative and can be chosen by the tester. They are not trusted device telemetry. Public bootstrap credentials and UI-displayed demo challenges are not production authentication factors. Local process memory and SQLite are not a high-availability identity provider. Audit and resource access use the same host trust boundary. Requests/audit views are scoped to the requester and selected reviewers; grants are scoped to the grantee and resource owner. Security reviewers have organization-wide visibility. This demo does not implement separate organization tenancy.
+Demo context signals can be chosen by the tester; secure mode instead observes partial request context and ignores client scenario claims. Neither supplies comprehensive trusted device telemetry. Public bootstrap passwords/displayed demo challenges are not production factors. Enrolled passkeys/TOTP and recovery codes are verified server-side. Local process memory and SQLite are not a high-availability identity provider. Requests/audit views are scoped to requester/reviewers; grants to grantee/owner. Organizations scope application management and membership, but shared research identities/resources are not fully isolated tenants.
 
 LLM justification text is untrusted input. Reviewer recommendations must remain recommendations. A generic pretrained transformer does not supply calibrated suspicious-request probabilities without task-specific training.
 
@@ -23,10 +24,16 @@ LLM justification text is untrusted input. Reviewer recommendations must remain 
 
 Registered clients use exact callback matching, S256 PKCE, consent, one-use codes and client-bound scopes/resources. App access tokens have no console-session authority. Relying-party SDKs validate RS256 signing keys, issuer, audience, nonce, expiry and UserInfo subject before creating their server-side website session. Every protected response checks a subject/client/resource-bound live read grant. Identity consent alone grants no resource access. Website cookies contain random session keys; access tokens and confidential client secrets stay on the server. Timeout, malformed data or unavailable permission checks deny protected content.
 
-The supplied website examples use process-memory sessions and loopback HTTP opt-in. Production needs HTTPS, protected shared session/key storage, rotation, verified MFA and an independent protocol/security review. This implementation does not claim OIDC certification. See [INTEGRATION.md](INTEGRATION.md).
+The supplied websites use process-memory sessions and loopback HTTP opt-in. Codes/app tokens also depend on their originating console session: logout, expiry, revocation, enrollment restrictions and detected step-up deny authority. Production needs HTTPS, protected shared session/key storage, operational factor recovery and an independent protocol/security review. This implementation does not claim OIDC certification. See [INTEGRATION.md](INTEGRATION.md) and [verified authentication](AUTHENTICATION.md).
+
+## Docker and local Web3
+
+The Docker stack uses non-root users, read-only root filesystems, dropped capabilities, no privilege escalation and bounded resources. The chain/deployer use an internal bridge; API/UI and the optional website also join an edge bridge that permits their outbound traffic. Ethereum RPC is unpublished; exposed web ports bind to host loopback. Persistent volumes hold chain state, IAM state/signing key and model cache. Avoid independently resetting one state volume: mismatched retained checkpoints deliberately deny access. [Deployment operations](../deployment/README.md) document shutdown and persistence.
+
+The local Ethereum writer uses an unlocked development account on chain 31337. The adapter rejects external RPC hosts and other chain IDs. Do not fund or use this wallet on a public network. Solidity only accepts the trusted writer; human eligibility/quorum is enforced by the API before mirroring, not independently by the contract. A host/chain administrator can reset the single local chain. Hashes of demo identities remain guessable and linkable; credentials, tokens, OTPs and raw justification text are excluded from on-chain data. This is real EVM execution with a local trust boundary, not production decentralization or anonymization.
 
 ## Production work
 
-Validate the OIDC deployment and add WebAuthn or a verified MFA provider; bind sessions to trusted context; strengthen abuse controls, CSRF protections as applicable, secure cookie/TLS settings, managed secret rotation, backup/retention, external audit checkpoints, migration tests and threat-model review. Validate independent data and business approvals before automated decisions.
+Validate OIDC interoperability and physical passkey/authenticator usability; strengthen trusted device telemetry, abuse controls, cookie/TLS settings, managed key rotation, backup/retention, database migrations and threat-model review. Test independent data and business approvals before automated decisions. The optional [four-validator QBFT network](WEB3_NETWORK.md) has real measured crash behavior but shares one administrative host; independent operators, Byzantine testing, signer HSM and resilient submission endpoints remain operational work.
 
 For a suspected issue, record reproducible steps, affected module, impact and a proposed fix in a private channel. Never include credentials or sensitive request content in a public issue.

@@ -21,7 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from backend.app.risk import FEATURES, RiskEngine, features, metrics  # noqa: E402
 
-REQUIRED = {"User ID", "Login Timestamp", "User Agent String", "Country", "Login Successful", "Is Account Takeover"}
+REQUIRED = {"User ID", "Login Timestamp", "User Agent String", "Country", "Login Successful"}
+LABELS = ("Is Account Takeover", "Is Attack IP")
 
 
 def boolean(value: str) -> bool:
@@ -42,13 +43,15 @@ def timestamp(value: str) -> datetime:
         return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
-def read_events(path: Path, max_rows: int):
+def read_events(path: Path, max_rows: int, label="Is Account Takeover", include_users=False):
+    if label not in LABELS:
+        raise ValueError("Use an explicitly supported source label")
     histories = defaultdict(lambda: {"devices": set(), "countries": set(), "failures": deque(), "events": deque(), "first": None})
-    rows, labels, times = [], [], []
+    rows, labels, times, users = [], [], [], []
     last = None
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        missing = REQUIRED - set(reader.fieldnames or [])
+        missing = (REQUIRED | {label}) - set(reader.fieldnames or [])
         if missing:
             raise ValueError("Missing CSV columns: " + ", ".join(sorted(missing)))
         for index, row in enumerate(reader):
@@ -76,8 +79,9 @@ def read_events(path: Path, max_rows: int):
                 "vpn": False, "travel_distance_km": 0, "sensitivity": .5, "prior_risk": .1,
             }
             rows.append(features(context))
-            labels.append(int(boolean(row["Is Account Takeover"])))
+            labels.append(int(boolean(row[label])))
             times.append(now.isoformat())
+            users.append(hashlib.sha256(row["User ID"].encode()).hexdigest())
             history["events"].append(now)
             if boolean(row["Login Successful"]):
                 history["devices"].add(row["User Agent String"])
@@ -86,19 +90,33 @@ def read_events(path: Path, max_rows: int):
                 history["failures"].append(now)
     if not rows:
         raise ValueError("CSV has no events")
-    return np.asarray(rows), np.asarray(labels), times
+    result = (np.asarray(rows), np.asarray(labels), times)
+    return (*result, users) if include_users else result
 
 
-def evaluate(path: Path, max_rows: int):
-    x, y, times = read_events(path, max_rows)
+def partitions(users, split):
+    """Frozen row windows or hash cohorts; no label-driven reassignment."""
+    count=len(users)
+    if split == "chronological":
+        ends=[0, *[int(count*ratio) for ratio in (.6,.7,.8)], count]
+        return [np.arange(ends[i],ends[i+1]) for i in range(4)]
+    if split != "user-disjoint":
+        raise ValueError("Unknown split protocol")
+    # Hash a stable opaque user digest with a fixed protocol salt. Cohort choice
+    # never observes outcomes; ratios refer to users, not equal event counts.
+    cohorts=np.asarray([int(hashlib.sha256(('rba-user-study-v1:'+u).encode()).hexdigest()[:8],16)/2**32 for u in users])
+    return [np.flatnonzero((cohorts>=low)&(cohorts<high)) for low,high in ((0,.6),(.6,.7),(.7,.8),(.8,1))]
+
+
+def evaluate(path: Path, max_rows: int, split="chronological", label="Is Account Takeover"):
+    x, y, times, users = read_events(path, max_rows, label, include_users=True)
     if len(y) < 100:
         raise ValueError("At least 100 events are required; use a representative dataset with sufficient takeovers.")
-    ends = [int(len(y) * ratio) for ratio in (.6, .7, .8)]
-    slices = [slice(0, ends[0]), slice(ends[0], ends[1]), slice(ends[1], ends[2]), slice(ends[2], len(y))]
+    slices = partitions(users, split)
     names = ["train", "calibration", "threshold_selection", "test"]
     for name, part in zip(names, slices):
         if len(np.unique(y[part])) != 2:
-            raise ValueError(f"{name} partition needs both takeover and legitimate examples; no results were generated.")
+            raise ValueError(f"{name} partition needs both classes for {label}; no results were generated.")
     lr = make_pipeline(StandardScaler(), LogisticRegression(class_weight="balanced", max_iter=600, random_state=42))
     rf = RandomForestClassifier(n_estimators=100, max_depth=10, min_samples_leaf=12, class_weight="balanced", n_jobs=1, random_state=42)
     lr.fit(x[slices[0]], y[slices[0]])
@@ -120,12 +138,12 @@ def evaluate(path: Path, max_rows: int):
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return {
-        "dataset": {"name": "User-provided RBA CSV", "sha256": digest.hexdigest(), "rows_used": len(y), "row_limit": max_rows, "label": "Is Account Takeover", "feature_names": FEATURES,
-                    "partitions": {name: {"rows": len(y[part]), "positives": int(y[part].sum()), "start": times[part.start], "end": times[part.stop-1]} for name, part in zip(names, slices)}},
-        "method": {"split": "chronological 60/10/10/20", "ensemble": "0.4 LR + 0.6 RF", "calibration": "Platt sigmoid on independent calibration partition", "threshold_selection": "F1 on validation only", "features_use_prior_events_only": True},
+        "dataset": {"name": "Supplied RBA CSV (provenance required separately)", "sha256": digest.hexdigest(), "rows_used": len(y), "row_limit": max_rows, "label": label, "feature_names": FEATURES,
+                    "partitions": {name: {"rows": len(y[part]), "positives": int(y[part].sum()), "users":len({users[i] for i in part}), "start": times[part[0]], "end": times[part[-1]]} for name, part in zip(names, slices)}},
+        "method": {"split": split+" 60/10/10/20", "allocation_unit":"events" if split=="chronological" else "users by fixed SHA-256 cohorts; event ratios vary", "user_overlap_train_test":len({users[i] for i in slices[0]} & {users[i] for i in slices[3]}), "ensemble": "0.4 LR + 0.6 RF", "calibration": "Platt sigmoid on independent calibration partition", "threshold_selection": "F1 on validation only", "features_use_prior_events_only": True},
         "baseline": metrics(y[slices[3]], raw(x[slices[3]]), .5),
         "improved": metrics(y[slices[3]], calibrated(x[slices[3]]), threshold),
-        "limitations": ["This command does not deploy or alter the demo's risk model.", "The published RBA dataset is synthesized, not raw production data.", "VPN, travel distance, resource sensitivity and prior risk are unavailable and held constant.", "Normal hour uses the demo's fixed 10:00 reference, not a learned per-user baseline.", "Temporal split permits known users across periods; unseen-user generalization is not measured.", "Historical successful logins can include compromised sessions; device familiarity is not identity proof.", "Metrics may regress; no test-set tuning or automatic improvement claim."],
+        "limitations": ["This command does not deploy or alter the demo's risk model.", "The published RBA dataset is synthesized, not raw production data.", "Is Attack IP is a threat-intelligence proxy, not confirmed account takeover." if label=="Is Attack IP" else "Source takeover indicators in synthesized data do not establish real attack truth.", "VPN, travel distance, resource sensitivity and prior risk are unavailable and held constant.", "Normal hour uses the demo's fixed 10:00 reference, not a learned per-user baseline.", "Temporal split permits known users across periods; unseen-user generalization is not measured." if split=="chronological" else "User cohorts are disjoint but time windows overlap; this is not simultaneous future-time generalization. Test users accumulate their own prior online history without outcome features.", "Historical successful logins can include compromised sessions; device familiarity is not identity proof.", "Metrics may regress; no test-set tuning or automatic improvement claim."],
         "source": "https://github.com/das-group/rba-dataset",
     }
 
@@ -134,12 +152,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--csv", type=Path, required=True)
     parser.add_argument("--max-rows", type=int, default=200000)
+    parser.add_argument("--split", choices=("chronological","user-disjoint"), default="chronological")
+    parser.add_argument("--label", choices=LABELS, default=LABELS[0])
     parser.add_argument("--output", type=Path, default=ROOT / "experiments/results/rba.json")
     args = parser.parse_args()
     if args.max_rows < 100:
         parser.error("--max-rows must be at least 100")
     try:
-        report = evaluate(args.csv, args.max_rows)
+        report = evaluate(args.csv, args.max_rows, args.split, args.label)
     except (ValueError, OSError) as error:
         parser.exit(2, str(error) + "\n")
     args.output.parent.mkdir(parents=True, exist_ok=True)

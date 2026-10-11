@@ -1,0 +1,121 @@
+{
+  "dataset": {
+    "name": "Supplied RBA CSV (provenance required separately)",
+    "sha256": "f89528874e282776c60db26dd2f3c2cb28cec53ed87cc53c9d33633b0d8e18e3",
+    "rows_used": 200000,
+    "row_limit": 200000,
+    "label": "Is Attack IP",
+    "feature_names": [
+      "unknown_device",
+      "unknown_location",
+      "vpn",
+      "failed_attempts",
+      "hour_deviation",
+      "login_velocity",
+      "young_account",
+      "travel_distance",
+      "resource_sensitivity",
+      "prior_risk"
+    ],
+    "partitions": {
+      "train": {
+        "rows": 120000,
+        "positives": 10832,
+        "users": 49745,
+        "start": "2020-02-03T12:43:30.772000+00:00",
+        "end": "2020-02-04T22:40:42.265000+00:00"
+      },
+      "calibration": {
+        "rows": 20000,
+        "positives": 2507,
+        "users": 8126,
+        "start": "2020-02-04T22:40:43.424000+00:00",
+        "end": "2020-02-05T09:02:05.330000+00:00"
+      },
+      "threshold_selection": {
+        "rows": 20000,
+        "positives": 1711,
+        "users": 9450,
+        "start": "2020-02-05T09:02:06.457000+00:00",
+        "end": "2020-02-05T13:35:39.008000+00:00"
+      },
+      "test": {
+        "rows": 40000,
+        "positives": 3514,
+        "users": 17225,
+        "start": "2020-02-05T13:35:39.693000+00:00",
+        "end": "2020-02-06T03:27:03.206000+00:00"
+      }
+    }
+  },
+  "method": {
+    "split": "chronological 60/10/10/20",
+    "allocation_unit": "events",
+    "user_overlap_train_test": 2033,
+    "ensemble": "0.4 LR + 0.6 RF",
+    "calibration": "Platt sigmoid on independent calibration partition",
+    "threshold_selection": "F1 on validation only",
+    "features_use_prior_events_only": true
+  },
+  "baseline": {
+    "accuracy": 0.8614,
+    "precision": 0.103516,
+    "recall": 0.075413,
+    "f1": 0.087257,
+    "roc_auc": 0.582818,
+    "brier_score": 0.177771,
+    "threshold": 0.5,
+    "confusion_matrix": {
+      "true_negative": 34191,
+      "false_positive": 2295,
+      "false_negative": 3249,
+      "true_positive": 265
+    },
+    "friction_rate": 0.869475,
+    "legitimate_friction_rate": 0.862166,
+    "high_risk_block_rate": 0.0001,
+    "suspicious_direct_allow_rate": 0.054639,
+    "suspicious_challenge_or_block_recall": 0.945361,
+    "blocked_legitimate_rate": 0.00011,
+    "policy_thresholds": {
+      "low": 0.3,
+      "high": 0.7
+    }
+  },
+  "improved": {
+    "accuracy": 0.7598,
+    "precision": 0.102427,
+    "recall": 0.223392,
+    "f1": 0.140454,
+    "roc_auc": 0.582818,
+    "brier_score": 0.080476,
+    "threshold": 0.13,
+    "confusion_matrix": {
+      "true_negative": 29607,
+      "false_positive": 6879,
+      "false_negative": 2729,
+      "true_positive": 785
+    },
+    "friction_rate": 0.0,
+    "legitimate_friction_rate": 0.0,
+    "high_risk_block_rate": 0.0,
+    "suspicious_direct_allow_rate": 1.0,
+    "suspicious_challenge_or_block_recall": 0.0,
+    "blocked_legitimate_rate": 0.0,
+    "policy_thresholds": {
+      "low": 0.3,
+      "high": 0.7
+    }
+  },
+  "limitations": [
+    "This command does not deploy or alter the demo's risk model.",
+    "The published RBA dataset is synthesized, not raw production data.",
+    "Is Attack IP is a threat-intelligence proxy, not confirmed account takeover.",
+    "VPN, travel distance, resource sensitivity and prior risk are unavailable and held constant.",
+    "Normal hour uses the demo's fixed 10:00 reference, not a learned per-user baseline.",
+    "Temporal split permits known users across periods; unseen-user generalization is not measured.",
+    "Historical successful logins can include compromised sessions; device familiarity is not identity proof.",
+    "Metrics may regress; no test-set tuning or automatic improvement claim."
+  ],
+  "source": "https://github.com/das-group/rba-dataset"
+}
