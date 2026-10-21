@@ -79,6 +79,8 @@ Audit verification proves consistency of the retained local chain. It cannot pro
 
 When Web3 is configured, grant responses include pending/confirmed chain state. Protected access requires both local authority and the live Solidity grant. A successful vote quorum creates local approval; on-chain confirmation remains a separate state. RPC failure, registry/checkpoint mismatch, expiry or revocation denies protected access. `POST /api/blockchain/sync` returns `receipts` and `errors`; inspect actual receipt state rather than treating HTTP success as grant confirmation. Configuration and Docker persistence are documented in [deployment operations](../deployment/README.md).
 
+When grants overlap, console access and website permission checks use the longest-lived grant that is active locally and confirmed by the configured chain. A pending replacement does not hide an earlier valid grant. Chain unavailability or an invalid verification response denies access across all candidates.
+
 ## Registered website OAuth/OIDC
 
 | Method / path | Authentication | Behavior |
@@ -99,7 +101,11 @@ When Web3 is configured, grant responses include pending/confirmed chain state. 
 
 Registration accepts `public` or `confidential` clients and `openid`, `profile`, `iam:permissions` scopes. Confidential exchange/revocation supports secret-post or HTTP Basic. Permission responses bind `{allowed, sub, client_id, resource_id, scope, expires_at, reason}`; a website must validate those bindings and expiry rather than trusting `allowed` alone. Source: `backend/app/oauth.py`. [INTEGRATION.md](INTEGRATION.md) contains registration and complete server examples.
 
+For HTTP Basic exchange and revocation, the Authorization header supplies the client ID and secret; a form `client_id` is optional and must match when present. Form-encode each credential before base64 encoding, as specified by [RFC 6749 section 2.3.1](https://www.rfc-editor.org/rfc/rfc6749.html#section-2.3.1). Supplying a form `client_secret` with Basic authentication, conflicting client identities, or malformed Basic credentials returns `401 invalid_client`. Public clients continue to supply `client_id` in the form.
+
 ## Verified identity, onboarding and diagnostics
+
+`GET /api/research/uncertainty` is public and returns the frozen `uncertainty-study-v1` synthetic report with per-seed measurements, aggregate means/SD/ranges, hashes, protocol and limitations. Reading it never trains a model, changes a threshold or grants access. Missing, oversized, malformed or unsupported evidence returns `503` with a reproduction command. The response is packaged in Docker and displayed/exported by the Experiments screen. See [the uncertainty study](UNCERTAINTY_STUDY.md).
 
 See [AUTHENTICATION.md](AUTHENTICATION.md) for complete passkey/TOTP/recovery and session contracts. In secure mode client context is ignored; server-observed request context is partial telemetry. First private password login issues an enrollment-only session, capped at five minutes. Protected actions return `detail.code=factor_enrollment_required` until a real factor is enrolled. Context changes and server password-failure spikes require step-up. Website codes/tokens depend on their source console session and fail after expiry, revocation, enrollment restriction or step-up; RP headers are not compared to browser headers.
 

@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 import tempfile
 import time
 import unittest
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from urllib.parse import urlsplit
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -64,6 +67,97 @@ class QbftBoundaryTests(unittest.TestCase):
             self.assertFalse(mirror.check_grant({})["allowed"])
 
 
+class QbftReadFailoverTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        location = Path(self.directory.name)
+        with patch.dict(os.environ, {"IAM_WEB3_NETWORK": "qbft"}):
+            self.mirror = BlockchainMirror(Store(location/"iam.sqlite3"), location, rpc_url="http://qbft1:8545")
+        self.nodes = {f"qbft{index}": {} for index in range(1, 5)}
+        self.network = patch("urllib.request.urlopen", side_effect=self.rpc)
+        self.network.start()
+
+    def tearDown(self):
+        self.network.stop()
+        self.directory.cleanup()
+
+    def rpc(self, request, timeout):
+        self.assertEqual(timeout, 1.2)
+        node = self.nodes[urlsplit(request.full_url).hostname]
+        if node.get("down"):
+            raise OSError("Synthetic private validator outage")
+        packet = json.loads(request.data)
+        if packet["method"] == "eth_chainId":
+            result = node.get("chain", "0x7a69")
+        else:
+            common = packet["params"][0] != "latest"
+            age = node.get("common_age" if common else "age", 0)
+            result = {"number": "0x20", "timestamp": hex(int(time.time())+age), "hash": "0x"+node.get("hash", "aa")*32}
+        return io.BytesIO(json.dumps({"jsonrpc": "2.0", "id": 1, "result": result}).encode())
+
+    def test_primary_outage_selects_a_fresh_agreeing_private_reader(self):
+        self.assertEqual(self.mirror.require_quorum(), "http://qbft1:8545")
+        self.nodes["qbft1"]["down"] = True
+        self.assertEqual(self.mirror.require_quorum(), "http://qbft2:8545")
+        self.assertEqual(self.mirror.validator_health, 3)
+
+    def test_preferred_reader_on_minority_fork_is_not_selected(self):
+        self.nodes["qbft1"]["hash"] = "bb"
+        self.assertEqual(self.mirror.require_quorum(), "http://qbft2:8545")
+
+    def test_wrong_chain_reader_is_never_selected(self):
+        self.nodes["qbft1"]["chain"] = "0x1"
+        self.assertEqual(self.mirror.require_quorum(), "http://qbft2:8545")
+        self.assertEqual(self.mirror.validator_health, 3)
+
+    def test_two_outages_clear_selected_reader_and_deny(self):
+        self.mirror.require_quorum()
+        self.nodes["qbft1"]["down"] = self.nodes["qbft2"]["down"] = True
+        with self.assertRaisesRegex(RuntimeError, "Fewer than three"):
+            self.mirror.require_quorum()
+        self.assertIsNone(self.mirror.selected_rpc_url)
+
+    def test_common_block_must_also_be_fresh(self):
+        for node in self.nodes.values():
+            node["common_age"] = -30
+        with self.assertRaisesRegex(RuntimeError, "disagree"):
+            self.mirror.require_quorum()
+        self.assertIsNone(self.mirror.selected_rpc_url)
+
+    def test_split_common_hashes_deny(self):
+        self.nodes["qbft3"]["hash"] = self.nodes["qbft4"]["hash"] = "bb"
+        with self.assertRaisesRegex(RuntimeError, "disagree"):
+            self.mirror.require_quorum()
+
+    def test_connection_refreshes_after_the_selected_alias_changes(self):
+        fake = MagicMock()
+        fake.HTTPProvider.side_effect = lambda url, **_: SimpleNamespace(endpoint_uri=url)
+        fake.is_address.return_value = True
+        fake.to_checksum_address.side_effect = lambda value: value
+        fake.keccak.return_value = b"expected-registry-version"
+        readers = []
+        def client(provider):
+            reader = MagicMock()
+            reader.provider = provider
+            reader.eth.chain_id = 31337
+            reader.eth.get_code.return_value = b"registry"
+            contract = reader.eth.contract.return_value
+            contract.functions.REGISTRY_VERSION.return_value.call.return_value = b"expected-registry-version"
+            contract.functions.writer.return_value.call.return_value = "0x"+"22"*20
+            readers.append(reader)
+            return reader
+        fake.side_effect = client
+        self.mirror.signer = SimpleNamespace(registry=lambda: {"chain_id": 31337, "contract_address": "0x"+"11"*20, "writer_address": "0x"+"22"*20})
+        with patch.dict("sys.modules", {"web3": SimpleNamespace(Web3=fake)}):
+            first = self.mirror.connect()[0]
+            self.nodes["qbft1"]["down"] = True
+            second = self.mirror.connect()[0]
+        self.assertIsNot(first, second)
+        self.assertEqual(first.provider.endpoint_uri, "http://qbft1:8545")
+        self.assertEqual(second.provider.endpoint_uri, "http://qbft2:8545")
+        self.assertEqual(len(readers), 2)
+
+
 @unittest.skipUnless(os.getenv("IAM_TEST_QBFT") == "1", "Run isolated QBFT compose study for actual Besu consensus")
 class RealQbftTests(unittest.TestCase):
     def rpc(self, method, params=None):
@@ -78,7 +172,7 @@ class RealQbftTests(unittest.TestCase):
         state = Path("/test-state")
         store = Store(state/"iam.sqlite3")
         mirror = BlockchainMirror(store, state)
-        results_file = Path("/results/qbft-results.json")
+        results_file = Path(os.getenv("IAM_QBFT_RESULTS_FILE", "/results/qbft-results.json"))
         results = json.loads(results_file.read_text()) if phase != "baseline" else {
             "measured_at": stamp(), "environment": "Four Besu 26.9.0 validators on one Docker Desktop Linux host; chain 31337; synthetic IAM policy state", "independent_administration": False,
             "security": "No published RPC; distinct validator keys; signer-only encrypted writer keystore; authenticated fixed registry operations; API never receives writer key", "validator_count": 4, "block_period_seconds": 1, "phases": {}, "confirmation_ms": [],
@@ -115,7 +209,7 @@ class RealQbftTests(unittest.TestCase):
                     mirror.signer.call("/transaction", operation)
                 self.assertEqual(rejection.exception.code, 400)
             results["phases"][phase] = {"passed": True, "responsive_validators": mirror.validator_health, "identity_bound_grant": True, "authenticated_narrow_signer": True, "unlocked_accounts": 0, "anchored_events": packet["audit_count"]}
-        elif phase == "one_down":
+        elif phase in {"one_down", "primary_down"}:
             mirror.require_quorum()
             self.assertEqual(mirror.validator_health, 3)
             with store.connection(write=True) as db:
@@ -126,7 +220,9 @@ class RealQbftTests(unittest.TestCase):
             with store.connection() as db:
                 grant = dict(db.execute("SELECT * FROM grants WHERE id=?", (grant_id,)).fetchone())
             self.assertTrue(mirror.check_grant(grant)["allowed"])
-            results["phases"][phase] = {"passed": True, "responsive_validators": 3, "grant_allowed": True, "new_anchor_confirmed": True}
+            results["phases"][phase] = {"passed": True, "responsive_validators": 3, "grant_allowed": True, "new_anchor_confirmed": True, "selected_reader": mirror.selected_rpc_url}
+            if phase == "primary_down":
+                self.assertNotEqual(mirror.selected_rpc_url, "http://qbft1:8545")
         elif phase == "two_down":
             before = self.rpc("eth_blockNumber")
             with store.connection() as db:

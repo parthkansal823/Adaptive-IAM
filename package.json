@@ -8,9 +8,12 @@
     "dev": "node scripts/dev.mjs",
     "dev:backend": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1 -Service backend",
     "dev:frontend": "npm --prefix frontend run dev",
-    "check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1",
+    "check": "node scripts/verify.mjs",
+    "doctor": "node scripts/verify.mjs --doctor",
+    "check:complete": "node scripts/verify.mjs --browser --live-web3",
     "build": "npm --prefix frontend run build",
     "context": "python scripts/context.py",
-    "research:verify": "python scripts/verify_research.py"
+    "research:verify": "python scripts/verify_research.py",
+    "research:uncertainty": "node scripts/verify.mjs --uncertainty"
   }
 }

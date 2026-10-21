@@ -23,6 +23,7 @@ from .lab import install_lab
 from .nlp import JustificationEngine
 from .oauth import OAuthProvider, install_oauth
 from .reviewers import ReviewerSelector
+from .research import install_research
 from .risk import RiskEngine
 from .store import PASSWORD, Store, canonical, hash_password, now, secret_hash, stamp, verify_password
 
@@ -47,6 +48,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
         yield
 
     api = FastAPI(title="Adaptive IAM research API", version="1.0.0", lifespan=lifespan)
+    install_research(api)
     rate_state, rate_lock = defaultdict(deque), threading.Lock()
     # In-process isolated test fixtures can reset this limiter; no HTTP access exposes it.
     api.state.login_rate_state = rate_state
@@ -360,8 +362,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
             resource = db.execute("SELECT * FROM resources WHERE id=?", (resource_id,)).fetchone()
             if not resource:
                 raise HTTPException(404, "Resource not found")
-            grant = db.execute("SELECT * FROM grants WHERE user_id=? AND resource_id=? AND status='active' AND expires_at>? ORDER BY expires_at DESC LIMIT 1", (actor, resource_id, stamp())).fetchone()
-            chain = api.state.blockchain.check_grant(dict(grant)) if grant else {"required": api.state.blockchain.enabled, "allowed": False, "status": "no_local_grant"}
+            grant, chain = store.active_grant(db, actor, resource_id, api.state.blockchain)
             allowed = bool(grant) and chain["allowed"]
             store.audit(db, "resource_access_checked", actor, {"resource_id": resource_id, "allowed": allowed, "grant_id": grant["id"] if grant else None, "chain_required": chain["required"], "chain_status": chain["status"]})
             return {"allowed": allowed, "resource_id": resource_id, "resource_name": resource["name"], "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if allowed else None, "reason": "Active identity-bound read grant confirmed by configured policy" if allowed else chain.get("reason", "No active read grant for this authenticated identity"), "blockchain": chain, "content": {"title": resource["name"], "records": ["Synthetic research record: access is checked on the server.", "This demo resource contains no production or personal data."]} if allowed else None}

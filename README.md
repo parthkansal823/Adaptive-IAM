@@ -15,6 +15,8 @@ docker compose ps
 
 Open [Adaptive IAM](http://127.0.0.1:5173/) and [API docs](http://127.0.0.1:8000/docs). Sign in with a listed demo identity and password `Demo@123!`. Containers run without root with read-only filesystems and restricted privileges; the Ethereum RPC remains inside the internal Docker network. The API and console are published only to this computer. [Deployment guide](deployment/README.md) explains persistence, grant confirmation, revocation and safe shutdown. Stop host development servers before using the same ports in Docker.
 
+The console tooling uses React 19.3, TypeScript 7 and Vite 8. Docker/CI use Node.js 24 LTS and Python 3.13. [Technology decisions](docs/TECH_STACK.md) records official sources, selected upgrades, alternatives and remaining deployment work.
+
 ```powershell
 docker compose stop
 docker compose up -d
@@ -26,6 +28,8 @@ For the provider plus a separately protected demonstration website on port 3001:
 docker compose -f compose.yaml -f deployment/compose.website.yaml --profile website up --build -d --wait
 ```
 
+Open [Orbit SaaS workspace](http://127.0.0.1:3001/) for the separate business website: product home, plans, signed-in dashboard, searchable sample projects, protected reports and account settings. Business data/pricing are illustrative; identity and permission checks use the running IAM provider. [SaaS walkthrough](docs/SAAS_WEBSITE.md) covers the sign-in and access journey.
+
 The [integration guide](docs/INTEGRATION.md) explains consent, human grants and reusable Node/Python SDKs. Security now supports verified passkeys, TOTP, single-use recovery codes and server-observed session checks. Public passwords/displayed challenges remain explicit demo features until a real factor is enrolled. [Authentication](docs/AUTHENTICATION.md) documents enrollment, private operator provisioning and `IAM_DEMO_MODE=false`; private first sign-in is limited to five minutes of factor setup before it can access protected APIs.
 
 The Developer portal adds organizations, an application wizard, exact callback diagnostics and confidential-secret rotation. New organization/app security changes require recent real-factor verification. The Attack lab provides 12 recorded diagnostics from the running model and current owned permissions; it cannot create grants or cast votes. Organization membership scopes app management but seeded resources remain shared research infrastructure, not complete tenant isolation.
@@ -34,7 +38,7 @@ An optional [four-validator QBFT network](docs/WEB3_NETWORK.md) uses Besu and an
 
 ## Start on Windows
 
-Prerequisites: Python 3.11+, Node.js 22+, npm and Git. Run from the repository root:
+Recommended prerequisites: Python 3.13, Node.js 24 LTS, npm and Git, matching Docker/CI. Other runtime versions need their own compatibility checks. Run from the repository root:
 
 ```powershell
 .\scripts\setup.ps1
@@ -76,6 +80,14 @@ npm run dev
 
 ## Verify and reproduce
 
+The Experiments screen includes an [uncertainty and distribution-shift study](docs/UNCERTAINTY_STUDY.md): five fresh fits, conformal prediction sets, four held-out conditions and explicit detection/friction costs. Its measured JSON and [exported figure](experiments/figures/uncertainty-study.svg) accompany the code. Reproduce with `npm run research:uncertainty`; it does not replace the deployed model.
+
+Node website sessions can survive restarts using encrypted local SQLite; the Docker website enables this in its own volume. [Integration settings](docs/INTEGRATION.md) describe keys and same-host workers. [Offline backup/restore](docs/BACKUP.md) preserves IAM SQLite state, signing identity and enrolled-factor keys with validation before installation.
+
+Run `npm run check:complete` to include installed-browser regressions and fresh isolated live-chain API checks. The command preserves existing IAM/chain state and requires no running Docker stack.
+
+Run `npm run doctor` to check runtimes and installed dependency versions without changing configuration. `npm run check` uses the repository's virtual environment and runs the same project checks on Windows, macOS and Linux. It also accepts `npm run check -- --changed`.
+
 ```powershell
 .\scripts\verify.ps1 -Research
 .venv\Scripts\python.exe experiments/evaluate.py
@@ -83,6 +95,8 @@ python scripts/context.py
 ```
 
 Evaluation writes measured results to `experiments/results.json`; model artifacts and local SQLite runtime data are ignored by Git. [RESEARCH.md](docs/RESEARCH.md) explains comparison design and limitations, with [paired uncertainty](experiments/robustness.json), [independent candidate selection](experiments/candidate-study.json) and [32 runtime language cases](experiments/case-study.json). The [evidence report](reports/Adaptive%20IAM%20evidence%20study.md), [manuscript draft](docs/paper/MANUSCRIPT.md) and [verified readings](research_notes/Adaptive%20IAM%20evidence%20study/readings.md) support a new paper. [DEVELOPMENT.md](docs/DEVELOPMENT.md) covers network-free Docker analysis, hooks, optional models and contribution workflow.
+
+The latest studies add [five complete retraining runs](experiments/risk-protocol.json), [external synthesized-data eligibility and proxy holdouts](experiments/external-study.json), [multilingual diagnostics](experiments/multilingual-results.json) and an [independent human annotation workflow](docs/ANNOTATION.md). Calibration improves probability error, while equally tuned raw/calibrated controls make identical decisions. External proxy results include a user-disjoint regression; only three takeover labels occur in the sample, so no takeover score is claimed. All readings and figures remain reviewable alongside the manuscript.
 
 ## Repository guide
 
@@ -115,5 +129,3 @@ Source changes and Git commits remain yours to review and commit. Do not deploy 
 
 This project is a joint academic work developed as part of a college major project.
 No part of this repository may be used, copied, modified, or distributed without explicit written permission from ALL authors.
-
-The latest studies add [five complete retraining runs](experiments/risk-protocol.json), [external synthesized-data eligibility and proxy holdouts](experiments/external-study.json), [multilingual diagnostics](experiments/multilingual-results.json) and an [independent human annotation workflow](docs/ANNOTATION.md). Calibration improves probability error, while equally tuned raw/calibrated controls make identical decisions. External proxy results include a user-disjoint regression; only three takeover labels occur in the sample, so no takeover score is claimed. All readings and figures remain reviewable alongside the manuscript.

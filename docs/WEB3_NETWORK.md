@@ -28,7 +28,7 @@ Use `docker compose -f deployment/compose.qbft.yaml --profile console down` to s
 - Validators and signer occupy an internal Docker bridge. **No RPC, peer or signer port is published.** Validators enable only ETH/NET/QBFT RPC, exact host allowlists, static peers and local node permissioning. Console/API additionally join an edge bridge for loopback publishing; that bridge permits their outbound traffic.
 - Containers use non-root users, read-only root filesystems, dropped capabilities and no-new-privileges. Besu's temporary mount permits execution because it extracts its packaged JNA/RocksDB native libraries there. Other scratch mounts remain `noexec`.
 
-The network image is official **Besu 26.9.0**, verified on 10 October 2026 against its [release page](https://github.com/besu-eth/besu/releases/tag/26.9.0), pinned to multiarch digest `sha256:fc1813d67d630d7660eea6ee555c01e73bfecda3e54d24f9484c1c4a52c6fcb0`. The signer toolchain separately pins ethers 6.17.0, Solidity 0.8.37 and the advisory-fixed `tmp` 0.2.7 override; npm audit reported zero advisories at implementation time. The original Ganache dependency set is unchanged. QBFT bytecode targets London; Ganache bytecode retains Shanghai.
+The network image is official **Besu 26.9.0**, verified again on 14 October 2026 against its [release page](https://github.com/besu-eth/besu/releases/tag/26.9.0), pinned to multiarch digest `sha256:fc1813d67d630d7660eea6ee555c01e73bfecda3e54d24f9484c1c4a52c6fcb0`. The signer toolchain separately pins ethers 6.17.0, Solidity 0.8.37 and the advisory-fixed `tmp` 0.2.7 override; its clean build reported zero npm advisories at this review. The legacy Ganache tools now use these same direct ethers/compiler versions but retain bundled Ganache advisories; see [upgrade decisions](WEB3_UPGRADES.md). QBFT bytecode targets London; Ganache bytecode retains Shanghai.
 
 ## Live authority and outages
 
@@ -36,7 +36,7 @@ Set `IAM_WEB3_NETWORK=qbft`, RPC `http://qbft1:8545`, signer `http://registry-si
 
 Every protected grant lookup requires at least **three responsive validators** on chain 31337, each reporting a head no older than eight seconds, and three agreeing on a recent common block hash. This check is uncached. The normal audit-prefix, local owner/quorum, grant identity, expiry and revocation checks remain authoritative. Fewer than three validators, disagreement, a stale head, signer failure or registry mismatch denies access/confirmation. This read guard supplements Besu consensus; it does not independently reimplement block signature verification.
 
-One validator crash leaves three validators and permits consensus. Losing two prevents finality and denies access. Returning nodes can take longer than the one-second configured block period: Besu consensus round timeouts back off after quorum loss. Recovery and outage delays must be measured rather than inferred from nominal block time. The signer currently uses validator 1 as its submission endpoint; its outage may interrupt writes even if the other three can finalize blocks.
+One validator crash leaves three validators and permits consensus. Losing two prevents finality and denies access. Returning nodes can take longer than the one-second configured block period: Besu consensus round timeouts back off after quorum loss. Recovery and outage delays must be measured rather than inferred from nominal block time. The signer now uses all four fixed aliases with three-response read/receipt agreement, a per-write fresh common-block guard and identical signed-byte broadcast. Backend readers select only an alias in the fresh agreeing majority. Validator 1 is a preference rather than the only submission or read endpoint. [Upgrade decisions](WEB3_UPGRADES.md) describe the QBFT block normalization and test evidence.
 
 Revocation removes local permission immediately. A signed on-chain revocation is then retried/confirmed through the existing outbox. A receipt displayed in the UI is evidence, not authority to bypass a live check.
 
@@ -49,6 +49,8 @@ python blockchain/scripts/qbft-study.py
 ```
 
 This host-side driver only controls the reserved disposable project `adaptive-iam-qbft-check`, using private subnet `172.29.84.0/24`. It never mounts a Docker socket into an application container and never connects to the normal IAM/Ganache or retained optional-console volumes. It runs baseline, one-node outage, two-node loss, then recovery/revocation and removes its own containers and volumes. `--keep` preserves only that disposable test project for diagnosis; a subsequent study resets its state.
+
+Add `--primary-outage` to include a real validator-1 outage and write the separate artifact `experiments/qbft-failover-results.json`. The original result below remains historical evidence for its original implementation. The current driver waits up to 180 seconds for a fresh signer at startup; RPC chain-ID health alone does not prove that initial finality is ready.
 
 The measured artifact is [experiments/qbft-results.json](../experiments/qbft-results.json). The 10 October 2026 run recorded:
 
@@ -63,6 +65,8 @@ The measured artifact is [experiments/qbft-results.json](../experiments/qbft-res
 | Recovery plus final revocation | 44.552 seconds from restarting the two nodes, including startup, polling and revocation |
 
 Six Python boundary tests and four actual phase flows passed, as did two operator-export security tests. This is a small local crash-outage study with synthetic IAM state, not a throughput benchmark, production SLO or Byzantine fault campaign. The latency includes signer submission-to-receipt finality, not the entire human review process. No gains in model accuracy follow from using this chain.
+
+The upgraded provider was separately measured on **14 October 2026** in [qbft-failover-results.json](../experiments/qbft-failover-results.json). All five phases passed, including validator 1 loss: reads selected `qbft2`, the existing approved grant remained available and a new signed checkpoint confirmed. Two-node loss denied access/anchors and held height 143 for four seconds. Recovery and on-chain revocation passed. The seven sequential transaction samples had median **887.89 ms**, range **755.19–6700.12 ms**; recovery plus revocation took **40.624 seconds**. Thirteen Python boundary/reader checks and the real phase check passed in each of the five phase executions. Eleven separate HTTP fixture tests cover malformed/disagreeing/stale state and transport failover. The same one-host and small-sample limitations apply.
 
 ## Prepare independently administered operators
 

@@ -27,8 +27,9 @@ services:
       IAM_CLIENT_CONFIG_FILE: /var/lib/site/client.json
       IAM_ALLOW_LOCAL_HTTP: '1'
       SITE_ORIGIN: http://127.0.0.1:3001
+      IAM_SITE_SESSION_DB: /var/lib/site-sessions/session.sqlite3
     ports: ['127.0.0.1:3001:3001']
-    volumes: [website_config:/var/lib/site:ro]
+    volumes: [website_config:/var/lib/site:ro, website_sessions:/var/lib/site-sessions]
     networks: [iam_internal, iam_edge]
     read_only: true
     cap_drop: [ALL]
@@ -47,3 +48,4 @@ services:
       retries: 6
 volumes:
   website_config:
+  website_sessions:

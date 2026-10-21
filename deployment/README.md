@@ -51,6 +51,29 @@ That separate project has no published ports, uses an ephemeral chain, and store
 
 Image tags select supported runtime families; they are not immutable digest pins. For reproducible production packaging, review and record image digests and perform dependency/image vulnerability scans.
 
+## Demo website credential recovery
+
+The website uses `website_config` read-only for client credentials and a separate writable `website_sessions` volume for encrypted SQLite sessions and its key (`/var/lib/site-sessions/session.sqlite3` and `.key`). Normal restarts preserve unexpired sessions and callback transactions; current IAM identity and grant checks still run for every protected response. Keep the database and key together, restrict host/volume access and use the same client configuration for same-host workers. Missing/wrong keys or corrupt records fail closed. This does not provide multi-host availability or detect an administrator restoring an older valid snapshot. See [durable session configuration](../docs/INTEGRATION.md#durable-node-website-sessions).
+
+IAM database/key backup and restore is documented in [BACKUP.md](../docs/BACKUP.md). That tool does not capture website sessions or chain databases. Retain coordinated, separately protected copies of these volumes/configuration when operational recovery requires them.
+
+The website setup service verifies a stored confidential client ID/secret using an unknown-token revocation request. The provider authenticates the client and returns success for that unknown token; no issued token or app secret is changed. Valid credentials are reused without a demo-password login, including after Kavya enrolls a real factor. Rejected, malformed, unreadable or oversized configurations stop setup and remain intact. Provider outages also stop setup; restore the API and retry instead of changing configuration.
+
+If saving a newly registered configuration fails, setup attempts to disable only that new application and always logs out its setup session. A failed cleanup produces guidance to review that registration in the Developer portal. Existing files and concurrent registrations remain intact.
+
+If you rotate the Orbit client secret, securely update `client.json` in the dedicated `website_config` volume with the current `client_id` and `client_secret`, then recreate the setup and website services. Both values are required; credentials must belong to an active confidential app with the original callback, scopes and resource mapping. Never paste the secret into a shell command, commit it or print the file in logs.
+
+For an intentional fresh public-demo registration when the new secret is unavailable or the app is disabled, preserve the old configuration and recreate only the website services:
+
+```powershell
+$siteCompose = @('-f', 'compose.yaml', '-f', 'deployment/compose.website.yaml', '--profile', 'website')
+docker compose @siteCompose stop website
+docker compose @siteCompose run --rm --no-deps website-register node --input-type=module -e "import fs from 'node:fs'; fs.renameSync('/var/lib/site/client.json', '/var/lib/site/client.json.backup-' + Date.now())"
+docker compose @siteCompose up -d --no-deps --force-recreate --wait website-register website
+```
+
+This explicitly backs up the credential file inside its existing private volume and creates a new demo application. Keep the provider running. Automatic new registration requires the public demo and an unenrolled Kavya setup identity; if she has enrolled a factor, use the Developer portal and supply the saved credentials instead. Existing website sessions end when the website is recreated. Review and disable the obsolete application through the portal once recovery succeeds. Preserve the IAM and chain volumes; deleting those volumes is unnecessary for website recovery.
+
 The checked-in blockchain npm lockfile explicitly marks Ganache's bundled macOS-only `fsevents` dependency as optional, matching its parent Chokidar declaration. Ganache's generated bundled lock omitted that flag and caused `npm ci` to reject Linux; the correction preserves its version and integrity and does not use `--force`.
 
 ## Private identity configuration

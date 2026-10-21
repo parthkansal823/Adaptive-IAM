@@ -51,6 +51,8 @@ The optional [four-validator QBFT study](WEB3_NETWORK.md) measures real local co
 
 ## Improving research validity next
 
+The [uncertainty stress study](UNCERTAINTY_STUDY.md) adds five fresh independent model fits, separate probability/conformal calibration and four fixed test conditions (IID, covariate shift, telemetry masking and label shift). Marginal and class-conditional prediction sets can only add verification to the baseline; always-challenge exposes the trivial detection/friction ceiling. The frozen [artifact](../experiments/uncertainty-study.json), [figure](../experiments/figures/uncertainty-study.svg) and Experiments console show measured costs and coverage failures as well as detection changes. The method applies established conformal prediction; it claims neither algorithmic novelty nor real-deployment accuracy, and changes no live authorization rule.
+
 1. Obtain independently verified organizational outcomes with enough positives for each prespecified partition; the completed public prefix still lacks eligible takeover labels.
 2. Combine user separation with a later-time test where feasible, report class imbalance and test distribution shift. Existing user-disjoint cohorts overlap in time.
 3. Collect independently labeled human justifications through the completed blind workflow; judgments remain distinct from attack outcomes and authorization votes.

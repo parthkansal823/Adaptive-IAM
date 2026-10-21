@@ -8,6 +8,7 @@ const setTheme = theme => {
   for (const button of document.querySelectorAll('.theme-toggle')) {
     button.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`)
     button.setAttribute('title', `Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`)
+    button.setAttribute('aria-pressed', String(theme === 'dark'))
   }
 }
 setTheme(['light','dark'].includes(savedTheme) ? savedTheme : systemTheme)
@@ -31,6 +32,11 @@ function filterProjects() {
   document.querySelector('.filter-empty').hidden = count !== 0
 }
 if (search && status) {
+  const params = new URLSearchParams(location.search)
+  search.value = (params.get('q') || '').slice(0, 100)
+  const initialStatus = params.get('status') || ''
+  if ([...status.options].some(option => option.value === initialStatus)) status.value = initialStatus
+  filterProjects()
   search.addEventListener('input', filterProjects)
   status.addEventListener('change', filterProjects)
 }

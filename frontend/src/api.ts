@@ -310,6 +310,47 @@ export interface AuthorizationPacket {
   expires_at: string
 }
 
+export interface UncertaintyStudy {
+  schema_version: 'uncertainty-study-v1'
+  synthetic: true
+  alpha: number
+  seeds: number[]
+  summary: Record<string, Record<string, Record<string, { mean: number; sample_std: number; minimum: number; maximum: number }>>>
+  protocol: Record<string, unknown>
+  runs: unknown[]
+  limitations: string[]
+}
+
+export interface LanlStudy {
+  schema_version: 'lanl-study-v1'
+  evidence_type: 'real_enterprise_authentication_with_exercise_redteam'
+  synthetic: false
+  source_real_enterprise: true
+  source: { kind: string; bounded_auth_prefix: boolean; [key: string]: unknown }
+  scan: { source_rows: number; selected_rows: number; source_first_second: number; source_last_second: number }
+  partitions: Record<'warmup' | 'validation' | 'test', {
+    events: number
+    unlabeled_events: number
+    matched_auth_rows: number
+    known_redteam_unique_tuples: number
+    first_second: number
+    last_second: number
+  }>
+  labels: { detection_metrics_eligible: boolean; eligibility_reason: string; unique_redteam_tuples_in_reference: number }
+  methods: Record<'new_user_source' | 'new_user_destination' | 'edge_surprise', {
+    threshold: { validation_alert_fraction: number; [key: string]: unknown }
+    test_alerts: number
+    test_alert_fraction: number
+    unlabeled_alerts: number
+    alert_fraction_over_unlabeled: number
+    known_redteam_alerted_auth_rows: number
+    known_redteam_recalled_unique_tuples: number
+    known_redteam_tuple_recall: number | null
+  }>
+  limitations: string[]
+  [key: string]: unknown
+}
+
 export class ApiError extends Error {
   status: number
   code?: string

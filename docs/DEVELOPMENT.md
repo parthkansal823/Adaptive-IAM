@@ -2,6 +2,10 @@
 
 Run commands from the repository root. See [README](../README.md) for installation and two-terminal startup.
 
+Use **Node.js 24 LTS** and **Python 3.13** to match Docker/CI. The console pins React 19.3.0, TypeScript 7.0.2, Vite 8.3.4 and React Router DOM 7.18.4. Install through `npm ci` after a lockfile update; do not reuse old `node_modules` across runtime/platform changes. [TECH_STACK.md](TECH_STACK.md) links upstream migration guides and explains the choices.
+
+If Windows application control blocks a native dependency, use the Linux Docker build/test workflow and keep the operating-system policy in place. A successful dependency install alone does not validate the authentication flow.
+
 ## Everyday commands
 
 | Task | Command on Windows |
@@ -15,8 +19,18 @@ Run commands from the repository root. See [README](../README.md) for installati
 | Changed-file checks | `.\scripts\verify.ps1 -Changed` |
 | Reproduce evaluation | `.venv\Scripts\python.exe experiments/evaluate.py` |
 | Small project map | `python scripts/context.py` |
+| Prerequisite diagnostics | `npm run doctor` |
+| Portable full checks | `npm run check` |
+| Checks with browser and isolated live EVM | `npm run check:complete` |
+| Reproduce uncertainty stress study | `npm run research:uncertainty` |
+
+`npm run doctor` uses the repository's virtual environment when present, checks Python/Node and direct dependency versions, and reports missing tools without installing anything or reading runtime credentials. A Python version differing from CI is reported explicitly. `npm run check` uses the same interpreter selection and forwards verification arguments, for example `npm run check -- --changed`. Optional browser fixture regressions and browser prerequisites are documented in [frontend/README.md](../frontend/README.md#browser-regression-checks).
 
 The portable runner is `python scripts/verify.py`, using your active interpreter. It runs Python state-transition/security tests, available experiment adapter tests, Node/Python OIDC relying-party tests, and the frontend typecheck/build. It never installs dependencies. Research evaluation is explicit because it trains models and rewrites measured artifacts. Website setup is in [INTEGRATION.md](INTEGRATION.md).
+
+`npm run check:complete` additionally runs the installed Chromium browser against isolated API fixtures and creates a fresh ephemeral loopback Ganache chain for the real API checkpoint/grant tests. The live-chain runner never uses configured IAM RPC, wallet, database or deployment metadata. Its temporary chain and files are closed/removed after the run. It needs the existing blockchain dependencies and Python backend dependencies; no Docker service is required. The separate Besu consensus experiment remains opt-in.
+
+CI runs both browser fixtures and the isolated API/EVM tests. The browser job uses Chrome/Chromium supplied by the [GitHub Ubuntu runner image](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md); local overrides are documented in the frontend README. Full fresh-model research generation is explicit: `npm run research:uncertainty`. Export its measured figure with `.venv/Scripts/python.exe experiments/plot_uncertainty.py` using the analysis requirements. See [the study](UNCERTAINTY_STUDY.md) and [backup operations](BACKUP.md).
 
 ## Git hooks
 

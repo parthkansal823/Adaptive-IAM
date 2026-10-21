@@ -152,6 +152,35 @@ class Store:
             db.execute("UPDATE grants SET status='expired' WHERE id=?", (row["id"],))
             self.audit(db, "grant_expired", row["user_id"], {"grant_id": row["id"], "resource_id": row["resource_id"]})
 
+    def active_grant(self, db, user_id, resource_id, blockchain):
+        """Use any live read grant; a pending replacement cannot mask an older one."""
+        required = bool(blockchain.enabled)
+        denied = (None, {"required": required, "allowed": False, "status": "no_local_grant"})
+        grants = db.execute("SELECT * FROM grants WHERE user_id=? AND resource_id=? AND scope='read' AND status='active' AND expires_at>? ORDER BY expires_at DESC,id", (user_id, resource_id, stamp())).fetchall()
+        for row in grants:
+            grant = dict(row)
+            if grant["expires_at"] <= stamp():
+                continue
+            try:
+                chain = blockchain.check_grant(grant)
+                if (not isinstance(chain, dict) or not isinstance(chain.get("allowed"), bool)
+                        or chain.get("required") is not required
+                        or chain.get("status") not in ({"confirmed", "pending_or_expired", "unavailable"} if required else {"disabled"})
+                        or chain["allowed"] != (chain["status"] == ("confirmed" if required else "disabled"))):
+                    raise ValueError("Invalid grant check result")
+            except Exception:
+                chain = {"required": required, "allowed": False, "status": "unavailable", "reason": "Grant verification unavailable; access denied"}
+            if chain["allowed"]:
+                if grant["expires_at"] <= stamp():
+                    continue
+                return grant, chain
+            if denied[0] is None:
+                denied = grant, chain
+            # RPC/checkpoint failures apply to the policy, not just one grant.
+            if chain["status"] != "pending_or_expired":
+                return grant, chain
+        return denied
+
     def request_dto(self, db, request_id, actor_id):
         row = db.execute("SELECT q.*,u.name requester_name,r.name resource_name FROM requests q JOIN users u ON q.requester_id=u.id JOIN resources r ON q.resource_id=r.id WHERE q.id=?", (request_id,)).fetchone()
         if not row:

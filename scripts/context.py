@@ -11,12 +11,12 @@ MAP = """Adaptive IAM: local research prototype.
 backend/ - Python API, identity/challenges, risk, reviews, timed grants, SQLite audit, tests.
 frontend/ - React/Vite console, API client, responsive dark/light themes.
 integrations/ - Node/Python OIDC clients, protected websites, security tests.
-blockchain/ - Solidity registry, local Ganache deployment and EVM tests.
+blockchain/ - Solidity registry, local EVM and optional four-validator QBFT network.
 deployment/ + compose.yaml - restricted Docker environment, local Web3 operations.
 experiments/ - seeded baseline/candidate evaluation and measured reports.
 reports/ + docs/paper/ - evidence report, manuscript draft and verified bibliography.
 research/ - 31 original assets; docs/RESEARCH_INDEX.md maps preserved filenames.
-docs/ - STATUS, ARCHITECTURE, RESEARCH, SECURITY, API, DEVELOPMENT, ROADMAP.
+docs/ - STATUS, TECH_STACK, SAAS_WEBSITE, ARCHITECTURE, RESEARCH, SECURITY, API.
 scripts/ - setup/dev/verify/check; .codex/ - reviewed hooks and focused agents.
 Read root + scoped AGENTS.md; target searches to owned modules.
 Do not dump datasets, paper extracts, binaries, lockfiles, .env or secret-bearing logs.

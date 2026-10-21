@@ -45,6 +45,9 @@ tmp/
 temp/
 artifacts/
 .cache/
+*.iam-backup.zip
+.iam-backup-*/
+.iam-restore-*/
 experiments/datasets/
 experiments/output/
 
@@ -53,4 +56,4 @@ experiments/output/
 Thumbs.db
 .idea/
 .vscode/
-
+.codex/

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { AuditEvent, Context, Risk } from './api'
 
-export type IconName = 'overview' | 'risk' | 'access' | 'audit' | 'research' | 'sun' | 'moon' | 'arrow' | 'refresh' | 'check' | 'close' | 'shield' | 'logout' | 'plus' | 'chevron' | 'lock' | 'clock' | 'download' | 'user' | 'signal'
+export type IconName = 'overview' | 'risk' | 'access' | 'audit' | 'research' | 'sun' | 'moon' | 'arrow' | 'refresh' | 'check' | 'close' | 'shield' | 'logout' | 'plus' | 'chevron' | 'lock' | 'clock' | 'download' | 'user' | 'signal' | 'menu' | 'external'
 
 const paths: Record<IconName, ReactNode> = {
   overview: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
@@ -24,6 +24,8 @@ const paths: Record<IconName, ReactNode> = {
   download: <><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" /></>,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 21v-3a8 8 0 0 1 16 0v3" /></>,
   signal: <><path d="M5 17v3M10 12v8M15 8v12M20 3v17" /></>,
+  menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+  external: <><path d="M14 3h7v7M21 3l-9 9" /><path d="M10 4H4v16h16v-6" /></>,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -31,7 +33,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 }
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className="brand"><span className="brand-mark"><svg width="27" height="29" viewBox="0 0 27 29" fill="none" aria-hidden="true"><path d="m13.5 2 11 6.5v13L13.5 28l-11-6.5v-13L13.5 2Z" stroke="currentColor" strokeWidth="1.4" /><path d="m7 19 6.5-11 6.5 11M10 15h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></span><span>Adaptive IAM{!compact && <small>Identity, in context</small>}</span></div>
+  return <div className="brand"><span className="brand-mark"><Icon name="shield" size={25} /></span><span>Adaptive IAM{!compact && <small>Identity & access</small>}</span></div>
 }
 
 export function Badge({ status, children }: { status: string; children?: ReactNode }) {

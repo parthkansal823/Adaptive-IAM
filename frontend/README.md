@@ -18,7 +18,7 @@ Open `http://127.0.0.1:5173`. Start the backend on `http://127.0.0.1:8000`; Vite
 - **Security:** real passkey enrollment/sign-in, TOTP enrollment with single-use recovery codes, recent factor verification, and active-session revocation. The browser invokes WebAuthn; the server verifies every ceremony.
 - **Attack lab:** 12 bounded authentication/language/authorization scenarios. Each run records actual model output and owned policy observations without creating requests, votes, or grants; the latest 20 runs remain inspectable.
 - **Risk lab:** nine editable scenarios covering familiar sign-in, new device, travel, suspicious activity, new location, rapid retries, VPN, after-hours, and a new account. Every scenario uses actual model probabilities; tier boundaries come from `/api/bootstrap`.
-- **Access requests:** justification analysis, selected reviewers, weighted voting, grant expiry, eligible owner/security-reviewer revocation, and real protected-resource checks.
+- **Access requests:** searchable request/grant lists with identity and status filters, justification analysis, selected reviewers, weighted voting, grant expiry, eligible owner/security-reviewer revocation, and real protected-resource checks.
 - **Audit ledger:** event payloads, hash-chain verification, actual blockchain status, and security-reviewer synchronization of hashes and timed grants.
 - **Experiments:** measured held-out metrics, protocol, limitations, and JSON export.
 - **Developer portal:** organizations and administrator/developer/member roles, a three-step application wizard, exact callback diagnostics, resource mappings, one-time client secrets, rotation, app disable, and provider endpoints. Sensitive mutations require recent verification with an enrolled factor.
@@ -34,4 +34,12 @@ Visible tabs check `/auth/me` every minute and when visibility changes. A server
 
 Confirmed requests, votes, and revocations remain confirmed if a subsequent workspace refresh fails; the UI reports that refresh separately. Expired or consumed consent requests are disabled. Failed blockchain status reads clear prior readiness. API calls have a 30-second timeout, with a two-minute window for votes, revocation, and batched chain synchronization.
 
+Request and grant displays wake at the next server-provided expiry and when the tab becomes visible or regains focus. Elapsed pending requests lose their vote form, elapsed grants lose their active status/revoke control, and expired protected-result content is removed from the view and component state. These conservative display updates use the browser clock; the server still checks every permission and operation. Overview request/review totals are explicitly snapshots from the last workspace refresh. A protected-resource result describes permission when checked, and opening it again performs a fresh API check. Changing the selected resource discards any pending result for the previous selection.
+
 `src/api.ts` is the typed contract. `DESIGN.md` records the white/black/orange token system. `AGENTS.md` contains compact editing conventions.
+
+## Browser regression checks
+
+Build the frontend, then run `node tests/console-regression.mjs` from this directory. The dependency-free check uses installed Edge, Chrome, or Chromium in headless mode. Set `IAM_TEST_BROWSER` or `CHROME_BIN` to its full executable path when automatic detection cannot find it; a missing browser or production bundle produces an actionable failure. These optional checks are separate from the default build and require no running backend.
+
+The 13 isolated local API fixture cases verify delayed logout, audit, and security-revocation responses during identity switching; scenario-catalog retry; the callback wizard's eight-URL limit and duplicate rejection; discarded resource results after selection changes; pending/grant expiry; protected-snapshot removal and explicit recheck; request/grant search and filters; overview expiry; and uncertainty-study retry, condition metrics and export availability. Narrow registration, access and uncertainty-study views are checked for overflow, including both themes for access and the study. Browser profiles use a separate temporary directory and are removed after the run. No real accounts, credentials, or grants are used; fixture metrics do not establish research performance.

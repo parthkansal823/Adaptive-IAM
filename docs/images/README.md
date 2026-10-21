@@ -1,5 +1,21 @@
 # Verified browser previews
 
+## Redesign verified on 14 October 2026
+
+Current Docker builds use React 19.3, TypeScript 7 and Vite 8. The console routes were inspected at 1440px and 390px; the SaaS workspace was inspected on desktop and at 390px. Document widths stayed within the viewport. Navigation, focus, Escape dismissal, themes, project filters and the authorized local OAuth consent journey were checked against the running API.
+
+- [Console overview, light](repair-overview-light.jpg): clear signed-out entry and research tools.
+- [Risk assessment, dark](repair-risk-dark.jpg): submitted suspicious scenario and actual model response, explicitly synthetic.
+- [Security, narrow dark](repair-security-mobile-dark.jpg): readable factor controls without exposing enrolled credentials.
+- [Orbit home, dark](repair-orbit-home-dark.jpg): sample business records clearly identified.
+- [Orbit dashboard, light](repair-orbit-dashboard-light.jpg): actual Aisha demo identity after OAuth/OIDC sign-in.
+- [Protected report, dark](repair-orbit-report-dark.jpg): existing live read grant checked before returning the report.
+- [Orbit account, narrow light](repair-orbit-account-mobile-light.jpg): identity and session information from the provider.
+
+Browser report access was checked with an existing synthetic grant. No-grant, revocation, session mismatch and provider outage behavior are separately covered by the HTTP/SDK tests. Local screenshots and test data are not production security evidence. Sessions and grants expire.
+
+## Earlier captures
+
 Captured from the local Docker prototype on 10 October 2026, using the seeded Aisha demo identity and synthetic resources. These screenshots show UI behavior, not deployment accuracy or production security evidence.
 
 - [Dark console](console-dark.jpg) and [light console](console-light.jpg): live API connection, evaluated sign-in, completed demo MFA and active resource grant.

@@ -1,54 +1,53 @@
-# Adaptive IAM design system
+# Adaptive IAM workspace design
 
-The subject is contextual identity and collective access authorization. This is a research workbench: assessments, grants, votes, integrations, and experiments use actual API results.
+The console helps a person sign in, review access and inspect security decisions. Every result comes from the API. The separate Orbit SaaS relying party is linked from navigation.
 
-## Tokens
+## Visual decisions
 
-| Token | Light | Dark | Purpose |
-| --- | --- | --- | --- |
-| Canvas | `#f5f5f5` | `#101010` | Quiet work area |
-| Surface | `#ffffff` | `#191919` | Functional regions |
-| Ink | `#171717` | `#f3f3f3` | Main content |
-| Navigation | `#111111` | `#090909` | Persistent rail |
-| Orange | `#c2410c` | `#fb923c` | Action, focus, and assessment |
-| Muted | `#666666` | `#aaaaaa` | Supporting text |
+The user's palette is white, black and orange. Light mode uses white surfaces (`#ffffff`), a neutral canvas (`#f5f6f7`), near-black text (`#18191b`) and orange actions (`#c64b0a`). Dark mode uses charcoal surfaces (`#1b1c1f`), a black canvas (`#121315`), light text (`#f4f4f5`) and brighter orange (`#ff9a52`). Muted green, amber and red carry security status only.
 
-The user's final palette direction is white, black, and orange. Low-risk verified states are monochrome, with amber and muted red reserved for risk semantics. Orange controls use white text in light mode and black text in dark mode for contrast.
+Segoe UI with a local system fallback keeps the app readable on Windows. Body copy is 14–15 px, forms are 15 px (16 px on phones), supporting text is 12–13 px, panel headings are 18 px and page headings are 28–29 px. Never shrink content to fit a crowded view.
 
-Type uses locally available Segoe UI with a humanist system fallback. Headings have compact spacing, labels stay in sentence case, and tabular numerals align measurements. Core sizes are 10, 12, 14, 16, 20, 28, and 34 px. Borders communicate group boundaries. Controls use 7 px radii and panels 12 px; status indicators are round.
+The visual signature is a quiet white/charcoal workspace with one orange primary action. Active navigation has strong black/white contrast. Panels group real tasks, with borders communicating separation. Avoid decorative gradients, fake charts and repeated sign-in prompts.
 
 ## Layout
 
-Left-aligned content uses a fixed navigation rail and flexible workspace. The centerpiece is a horizontal assessment journey: identity context, model risk, adaptive policy, and collaborative resource access. The small graph uses actual LR, RF, and ensemble probabilities. On mobile, the journey becomes a two-column sequence and navigation remains swipeable.
-
 ```text
-Navigation       Workspace / Overview                      Theme / Identity
-                 Access, with context.                     Run a context check
-Overview         [identity] → [risk probabilities] → [policy] → [resource]
-Risk lab
-Access requests  Workspace metrics, separated by quiet rules
-Audit ledger     Recent decisions                 Policy boundaries
-Experiments      Requests in motion
-Connected apps   Research evidence
-Security         Factors, recent verification, and active sessions
-Developer portal Organization → callbacks → permission scope
-Attack lab       Scenario → actual model and policy observations
+236 px navigation       Toolbar: current page, theme, identity
+                        Page title and short purpose
+Overview                Main action or live workspace state
+Security                Tabs for longer workflows
+Risk lab                Readable form / actual result
+Attack lab              Secondary details disclosed on request
+Access requests
+Audit ledger
+Experiments
+Developer portal
+
+Orbit SaaS              Footer with research environment status
+API connection
 ```
 
-## Brief review and refinement
+Below 960 px navigation becomes a vertical menu with an explicit open/close control, backdrop, Escape handling and focus containment. It never becomes a horizontal strip. Narrow pages use one column, wrapped tabs, 44 px controls and tables that scroll inside their panel. Target widths include 390 px and 437 px.
 
-Identical metric cards and decorative charts would feel like an ordinary admin template. Instead, one large decision journey anchors the page; open metrics, meaningful tables, and clear request details provide the rest. A black rail and orange data traces connect the identity theme. Data absence is visible rather than filled with invented examples. Light and dark modes are equally designed.
+React Router provides real page URLs and browser back/forward behavior. `/connect?request_id=...` remains the website consent entry. The sidebar stays consistent on every page.
 
-## Interaction rules
+## Hierarchy and interactions
 
-- Show successful actions only after API confirmation. Keep failures actionable.
-- Label seeded demo identities and credentials explicitly. Keep bearer tokens in sessionStorage; theme alone goes in localStorage.
-- Use the API's current policy thresholds rather than hardcoded chart ranges.
-- Public assessments do not create sessions. MFA, votes, grants, and resource reads remain server-enforced.
-- Connected apps use exact registered callbacks and PKCE. Consent never creates a resource grant.
-- Support visible keyboard focus, modal focus containment, semantic forms, reduced motion, and narrow screens.
-- Security groups enrollment and recovery around server verification state. Developer setup uses numbered steps because it is sequential. Attack diagnostics use a recorded policy journey; no decorative success states or simulated votes.
+- Signed-out Overview has one sign-in entry and a short explanation. Public experiments and risk checks remain discoverable.
+- Access, Security and Developer pages use tabs to focus each task. Context customization, model details, hashes and protocol diagnostics use disclosure sections.
+- One offline banner explains recovery. A compact sidebar indicator reports connection state.
+- Sign-in stays in a focused dialog. Scenario customization is secondary to identity and verification.
+- Success appears only after server confirmation. The client never grants access or fabricates activity.
+- Session tokens remain in sessionStorage. Theme preference alone is in localStorage. Authorization stays server-enforced.
+- Visible focus, keyboard navigation, reduced motion and both themes are required.
+
+## Brief review
+
+The previous decision journey repeated sign-in prompts and reduced mobile text to 9–11 px. It was removed in favor of a clear entry state, plain task names and fewer simultaneous controls. This administrative workspace prioritizes legibility and traceable decisions.
+
+The stylesheet consolidates repeated top-level selectors and groups responsive behavior at the end. Extend existing primitives before adding layout rules.
 
 ## Verification
 
-`npm run build` checks TypeScript and produces the static application. The root workflow separately checks actual browser behavior for theme, risk assessment, identity, request/reviewer workflow, consent, and responsive layout.
+Run `npm run build` for TypeScript and production assets. The root workflow checks the actual browser at desktop and phone widths, both themes, menu navigation, consent, sign-in and protected actions. A passing build alone does not establish completed browser verification.

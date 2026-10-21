@@ -43,7 +43,11 @@ def working_files() -> list[tuple[str, bytes]]:
     # os.walk prunes ignored directories before recursion; dependencies stay out of the scan.
     import os
     for directory, dirs, names in os.walk(ROOT):
-        dirs[:] = [name for name in dirs if name not in IGNORE_PARTS]
+        dirs[:] = [name for name in dirs if name not in IGNORE_PARTS and not name.lower().startswith((".iam-backup-", ".iam-restore-"))]
+        if Path(directory).relative_to(ROOT).parts == (".trunk",):
+            # Downloaded linter fixtures intentionally contain invalid syntax/keys.
+            # Project Trunk config remains scanned; staged files are never exempt.
+            dirs[:] = [name for name in dirs if name != "plugins"]
         for name in names:
             path = Path(directory) / name
             if path.is_symlink() or (name.startswith(".env") and not name.endswith(".example")):
@@ -57,6 +61,8 @@ def working_files() -> list[tuple[str, bytes]]:
 def check_file(path: str, data: bytes) -> list[str]:
     relative = PurePosixPath(path)
     errors: list[str] = []
+    if relative.name.lower().endswith(".iam-backup.zip") or any(part.lower().startswith((".iam-backup-", ".iam-restore-")) for part in relative.parts):
+        errors.append(f"{path}: credential backups and staging state must not be committed")
     if relative.name.startswith(".env") and not relative.name.endswith(".example"):
         errors.append(f"{path}: local environment file must not be committed")
     if relative.suffix in {".pem", ".key"} or relative.name in {"id_rsa", "id_ed25519"}:

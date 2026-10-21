@@ -15,7 +15,7 @@ import secrets
 import time
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qs, unquote_plus, urlencode, urlsplit, urlunsplit
 
 import jwt
 from cryptography.hazmat.primitives import serialization
@@ -81,6 +81,21 @@ def callback_url(uri: str, parameters: dict):
 
 def protocol_json(value, status_code=200, headers=None):
     return JSONResponse(value, status_code=status_code, headers={"Cache-Control": "no-store", "Pragma": "no-cache", **(headers or {})})
+
+
+def client_credentials(values, authorization):
+    """Resolve one client identity from form parameters or OAuth HTTP Basic."""
+    if not authorization:
+        return values
+    scheme, separator, encoded = authorization.partition(" ")
+    if scheme.lower() != "basic" or not separator or "client_secret" in values:
+        raise ValueError("Use one client authentication method")
+    identifier, secret = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
+    identifier = unquote_plus(identifier, encoding="utf-8", errors="strict")
+    secret = unquote_plus(secret, encoding="utf-8", errors="strict")
+    if not identifier or values.get("client_id", identifier) != identifier:
+        raise ValueError("Conflicting client identity")
+    return {**values, "client_id": identifier, "client_secret": secret}
 
 
 class OAuthProvider:
@@ -330,23 +345,18 @@ def install_oauth(api, authenticated, data_dir: Path):
             parsed = parse_qs(raw.decode("utf-8"), keep_blank_values=True, strict_parsing=True, max_num_fields=8)
         except (UnicodeError, ValueError):
             return protocol_json({"error": "invalid_request"}, status_code=400)
-        required = {"grant_type", "code", "client_id", "redirect_uri", "code_verifier"}
-        if not required <= set(parsed) or set(parsed) - required - {"client_secret"} or any(len(v) != 1 for v in parsed.values()):
+        required = {"grant_type", "code", "redirect_uri", "code_verifier"}
+        if not required <= set(parsed) or set(parsed) - required - {"client_id", "client_secret"} or any(len(v) != 1 for v in parsed.values()):
             return protocol_json({"error": "invalid_request"}, status_code=400)
         values = {k: v[0] for k, v in parsed.items()}
         if values["grant_type"] != "authorization_code" or not VERIFIER.fullmatch(values["code_verifier"]):
             return protocol_json({"error": "invalid_grant"}, status_code=400)
-        basic = request.headers.get("Authorization")
-        if basic:
-            try:
-                if "client_secret" in values or not basic.startswith("Basic "):
-                    raise ValueError()
-                client_id, password = base64.b64decode(basic[6:], validate=True).decode("utf-8").split(":", 1)
-                if client_id != values["client_id"]:
-                    raise ValueError()
-                values["client_secret"] = password
-            except (ValueError, UnicodeError):
-                return protocol_json({"error": "invalid_client"}, status_code=401)
+        try:
+            values = client_credentials(values, request.headers.get("Authorization"))
+        except (ValueError, UnicodeError):
+            return protocol_json({"error": "invalid_client"}, status_code=401)
+        if not values.get("client_id"):
+            return protocol_json({"error": "invalid_request"}, status_code=400)
         store = provider().store
         with store.connection(write=True) as db:
             app = db.execute("SELECT * FROM oauth_apps WHERE client_id=?", (values["client_id"],)).fetchone()
@@ -387,18 +397,16 @@ def install_oauth(api, authenticated, data_dir: Path):
             return protocol_json({"error": "invalid_request"}, status_code=400)
         try:
             parsed = parse_qs(raw.decode("utf-8"), keep_blank_values=True, strict_parsing=True, max_num_fields=5)
-            if not {"token", "client_id"} <= set(parsed) or set(parsed)-{"token", "client_id", "client_secret", "token_type_hint"} or any(len(v) != 1 for v in parsed.values()):
+            if "token" not in parsed or set(parsed)-{"token", "client_id", "client_secret", "token_type_hint"} or any(len(v) != 1 for v in parsed.values()):
                 raise ValueError()
             values = {k: v[0] for k, v in parsed.items()}
-            basic = request.headers.get("Authorization")
-            if basic:
-                if "client_secret" in values or not basic.startswith("Basic "):
-                    raise ValueError()
-                client_id, password = base64.b64decode(basic[6:], validate=True).decode("utf-8").split(":", 1)
-                if client_id != values["client_id"]:
-                    raise ValueError()
-                values["client_secret"] = password
         except (UnicodeError, ValueError):
+            return protocol_json({"error": "invalid_request"}, status_code=400)
+        try:
+            values = client_credentials(values, request.headers.get("Authorization"))
+        except (ValueError, UnicodeError):
+            return protocol_json({"error": "invalid_client"}, status_code=401)
+        if not values.get("client_id"):
             return protocol_json({"error": "invalid_request"}, status_code=400)
         store = provider().store
         with store.connection(write=True) as db:
@@ -433,8 +441,7 @@ def install_oauth(api, authenticated, data_dir: Path):
             if token['organization_id'] and resource_id not in api.state.developer.resource_ids(db, token['organization_id']):
                 raise HTTPException(403, 'Resource owner is no longer a member of this application organization')
             store.expire(db)
-            grant = db.execute("SELECT * FROM grants WHERE user_id=? AND resource_id=? AND status='active' AND expires_at>? ORDER BY expires_at DESC LIMIT 1", (token["user_id"], resource_id, stamp())).fetchone()
-            chain = api.state.blockchain.check_grant(dict(grant)) if grant else {"required": api.state.blockchain.enabled, "allowed": False, "status": "no_local_grant"}
+            grant, chain = store.active_grant(db, token["user_id"], resource_id, api.state.blockchain)
             allowed = bool(grant) and chain["allowed"]
             store.audit(db, "oauth_permission_checked", token["user_id"], {"client_id": token["client_id"], "resource_id": resource_id, "allowed": allowed, "chain_required": chain["required"], "chain_status": chain["status"]})
         return JSONResponse({"allowed": allowed, "sub": token["user_id"], "client_id": token["client_id"], "resource_id": resource_id, "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if allowed else None, "blockchain": chain, "reason": "Active human-approved subject grant confirmed by configured policy" if allowed else chain.get("reason", "Authentication and consent do not grant resource access")}, headers={"Cache-Control": "no-store", **provider().cors(request.headers.get("Origin"), json.loads(token["redirect_uris"]))})

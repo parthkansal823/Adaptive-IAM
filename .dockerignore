@@ -26,3 +26,6 @@ reports
 **/*.db-wal
 **/*.db-shm
 **/*.log
+**/*.iam-backup.zip
+**/.iam-backup-*
+**/.iam-restore-*

@@ -8,11 +8,13 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.parse import parse_qs, quote_plus, urlencode, urlsplit
+from unittest.mock import Mock, patch
 
 import jwt
 from fastapi.testclient import TestClient
 
+from backend.app.blockchain import identity_hash
 from backend.app.main import create_app
 from backend.app.oauth import OAuthProvider, pkce
 from backend.app.store import PASSWORD, Store, now, secret_hash, stamp
@@ -86,6 +88,17 @@ class OAuthIntegrationTests(unittest.TestCase):
         response = self.token(app, callback["code"][0])
         self.assertEqual(response.status_code, 200, response.text)
         return app, response.json()
+
+    def approved_grant(self, duration=1):
+        response = self.client.post("/api/requests", headers=self.headers(), json={"resource_id": "research-vault", "justification": "Read approved IAM-42 audit evidence for the assigned project review due Friday.", "duration_hours": duration})
+        self.assertEqual(response.status_code, 201, response.text)
+        request = response.json()
+        for reviewer in (next(r["id"] for r in request["reviewers"] if r["is_owner"]), next(r["id"] for r in request["reviewers"] if not r["is_owner"])):
+            vote = self.client.post(f"/api/requests/{request['id']}/votes", headers=self.headers(reviewer), json={"approve": True})
+            self.assertEqual(vote.status_code, 200, vote.text)
+        self.assertEqual(vote.json()["status"], "approved")
+        with self.application.state.store.connection() as db:
+            return dict(db.execute("SELECT * FROM grants WHERE request_id=?", (request["id"],)).fetchone())
 
     def test_discovery_and_jwks_are_public_rs256_only(self):
         discovery = self.client.get("/.well-known/openid-configuration").json()
@@ -193,6 +206,55 @@ class OAuthIntegrationTests(unittest.TestCase):
         credentials = base64.b64encode((app["client_id"]+":"+app["client_secret"]).encode()).decode()
         self.assertEqual(self.client.post("/oauth/token", data=values, headers={"Authorization": "Basic "+credentials}).status_code, 200)
 
+    def test_basic_authentication_needs_no_body_client_id_and_revokes_token(self):
+        app = self.register(confidential=True)
+        # OAuth Basic percent-encodes each credential before base64 encoding.
+        secret = "fixture secret:+% caf\u00e9"
+        with self.application.state.store.connection(write=True) as db:
+            db.execute("UPDATE oauth_apps SET secret_hash=? WHERE client_id=?", (secret_hash(secret), app["client_id"]))
+        callback, _ = self.consent(app)
+        credentials = base64.b64encode((quote_plus(app["client_id"])+":"+quote_plus(secret)).encode()).decode()
+        headers = {"Authorization": "bAsIc "+credentials}
+        values = {"grant_type": "authorization_code", "code": callback["code"][0], "redirect_uri": CALLBACK, "code_verifier": VERIFIER}
+        response = self.client.post("/oauth/token", data=values, headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        token = response.json()["access_token"]
+        bearer = {"Authorization": "Bearer "+token}
+        self.assertEqual(self.client.get("/oauth/userinfo", headers=bearer).status_code, 200)
+        for _ in range(2):
+            response = self.client.post("/oauth/revoke", data={"token": token}, headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.get("/oauth/userinfo", headers=bearer).status_code, 401)
+
+    def test_basic_rejects_conflicting_identity_and_multiple_authentication_methods(self):
+        app = self.register(confidential=True)
+        other = self.register(confidential=True)
+        callback, _ = self.consent(app)
+        credentials = base64.b64encode((app["client_id"]+":"+app["client_secret"]).encode()).decode()
+        headers = {"Authorization": "Basic "+credentials}
+        values = {"grant_type": "authorization_code", "code": callback["code"][0], "redirect_uri": CALLBACK, "code_verifier": VERIFIER}
+        for extra in ({"client_id": other["client_id"]}, {"client_secret": app["client_secret"]}):
+            response = self.client.post("/oauth/token", data={**values, **extra}, headers=headers)
+            self.assertEqual(response.status_code, 401, response.text)
+            self.assertEqual(response.json()["error"], "invalid_client")
+        response = self.client.post("/oauth/token", data=values, headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        token = response.json()["access_token"]
+        for extra in ({"client_id": other["client_id"]}, {"client_secret": app["client_secret"]}):
+            response = self.client.post("/oauth/revoke", data={"token": token, **extra}, headers=headers)
+            self.assertEqual(response.status_code, 401, response.text)
+            self.assertEqual(self.client.get("/oauth/userinfo", headers={"Authorization": "Bearer "+token}).status_code, 200)
+
+    def test_missing_or_malformed_client_identity_cannot_exchange_or_revoke(self):
+        app = self.register(confidential=True)
+        callback, _ = self.consent(app)
+        values = {"grant_type": "authorization_code", "code": callback["code"][0], "redirect_uri": CALLBACK, "code_verifier": VERIFIER}
+        for authorization in (None, "Basic !!!", "Basic "+base64.b64encode(b"missing-colon").decode(), "Bearer unrelated"):
+            headers = {"Authorization": authorization} if authorization else {}
+            self.assertIn(self.client.post("/oauth/token", data=values, headers=headers).status_code, (400, 401))
+            self.assertIn(self.client.post("/oauth/revoke", data={"token": "unknown"}, headers=headers).status_code, (400, 401))
+        self.assertEqual(self.token(app, callback["code"][0]).status_code, 200)
+
     def test_expired_authorization_code_and_access_token(self):
         app = self.register()
         response = self.authorize(app)
@@ -246,6 +308,59 @@ class OAuthIntegrationTests(unittest.TestCase):
         with self.application.state.store.connection(write=True) as db:
             db.execute("UPDATE grants SET expires_at=? WHERE request_id=?", (stamp(now()-timedelta(seconds=1)), request["id"]))
         self.assertFalse(self.client.get("/oauth/permissions/research-vault", headers=headers).json()["allowed"])
+
+    def test_pending_replacement_preserves_an_existing_live_chain_grant(self):
+        _, tokens = self.roundtrip()
+        older, newer = self.approved_grant(1), self.approved_grant(2)
+        mirror = self.application.state.blockchain
+        contract = Mock()
+        contract.functions.auditCount.return_value.call.return_value = 0
+        contract.functions.hasAccess.side_effect = lambda grant_id, user_id, resource_id: Mock(call=Mock(return_value=grant_id == identity_hash(older["id"])))
+        paths = (("/api/resources/research-vault/access", self.headers()), ("/oauth/permissions/research-vault", {"Authorization": "Bearer "+tokens["access_token"]}))
+        with patch.object(mirror, "enabled", True), patch.object(mirror, "connect", return_value=(None, contract, "writer")):
+            for path, headers in paths:
+                with self.subTest(path=path):
+                    response = self.client.get(path, headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertTrue(response.json()["allowed"])
+                    self.assertEqual(response.json()["expires_at"], older["expires_at"])
+            with self.application.state.store.connection() as db:
+                event = db.execute("SELECT payload FROM audit WHERE event_type='resource_access_checked' ORDER BY id DESC LIMIT 1").fetchone()
+                self.assertEqual(json.loads(event["payload"])["grant_id"], older["id"])
+            # The longer replacement still takes priority once it is live.
+            contract.functions.hasAccess.side_effect = None
+            contract.functions.hasAccess.return_value.call.return_value = True
+            for path, headers in paths:
+                self.assertEqual(self.client.get(path, headers=headers).json()["expires_at"], newer["expires_at"])
+            # A revoked local grant cannot be rescued by a stale contract record.
+            with self.application.state.store.connection(write=True) as db:
+                db.execute("UPDATE grants SET status='revoked' WHERE id=?", (older["id"],))
+            contract.functions.hasAccess.side_effect = lambda grant_id, user_id, resource_id: Mock(call=Mock(return_value=grant_id == identity_hash(older["id"])))
+            for path, headers in paths:
+                result = self.client.get(path, headers=headers).json()
+                self.assertFalse(result["allowed"])
+                self.assertIsNone(result["expires_at"])
+
+    def test_overlapping_grants_fail_closed_on_rpc_or_invalid_check_result(self):
+        _, tokens = self.roundtrip()
+        self.approved_grant(1)
+        self.approved_grant(2)
+        mirror = self.application.state.blockchain
+        paths = (("/api/resources/research-vault/access", self.headers()), ("/oauth/permissions/research-vault", {"Authorization": "Bearer "+tokens["access_token"]}))
+        with patch.object(mirror, "enabled", True), patch.object(mirror, "connect", side_effect=RuntimeError("Fixture RPC outage")) as connect:
+            for path, headers in paths:
+                result = self.client.get(path, headers=headers).json()
+                self.assertFalse(result["allowed"])
+                self.assertEqual(result["blockchain"]["status"], "unavailable")
+                self.assertIsNone(result["scope"])
+            self.assertEqual(connect.call_count, len(paths))
+        for invalid in (None, {"required": True, "allowed": "false", "status": "confirmed"}, {"required": True, "allowed": True}, {"required": False, "allowed": True, "status": "disabled"}):
+            with patch.object(mirror, "enabled", True), patch.object(mirror, "check_grant", return_value=invalid) as check:
+                for path, headers in paths:
+                    result = self.client.get(path, headers=headers).json()
+                    self.assertFalse(result["allowed"])
+                    self.assertEqual(result["blockchain"]["status"], "unavailable")
+                self.assertEqual(check.call_count, len(paths))
 
     def test_registered_origin_cors_does_not_expand_console_authority(self):
         self.register()

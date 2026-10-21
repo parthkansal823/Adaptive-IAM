@@ -51,7 +51,7 @@ services:
     image: adaptive-iam-chain:local
     user: '10001:10001'
     command: [npm, test]
-    volumes: ['../blockchain/tests:/app/blockchain/tests:ro']
+    volumes: ['../blockchain/tests:/app/blockchain/tests:ro', '../blockchain/scripts:/app/blockchain/scripts:ro']
     tmpfs: ['/tmp:rw,noexec,nosuid,size=32m', '/app/blockchain/artifacts:rw,nosuid,size=4m,uid=10001,gid=10001']
 
 networks:

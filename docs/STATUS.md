@@ -1,13 +1,19 @@
 # Project status
 
-Research assets: 31 originals organized under `research/`, with verified SHA-256 checksums.
+Research prototype. All 31 originals remain under `research/` with SHA-256 checksums. Synthetic measurements are not production accuracy; reports disclose limitations/regressions.
 
-Implementation: adaptive IAM console, Python API, React dark/light UI, registered OAuth/OIDC website sign-in, Node/Python permission SDKs and reproducible experiments. Docker adds a real local Ethereum/Solidity registry. This is a synthetic-data prototype; real deployment accuracy is unestablished.
+Implemented: Python API; React dark/light UI; passkeys, TOTP/recovery; session checks; OAuth/OIDC + PKCE; Node/Python SDKs; organization onboarding; secret rotation; attack diagnostics; owner/quorum review and timed grants. Orbit SaaS on port 3001 uses sample records and live IAM permissions. See `docs/SAAS_WEBSITE.md`.
 
-Security boundary: server-side identity, risk, eligible owner/quorum review and timed grants. SQLite audit chaining remains local. When Web3 is configured, live local contract grants/checkpoints also gate resource access; RPC failure denies access. Ganache is one trusted local development chain, not independent distributed consensus. LLM/BERT are optional advisers.
+Authority: server-enforced identity, policy and grants; NLP/LLMs advise only. SQLite chaining is local tamper evidence. EVM checks deny on RPC failure. Ganache is a development chain; four-validator Besu QBFT shares one host administrator, not independent operational trust.
 
-Development: root/scoped agent instructions, compact context helper, Git checks, CI, and project Codex config. Lifecycle hook definitions require review/trust through Codex `/hooks`; creating files alone does not activate them.
+Upgrade, 14 October 2026: React 19.3.0, TypeScript 7.0.2, Vite 8.3.4, React Router DOM 7.18.4; Docker/CI use Python 3.13 and Node 24 LTS. [Technology choices](TECH_STACK.md) and [Web3 upgrades](WEB3_UPGRADES.md) document sources and boundaries. Next.js/PostgreSQL were reviewed; neither is installed. SQLite remains local storage.
 
-Evidence: `experiments/results.json`, `robustness.json`, `candidate-study.json` and 32 diagnostic runtime language cases disclose gains, regressions and abstentions. The report/manuscript and verified readings document the research boundary. No external benchmark is claimed yet.
+Reliability, 17 October: standard OAuth Basic client authentication; overlapping confirmed-grant selection with strict local expiry; session-safe asynchronous UI actions; retryable Attack lab; eight unique callback URLs; authenticated website-config reuse and non-destructive recovery. `npm run doctor` diagnoses prerequisites; `npm run check` is portable. API/onboarding/recovery guides and regression checks accompany the changes.
 
-Verification, 10 October 2026: the complete project verifier passed (60 backend tests plus five optional live-RPC skips, four history-feature tests, 12 Python SDK tests, 13 Node SDK tests, two Solidity tests and frontend build). Separate isolated Docker execution passed all 11 blockchain tests, including live RPC, and a live OIDC smoke flow covered PKCE, signed identity, human approval, contract grants, revocation and client disable. Browser checks confirmed dark/light UI, narrow consent layout and a connected website's protected page; captures are in `docs/images/`. Production still needs trusted telemetry, independent data, verified MFA, protocol review and operational validation.
+Verification, 17 October: full `npm run check` passed on Python 3.11 / Node 24.22: 117 backend cases including six opt-in live-chain skips, 33 Node integration, 15 contract/RPC, 12 Python SDK, 15 script and seven research-protocol cases. Two additional expiry-boundary cases passed after final review (119 backend cases total). TypeScript/Vite build, six headless Edge fixture cases, dependency diagnostics and all 31 asset checksums passed. Python 3.13 remains the Docker/CI target. Browser fixtures are reproducible via `frontend/tests/console-regression.mjs`; they do not replace live-provider testing.
+
+Prior live evidence, 14 October: isolated Ganache/API, Docker OIDC and all five Besu failover/outage/recovery phases passed. These Docker/live-network checks were not rerun on 17 October. See `experiments/qbft-failover-results.json` and `docs/images/README.md`.
+
+Evidence: experiment JSON files disclose results and limits. External data is author-synthesized; scarce takeover labels do not support a takeover score. Independent annotation, trusted telemetry, security/interoperability review, shared sessions and recovery remain boundaries.
+
+Workflow: scoped agents, compact context, Git checks and CI. Codex hooks need trust through `/hooks`. Commits/pushes remain the user's responsibility.

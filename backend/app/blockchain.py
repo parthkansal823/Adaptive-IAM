@@ -62,15 +62,15 @@ class BlockchainMirror:
                 self.configuration_error = str(error)
         self.lock = threading.RLock()
         self.w3 = None
+        self.selected_rpc_url = None
 
     def connect(self):
         if not self.enabled or self.configuration_error:
             raise RuntimeError(self.configuration_error or "Web3 is disabled")
         from web3 import Web3
-        if self.mode == "qbft":
-            self.require_quorum()
-        if self.w3 is None:
-            self.w3 = Web3(Web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 1.5}, exception_retry_configuration=None))
+        rpc_url = self.require_quorum() if self.mode == "qbft" else self.rpc_url
+        if self.w3 is None or self.w3.provider.endpoint_uri != rpc_url:
+            self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 1.5}, exception_retry_configuration=None))
         if self.w3.eth.chain_id != CHAIN_ID:
             raise RuntimeError("Refusing any chain except local research chain 31337")
         address = self.address
@@ -129,20 +129,32 @@ class BlockchainMirror:
             except Exception:
                 return None
 
+        self.selected_rpc_url = None
         with ThreadPoolExecutor(max_workers=4) as pool:
             nodes = [node for node in pool.map(read_node, ("qbft1", "qbft2", "qbft3", "qbft4")) if node]
         self.validator_health = len(nodes)
         if len(nodes) < 3:
             raise RuntimeError("Fewer than three fresh private validators; access denied")
         height = min(node[1] for node in nodes)
-        hashes = []
-        for _, _, rpc in nodes:
+        agreeing = {}
+        for host, _, rpc in nodes:
             try:
-                hashes.append(rpc("eth_getBlockByNumber", [hex(height), False])["hash"])
+                block = rpc("eth_getBlockByNumber", [hex(height), False])
+                block_hash = block["hash"]
+                age = time.time() - int(block["timestamp"], 16)
+                if (int(block["number"], 16) == height and -2 <= age <= 8
+                        and isinstance(block_hash, str) and len(block_hash) == 66
+                        and block_hash.startswith("0x") and int(block_hash[2:], 16) >= 0):
+                    agreeing.setdefault(block_hash.lower(), []).append(host)
             except Exception:
                 pass
-        if len(hashes) < 3 or max(hashes.count(value) for value in hashes) < 3:
+        winning = next((hosts for hosts in agreeing.values() if len(hosts) >= 3), None)
+        if winning is None:
             raise RuntimeError("Private validators disagree on the finalized block; access denied")
+        preferred = urlsplit(self.rpc_url).hostname
+        selected = preferred if preferred in winning else winning[0]
+        self.selected_rpc_url = f"http://{selected}:8545"
+        return self.selected_rpc_url
 
     def local_events(self):
         with self.store.connection() as db:
@@ -206,6 +218,9 @@ class BlockchainMirror:
             args = ["0x" + value.hex() if isinstance(value, bytes) else value for value in call.args]
             result = self.signer.submit(kind, args)
             tx_hash = result["transaction_hash"]
+            # A validator can disappear while the isolated signer confirms.
+            # Reselect a fresh agreeing reader before verifying its receipt.
+            w3, _, _ = self.connect()
             receipt = w3.eth.get_transaction_receipt(tx_hash)
             if receipt["status"] != 1 or receipt["to"].lower() != call.address.lower() or receipt["from"].lower() != writer.lower():
                 raise RuntimeError("Isolated signer receipt does not match registry writer")

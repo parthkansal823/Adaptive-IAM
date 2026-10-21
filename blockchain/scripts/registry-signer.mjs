@@ -2,9 +2,11 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import {timingSafeEqual} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
-import {Contract, ContractFactory, JsonRpcProvider, NonceManager, Wallet, keccak256, toUtf8Bytes} from 'ethers';
+import {Contract, ContractFactory, NonceManager, Wallet, keccak256, toUtf8Bytes} from 'ethers';
+import {createQbftProvider, requireFreshQbftQuorum} from './qbft-provider.mjs';
 
-const provider = new JsonRpcProvider('http://qbft1:8545', 31337, {staticNetwork: false, pollingInterval: 150});
+const provider = createQbftProvider();
+await requireFreshQbftQuorum(provider);
 if ((await provider.getNetwork()).chainId !== 31337n) throw new Error('Research chain only');
 const password = (await fs.readFile('/signer/password', 'utf8')).trim();
 const wallet = await Wallet.fromEncryptedJson(await fs.readFile('/signer/writer.json', 'utf8'), password);
@@ -48,10 +50,15 @@ const server = http.createServer(async (req, res) => {
     const packet = JSON.parse(body);
     const method = validateOperation(packet);
     const run = async () => {
+      await requireFreshQbftQuorum(provider);
       if ((await provider.getNetwork()).chainId !== 31337n) throw new Error('Research chain only');
       const started = performance.now();
       const tx = await registry[method](...packet.arguments, {gasLimit: 350000, gasPrice: 0, type: 0});
-      const receipt = await Promise.race([tx.wait(), new Promise((_, reject) => setTimeout(() => reject(new Error('Confirmation timeout')), 12000))]);
+      let timeout;
+      let receipt;
+      try {
+        receipt = await Promise.race([tx.wait(), new Promise((_, reject) => {timeout = setTimeout(() => reject(new Error('Confirmation timeout')), 12000);})]);
+      } finally {clearTimeout(timeout);}
       if (!receipt || receipt.status !== 1) throw new Error('Registry reverted');
       return {transaction_hash: receipt.hash, block_number: receipt.blockNumber, confirmation_ms: Math.round((performance.now() - started) * 100) / 100};
     };
