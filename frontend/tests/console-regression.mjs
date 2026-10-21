@@ -27,9 +27,15 @@ const summary = { stats: { pending_requests: 0, active_grants: 0, audit_events: 
 let accessRequests = [], accessGrants = []
 let holdResource = false, resourceChecks = 0, inspectionLifetime = null
 let uncertaintyFail = false, uncertaintyReads = 0
+let lanlFail = false, lanlEligible = false, lanlReads = 0
 const aggregate = mean => ({ mean, sample_std: 0, minimum: mean, maximum: mean })
 const studyPolicy = (detection, friction, coverage) => ({ suspicious_detection_rate: aggregate(detection), legitimate_friction_rate: aggregate(friction), suspicious_direct_allow_rate: aggregate(1 - detection), ...(coverage === undefined ? {} : { coverage: aggregate(coverage), suspicious_coverage: aggregate(coverage - .05), both_labels_rate: aggregate(.2), mean_set_size: aggregate(1.2) }) })
 const uncertaintyStudy = { schema_version: 'uncertainty-study-v1', synthetic: true, alpha: .1, seeds: [0, 1, 2, 3, 4], protocol: { source: 'Isolated synthetic browser fixture' }, limitations: ['Synthetic fixture values exercise the interface; they are not study measurements.'], summary: { iid: { baseline: studyPolicy(.12, .05), marginal_gate: studyPolicy(.9, .1, .91), class_conditional_gate: studyPolicy(.96, .2, .95), always_challenge: studyPolicy(1, 1) }, telemetry_masking: { baseline: studyPolicy(.04, .06), marginal_gate: studyPolicy(.6, .12, .74), class_conditional_gate: studyPolicy(.8, .25, .85), always_challenge: studyPolicy(1, 1) } } }
+const lanlStudy = () => {
+  const split = (first, last, exercise = 0) => ({ events: 100, unlabeled_events: 100 - exercise, matched_auth_rows: exercise, known_redteam_unique_tuples: exercise, first_second: first, last_second: last })
+  const method = { threshold: { validation_alert_fraction: .05 }, test_alerts: 10, test_alert_fraction: .1, unlabeled_alerts: lanlEligible ? 8 : 10, alert_fraction_over_unlabeled: lanlEligible ? 8 / 96 : .1, known_redteam_alerted_auth_rows: lanlEligible ? 2 : 0, known_redteam_recalled_unique_tuples: lanlEligible ? 2 : 0, known_redteam_tuple_recall: lanlEligible ? .5 : null }
+  return { schema_version: 'lanl-study-v1', evidence_type: 'real_enterprise_authentication_with_exercise_redteam', synthetic: false, source_real_enterprise: true, source: { kind: 'Isolated browser fixture; not downloaded evidence', bounded_auth_prefix: true, landing_page: 'https://csr.lanl.gov/data/cyber1/' }, scan: { source_rows: 500, selected_rows: 300, source_first_second: 1, source_last_second: 300 }, partitions: { warmup: split(1, 100), validation: split(101, 200), test: split(201, 300, lanlEligible ? 4 : 0) }, labels: { detection_metrics_eligible: lanlEligible, eligibility_reason: lanlEligible ? 'Four recorded exercise tuples in this interface fixture.' : 'No exercise tuples match this interface fixture.', unique_redteam_tuples_in_reference: 12 }, methods: { new_user_source: method, new_user_destination: method, edge_surprise: method }, limitations: ['Fixture values exercise the interface only; they are not LANL measurements.'] }
+}
 const fixtureRequest = (id, overrides = {}) => ({ id, requester_id: 'b', requester_name: users[1].name, resource_id: 'vault', resource_name: resources[0].name, justification: 'Review the synthetic fixture records for the research task.', duration_hours: 1, status: 'pending', created_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', risk, nlp: { label: 'legitimate', confidence: .9, explanation: 'Synthetic fixture' }, reviewers: [{ id: 'a', name: users[0].name, weight: 1.5, is_owner: true }], votes: [], consensus: { approval_weight: 0, total_weight: 1.5, cast_weight: 0, quorum_required: 1, quorum_reached: false }, reviewer_selection: { reason: 'Fixture reviewer' }, can_vote: true, ...overrides })
 const fixtureGrant = (id, overrides = {}) => ({ id, request_id: 'approved-fixture', user_id: 'a', user_name: users[0].name, resource_id: 'vault', resource_name: resources[0].name, scope: 'read', created_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', status: 'active', can_revoke: true, ...overrides })
 let held = null
@@ -53,6 +59,7 @@ const server = createServer(async (req, res) => {
     if (path === '/api/bootstrap') return send(res, { demo_mode: true, users, resources, risk_thresholds: { low: .3, high: .7 }, reviewer_weights: {}, capabilities: {} })
     if (path === '/api/evaluation') return send(res, { dataset: {}, baseline: {}, improved: {} })
     if (path === '/api/research/uncertainty') { uncertaintyReads++; return uncertaintyFail ? send(res, { detail: 'Fixture study unavailable' }, 503) : send(res, uncertaintyStudy) }
+    if (path === '/api/research/lanl') { lanlReads++; return lanlFail ? send(res, { detail: 'Fixture real-data study unavailable' }, 503) : send(res, lanlStudy()) }
     if (path === '/api/auth/me') return send(res, { user: identity, risk, session })
     if (path === '/api/overview') return send(res, { ...summary, stats: { ...summary.stats, active_grants: accessGrants.filter(grant => grant.status === 'active').length, pending_requests: accessRequests.filter(request => request.status === 'pending').length, review_queue: accessRequests.filter(request => request.can_vote).length }, recent_requests: accessRequests.slice(0, 5) })
     if (path === '/api/requests') return send(res, { items: accessRequests })
@@ -367,7 +374,41 @@ try {
     }
     console.log('PASS uncertainty study retries, switches condition metrics, enables export, and fits both mobile themes')
   }
-  console.log('Frontend regression checks: 13 passed (isolated API fixtures, no real account mutations).')
+  {
+    lanlFail = true
+    const p = await page('/research')
+    await p.wait("document.querySelector('.real-data-study')?.textContent.includes('Fixture real-data study unavailable')", 'Failed real-data study did not show an actionable retry')
+    assert.equal(await p.evaluate("!!document.querySelector('.uncertainty-study select')"), true)
+    const readsBefore = lanlReads
+    lanlFail = false
+    await p.button('Retry real-data study')
+    await p.wait("document.querySelector('.real-data-eligibility')?.textContent.includes('not estimable')", 'Real-data study retry did not recover the sparse-label report')
+    assert.equal(lanlReads, readsBefore + 1)
+    assert.equal(await p.evaluate("Array.from(document.querySelectorAll('.real-data-methods tbody tr td:last-child')).every(cell => cell.textContent.includes('Not estimable') && !cell.textContent.includes('0.0%'))"), true)
+    assert.equal(await p.evaluate("Array.from(document.querySelectorAll('.real-data-study .protocol-list dd')).some(cell => cell.textContent === '500')"), true)
+    await p.evaluate("window.__originalCreateUrl = URL.createObjectURL; URL.createObjectURL = blob => { window.__lanlExport = blob; return window.__originalCreateUrl(blob) }")
+    await p.button('Export real-data study')
+    const exported = await p.evaluate("window.__lanlExport.text().then(JSON.parse)")
+    assert.deepEqual(exported, lanlStudy())
+    console.log('PASS real-data study recovers after 503, separates sparse-label recall from zero, and exports the full report')
+  }
+  {
+    lanlEligible = true
+    const p = await page('/research')
+    await p.wait("document.querySelector('.real-data-eligibility')?.textContent.includes('recall is eligible')", 'Eligible real-data fixture did not load')
+    const cells = await p.evaluate("Array.from(document.querySelectorAll('.real-data-methods tbody tr td:last-child')).map(cell => cell.textContent)")
+    assert.equal(cells.length, 3)
+    assert(cells.every(cell => cell.includes('50.0%') && cell.includes('2 / 4 known test exercise tuples')))
+    assert.equal(await p.evaluate("document.querySelector('.real-data-study').textContent.includes('8 / 96 unlabeled events')"), true)
+    await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    for (const theme of ['light', 'dark']) {
+      if (await p.evaluate('document.documentElement.dataset.theme') !== theme) await p.click('.theme-button')
+      await p.wait(`document.documentElement.dataset.theme === '${theme}'`, 'Real-data theme did not change')
+      assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
+    }
+    console.log('PASS real-data evidence shows exercise recall and unlabeled alert denominators and fits both mobile themes')
+  }
+  console.log('Frontend regression checks: 15 passed (isolated API fixtures, no real account mutations).')
 } finally {
   if (held) held.res.destroy()
   for (const p of pages) p.socket.close()
