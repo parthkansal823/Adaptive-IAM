@@ -6,6 +6,7 @@ import json
 import tempfile
 import time
 import unittest
+import zlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -33,6 +34,12 @@ class LanlProtocolTests(unittest.TestCase):
         _, failure = auth_event(row(10, outcome="Fail"))
         self.assertEqual(success, failure)
         self.assertEqual(Novelty().score(success), Novelty().score(failure))
+
+    def test_empty_and_question_mark_computers_are_excluded(self):
+        for source, destination in (("", "C2"), ("C1", ""), ("?", "C2"), ("C1", "?")):
+            with self.subTest(source=source, destination=destination):
+                self.assertIsNone(auth_event(row(10, source=source, destination=destination))[1])
+        self.assertIsNotNone(auth_event(row(10))[1])
 
     def test_past_only_history_and_future_cannot_change_previous_score(self):
         model = Novelty()
@@ -86,6 +93,16 @@ class LanlProtocolTests(unittest.TestCase):
                 self.assertNotIn("precision", method)
                 self.assertNotIn("accuracy", method)
 
+    def test_duplicate_auth_rows_count_once_for_reference_tuple_recall(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [row(i, source="C3" if i == 90 else "C1") for i in range(1, 101)]
+            rows.insert(90, row(90, source="C3", outcome="Fail"))
+            auth, labels = self.fixture(directory, rows, ["90,U1@DOM1,C3,C2"])
+            report = evaluate(auth, labels, budget=.1)
+            self.assertEqual(report["partitions"]["test"]["matched_auth_rows"], 2)
+            self.assertEqual(report["partitions"]["test"]["known_redteam_unique_tuples"], 1)
+            self.assertEqual(report["partitions"]["test"]["unlabeled_events"], 24)
+
     def test_label_changes_cannot_change_scores_thresholds_or_alert_counts(self):
         with tempfile.TemporaryDirectory() as directory:
             auth, labels = self.fixture(directory)
@@ -136,12 +153,19 @@ class LanlProtocolTests(unittest.TestCase):
     def test_bad_gzip_crc_is_rejected_even_in_prefix_mode(self):
         compressed = bytearray(gzip.compress(b"record\n", mtime=0))
         compressed[-8] ^= 1
-        with self.assertRaises(Exception):
+        with self.assertRaises(zlib.error):
             list(gzip_lines([bytes(compressed)], allow_prefix=True))
 
     def test_decompression_is_bounded(self):
         with self.assertRaisesRegex(ValueError, "Decompressed byte limit"):
             list(gzip_lines([gzip.compress(b"a\n" * 100)], max_output_bytes=10))
+
+    def test_concatenated_members_and_trailing_bytes_rejected(self):
+        first, second = gzip.compress(b"first\n"), gzip.compress(b"second\n")
+        for chunks in ([first + second], [first, second], [first + b"garbage"], [first, b"garbage"]):
+            with self.subTest(chunk_count=len(chunks)):
+                with self.assertRaisesRegex(ValueError, "Concatenated gzip members or trailing bytes"):
+                    list(gzip_lines(chunks))
 
     def test_known_reference_not_inferred_from_user_alone(self):
         with tempfile.TemporaryDirectory() as directory:

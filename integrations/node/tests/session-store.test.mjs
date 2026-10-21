@@ -62,6 +62,20 @@ test('independent workers share revocation, namespace boundaries and strict expi
   assert.equal(second.getSession(sessionId), undefined)
 })
 
+test('persisted sessions reject excessive remaining lifetime after a clock rollback', t => {
+  const f = fixture(t); const writer = f.open(); const sessionId = id(); const session = f.session()
+  writer.putSession(sessionId, session); f.close(writer)
+  // A reader clock rollback makes this expiry exceed the maximum remaining
+  // lifetime. It must fail closed without deleting the stored session.
+  f.state.now--
+  const reader = f.open()
+  assert.throws(() => reader.getSession(sessionId), failure)
+  f.state.now++
+  assert.deepEqual(reader.getSession(sessionId), session)
+  f.state.now = session.expiresAt
+  assert.equal(reader.getSession(sessionId), undefined)
+})
+
 test('cleanup removes a bounded batch and expired rows never regain authority', t => {
   const f = fixture(t); const store = f.open()
   for (let n = 0; n < 200; n++) store.putFlow(id(), f.flow())
@@ -157,21 +171,37 @@ test('atomic callback consumption across simultaneous Node workers allows one wi
 test('simultaneous first-start workers publish one complete encryption key', async t => {
   const f = fixture(t)
   const ids = [id(), id(), id(), id()]
+  const session = f.session()
   const workers = ids.map(sessionId => new Worker(`
     const { parentPort, workerData } = require('node:worker_threads');
     import(workerData.module).then(({ SqliteSessionStore }) => {
-      const store = new SqliteSessionStore(workerData.options);
-      try {
-        store.putSession(workerData.id, { accessToken: 'fixture-private-token', identity: { sub: 'aisha' }, expiresAt: Date.now() + 600000 });
-        parentPort.postMessage('saved');
-      } finally { store.close(); }
+      parentPort.postMessage('ready');
+      parentPort.once('message', () => {
+        let store;
+        try {
+          store = new SqliteSessionStore({ ...workerData.options, clock: () => workerData.now });
+          store.putSession(workerData.id, workerData.session);
+          parentPort.postMessage('saved');
+        } catch {
+          parentPort.postMessage('failed'); process.exitCode = 1;
+        } finally { store?.close(); }
+      });
     }).catch(() => { parentPort.postMessage('failed'); process.exitCode = 1; });
-  `, { eval: true, workerData: { module: new URL('../session-store.mjs', import.meta.url).href, id: sessionId, options: { filename: f.filename, namespace: 'https://site.example|https://iam.example|fixture-client' } } }))
+  `, { eval: true, workerData: { module: new URL('../session-store.mjs', import.meta.url).href, id: sessionId, session, now: f.state.now, options: { filename: f.filename, namespace: 'https://site.example|https://iam.example|fixture-client' } } }))
   t.after(async () => { await Promise.all(workers.map(worker => worker.terminate())) })
-  assert.deepEqual(await Promise.all(workers.map(worker => once(worker, 'message').then(([value]) => value))), ['saved', 'saved', 'saved', 'saved'])
+  assert.deepEqual(await Promise.all(workers.map(worker => once(worker, 'message').then(([value]) => value))), ['ready', 'ready', 'ready', 'ready'])
+  const saved = workers.map(worker => once(worker, 'message').then(([value]) => value))
+  // Imported workers cross this barrier together; the fixed fixture clock is
+  // shared by their writes and the later reader, independently of ACL latency.
+  for (const worker of workers) worker.postMessage('start')
+  assert.deepEqual(await Promise.all(saved), ['saved', 'saved', 'saved', 'saved'])
   assert.equal(fs.statSync(f.filename + '.key').size, 32)
   const store = f.open()
-  for (const sessionId of ids) assert.equal(store.getSession(sessionId)?.accessToken, 'fixture-private-token')
+  const inspect = new DatabaseSync(f.filename)
+  try {
+    assert.deepEqual(inspect.prepare('SELECT expires FROM site_sessions').all().map(row => row.expires), ids.map(() => session.expiresAt))
+  } finally { inspect.close() }
+  for (const sessionId of ids) assert.deepEqual(store.getSession(sessionId), session)
   assert.equal(fs.readdirSync(f.directory).some(name => name.endsWith('.tmp')), false)
 })
 

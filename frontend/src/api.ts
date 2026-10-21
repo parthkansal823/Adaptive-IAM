@@ -342,10 +342,44 @@ export interface LanlStudy {
     test_alerts: number
     test_alert_fraction: number
     unlabeled_alerts: number
-    alert_fraction_over_unlabeled: number
-    known_redteam_alerted_auth_rows: number
-    known_redteam_recalled_unique_tuples: number
+    alert_fraction_over_unlabeled: number | null
+    known_redteam_alerted_auth_rows: number | null
+    known_redteam_recalled_unique_tuples: number | null
     known_redteam_tuple_recall: number | null
+  }>
+  limitations: string[]
+  [key: string]: unknown
+}
+
+export interface RealAuthModelsStudy {
+  schema_version: 'real-auth-model-study-v1'
+  synthetic: false
+  protocol: Record<string, unknown>
+  protocol_sha256?: string
+  protocol_frozen_at_utc?: string
+  datasets: Record<string, {
+    source: { kind: string; auth_sha256: string; retrospective: boolean; bounded_prefix: boolean; source_url?: string; provenance?: Record<string, unknown>; [key: string]: unknown }
+    scan: { source_rows: number; selected_rows: number; source_first_second: number; source_last_second: number }
+    partition_cutoffs: Record<string, number>
+    partitions: Record<'warmup' | 'validation' | 'test', { events: number; first_second: number | null; last_second: number | null; matched_auth_rows: number; known_redteam_unique_tuples: number | null; unlabeled_events: number }>
+    labels: { available: boolean; detection_metrics_eligible: boolean; interpretation: string }
+    methods: Record<'lifetime_user_computer' | 'hierarchical_static' | 'hierarchical_decay', {
+      threshold: { minimum_score: number | null; validation_alerts: number; validation_events: number; validation_alert_fraction: number }
+      test_alerts: number
+      test_alert_fraction: number
+      unlabeled_alerts: number
+      alert_fraction_over_unlabeled: number | null
+      known_redteam_alerted_auth_rows: number | null
+      known_redteam_recalled_unique_tuples: number | null
+      known_redteam_tuple_recall: number | null
+    }>
+    test_strata: Record<'cold_user' | 'known_user_new_computer' | 'familiar_user_computer', {
+      events: number
+      unlabeled_events: number
+      matched_auth_rows: number
+      known_redteam_unique_tuples: number | null
+      methods: Record<'lifetime_user_computer' | 'hierarchical_static' | 'hierarchical_decay', { alerts: number; unlabeled_alerts: number; mean_score: number | null; zero_scores: number; alert_fraction_over_unlabeled: number | null; known_redteam_recalled_unique_tuples: number | null }>
+    }>
   }>
   limitations: string[]
   [key: string]: unknown

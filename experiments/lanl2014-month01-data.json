@@ -1,0 +1,79 @@
+{
+  "schema_version": "lanl2014-month-data-v1",
+  "synthetic": false,
+  "source_real_enterprise": true,
+  "evidence_type": "real_enterprise_successful_authentication_without_attack_labels",
+  "source": {
+    "kind": "real_enterprise_successful_authentication_without_attack_labels",
+    "bounded_auth_prefix": true,
+    "acquisition": {
+      "dataset": "LANL User-Computer Authentication Associations in Time (2014 release)",
+      "source_url": "https://csr.lanl.gov/data/auth/",
+      "mirror_url": "https://lanl.ma.ic.ac.uk/data/auth/",
+      "doi": "10.11578/1160076",
+      "license": "LANL waiver of copyright and related or neighboring rights",
+      "checksums_url": "https://lanl.ma.ic.ac.uk/data/auth/checksums.txt",
+      "source_monthly_file_index": 1,
+      "monthly_slice_description": "Second published 30-day file; actual calendar dates undisclosed",
+      "retrieved_at_utc": "2026-10-21T16:43:40.942516+00:00",
+      "download_url": "https://lanl.ma.ic.ac.uk/data/auth/lanl-auth-dataset-1-01.bz2",
+      "filename": "lanl-auth-dataset-1-01.bz2.prefix",
+      "compressed_bytes": 16777216,
+      "compressed_prefix_sha256": "6ed7d219f1b7d385d76d6aa0daeb2cfa908e1b5745cab9a87c22de4a879b113f",
+      "expected_full_archive_sha256": "3329d782da62084238c4e349754e7feb77768768d6bd05c18c2b7407f5afddc3",
+      "full_archive_sha256_verified": false,
+      "full_bzip2_integrity_verified": false,
+      "server_content_length": 186894953,
+      "limits": {
+        "compressed_bytes": 16777216,
+        "network_deadline_seconds": 300,
+        "per_request_timeout_seconds": 10,
+        "decompressed_bytes": 536870912
+      },
+      "deadline_semantics": "Deadline checked before each read; an outstanding read has a maximum ten-second socket timeout; local parsing is separate",
+      "elapsed_seconds_including_validation": 16.547,
+      "stop_reason": "compressed_byte_cap",
+      "scan": {
+        "source_rows": 4970711,
+        "selected_rows": 4970690,
+        "source_first_second": 2419201,
+        "source_last_second": 2550400,
+        "selected_first_second": 2419201,
+        "selected_last_second": 2550399,
+        "final_timestamp_rows_excluded": 21
+      }
+    }
+  },
+  "scan": {
+    "source_rows": 4970711,
+    "selected_rows": 4970690,
+    "source_first_second": 2419201,
+    "source_last_second": 2550400,
+    "selected_first_second": 2419201,
+    "selected_last_second": 2550399,
+    "final_timestamp_rows_excluded": 21
+  },
+  "protocol": {
+    "selection": "Second monthly file, fixed first 16 MiB prefix, chosen before acquisition or outcomes",
+    "tail": "Discard every row at the final observed timestamp",
+    "relative_time": "Original release-relative seconds; never shifted to a calendar epoch"
+  },
+  "labels": {
+    "attack_labels_available": false,
+    "detection_metrics_eligible": false,
+    "eligibility_reason": "Successful authentication alone does not establish legitimate intent; source provides no attack labels"
+  },
+  "implementation": {
+    "entry_point": "scripts/fetch_lanl_month.py",
+    "sha256": "3eb9fd46cfb801eca73cdb997b94c74f807742165c950837ff36232dde0933e5",
+    "parser_sha256": "6c255a0709bbfc6c4fe4d6ad9637f0351a234b9fec7791e2ec0d7c271bdeb59a"
+  },
+  "limitations": [
+    "Additional time slice from the same institution and release; not an independent organization or third independent dataset.",
+    "Actual collection dates and identity overlap with other releases are undisclosed.",
+    "Only a bounded file prefix is acquired, not the full 30-day slice or nine-month release.",
+    "Successful-only events have no attack labels and are not a benign training guarantee.",
+    "Full-archive SHA-256 and final bzip2 CRC/trailer are not verified; decoder still validates available blocks.",
+    "Acquisition statistics alone are not a learned-model evaluation or deployment recommendation."
+  ]
+}

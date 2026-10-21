@@ -24,6 +24,8 @@ LLMAC demonstrates LLM-based policy reasoning and reports 98.5% accuracy on its 
 
 OAuth security guidance and PKCE motivate exact callbacks, transaction-bound code redemption and confidential-client protection. OIDC supplies ID-token identity semantics, including issuer, audience, expiry and nonce validation. Our provider implements a limited code-flow subset and is not certified for complete conformance. ([RFC 7636](https://www.rfc-editor.org/info/rfc7636/), [RFC 9700](https://www.rfc-editor.org/info/rfc9700/), [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html))
 
+Connectivity novelty has prior statistical foundations: Heard and Rubin-Delanchy [15] model authentication-network connections and discuss nonexhaustive exercise labels. The later backoff/decay extension here is a simpler marginal novelty baseline, not a replication of their Dirichlet-process model or an algorithmic novelty claim.
+
 ## 3. System and threat boundary
 
 The React console submits bounded inputs to a FastAPI service backed by SQLite. The service verifies password credentials, stores hashed opaque sessions, enforces risk challenges and locks repeated failures. Public bootstrap credentials and displayed challenge codes remain explicit demo fixtures. Enrolled identities instead require cryptographically verified passkeys, TOTP or single-use recovery codes. Secure mode rejects the public seed password, ignores tester-selected context and confines first private login to factor enrollment. Server-observed address/User-Agent changes and durable password-failure spikes require renewed factor verification; source-session expiry, revocation or step-up denies website-token authority. These partial anomaly signals are not trusted device telemetry. Software-authenticator tests verify signatures and failure states but do not establish physical-device usability or operational assurance. ([API](../API.md), [Verified authentication](../AUTHENTICATION.md), [Security boundary](../SECURITY.md))
@@ -85,6 +87,16 @@ The public study uses a 200,000-row convenience prefix of the creators' synthesi
 ### 4.6 Later uncertainty and shift protocol extension
 
 A separately fixed protocol (20 October; measurements completed 21 October 2026) refits five new seed identifiers, 20261101–20261105, on disjoint 6,000 training / 1,000 probability calibration / 1,000 selection / 2,000 conformal calibration / 2,000 IID test rows. The base LR/RF family is unchanged. Nonconformity is one minus true-label probability, with the finite-sample rank `ceil((n+1)(1-alpha))`, alpha 0.1, and conservative full inclusion for unavailable ranks. Marginal and class-conditional sets are established methods [11]. A gate may directly allow only a baseline-allowed event whose set is exactly `{legitimate}`; it can only add verification. Four prespecified conditions cover IID, feature-only remote-work rejection sampling, paired 50% telemetry masking, and pure label-prevalence rejection sampling. Shifted test labels never fit probabilities, thresholds or quantiles. No result selects a deployed replacement. Unweighted coverage claims require corresponding exchangeability assumptions; the weighted covariate-shift correction [12] is not implemented. ([Complete protocol](../UNCERTAINTY_STUDY.md), [Frozen artifact](../../experiments/uncertainty-study.json))
+
+### 4.7 Real enterprise log extension
+
+The later LANL extension uses deidentified enterprise authentication from Kent's 2015 dataset [13], obtained from its open institutional mirror with bounded byte/time acquisition. It retains human-source LogOn events, groups equal timestamps, and uses only earlier-second user/source, user/destination and edge-frequency counts. Source-time windows allocate 50% warmup, 25% validation and 25% test. Tied-score thresholds use no labels and permit at most 1% validation alerts. Reference matching uses exact time/user/source/destination tuples, with recall over distinct tuples rather than duplicate authentication rows. The prefix endpoint was informed by a public exercise example for feasibility; this is disclosed targeted sampling. Unlisted events remain unlabeled, precluding accuracy, precision, false-positive rate and AUROC claims. ([Acquisition and protocol](../LANL_STUDY.md), [Measured aggregate](../../experiments/lanl-study.json))
+
+### 4.8 Fixed backoff/decay models on a second real release
+
+The user/computer comparison fixes three models before computing their results: lifetime count surprise, smoothed global backoff and the same backoff with a one-day exponential half-life. With strictly earlier-second counts, `pG=(global computer count+1)/(global event count+2)` and `pU=(user/computer count+8*pG)/(user count+8)`; the backoff score is `-ln(pU)`. This is a marginal propensity score, not a categorical likelihood or attack probability. All relevant counts decay to the same timestamp. A fixed 0.001 score-bin width bounds calibration memory; conservative tied-score thresholds use at most 1% validation alerts. Shared lifetime history defines cold-user, known-user/new-computer and familiar-pair strata. No labels enter features, history or threshold fitting.
+
+The 2014 LANL user/computer release [14] supplies a fixed 16 MiB compressed prefix with successful events and no attack labels, supporting burden and cold-start analysis only. The already-inspected 2015 prefix is a retrospective diagnostic, preserving exact exercise tuples and reporting all fixed models regardless of outcomes. Both datasets originate from LANL, with undisclosed collection dates; different releases do not establish organizational or temporal independence. The runtime contextual LR/RF model is unchanged because these log fields and sparse labels do not validate its feature schema. ([Frozen protocol and results](../REAL_AUTH_MODELS.md), [Additional acquisition](../LANL2014_STUDY.md))
 
 ## 5. Results
 
@@ -189,6 +201,36 @@ On the five fresh IID tests, baseline suspicious verification averages 79.21% wi
 
 Under masked telemetry, baseline verification falls to 45.07% and the class-conditional gate to 58.44%, allowing 41.56% of simulator-suspicious events directly. Remote-work shift yields 96.01% suspicious verification for that gate but 79.32% legitimate friction and only 84.89% overall coverage. Pure label-shift coverage remains near its class target under the constructed invariant `X|Y` assumption. These outcomes support a reproducible stress and failure-analysis extension, not an improved classifier or a deployment recommendation. Seed SD/ranges, descriptive Wilson intervals, exact denominators and all methods remain in the artifact. ([Results and limits](../UNCERTAINTY_STUDY.md), [Measured figure](../../experiments/figures/uncertainty-study.svg))
 
+### 5.9 Real enterprise prefix: sparse exercise recall and alert burden
+
+The bounded LANL acquisition scans 37,752,359 source rows and retains 4,394,776 human-source LogOn records. Warmup/validation/test contain 2,030,503 / 1,478,049 / 886,224 events. The selected test contains 10 distinct known exercise tuples, each matching one authentication row, and 886,214 unlabeled events. The complete reference contains 715 tuples; the sample is not the full corpus.
+
+| Fixed research baseline | Validation alert fraction | Known test exercise tuples flagged | Unlabeled test alerts | Overall test alerts |
+| --- | ---: | ---: | ---: | ---: |
+| New user/source | 0.3440% | 3/10 | 469/886,214 (0.0529%) | 472/886,224 |
+| New user/destination | 0% | 0/10 | 0/886,214 | 0/886,224 |
+| Edge frequency surprise | 0.9994% | 8/10 | 7,484/886,214 (0.8445%) | 7,492/886,224 |
+
+The destination novelty rule produces no alerts because its highest-score validation tie exceeds the fixed 1% budget. Edge surprise flags more listed exercise tuples at greater unlabeled burden; this is a comparison of fixed baselines rather than a test-selected runtime replacement. Ten targeted historic exercise tuples cannot establish production account-takeover sensitivity. Unlabeled alerts are not verified false positives. Entirely unseen users have zero edge-surprise score under this definition, and sequential unlabeled history can absorb adversarial behavior. The deliberately partial gzip lacks full-archive integrity verification; exact prefix hashes, stop bounds and final-group exclusion are retained. ([Measured report](../../experiments/lanl-study.json), [Full protocol and failures](../LANL_STUDY.md))
+
+### 5.10 Backoff/decay gains are conditional and burden regresses elsewhere
+
+The additional real release supplies 4,909,698 usable events: 2,589,367 warmup, 776,833 validation and 1,543,498 test. Its separate unquantized novelty study gives 8,006 new-pair alerts (0.5187%) and 17,596 frequency-surprise alerts (1.1400%). No attack labels exist. The fixed model comparison uses a common 0.001-bin score control on both releases:
+
+| Fixed model | 2015 known exercise tuples recalled | 2015 unlabeled alerts / 886,214 | 2014 alerts / 1,543,498 unlabeled events |
+| --- | ---: | ---: | ---: |
+| Lifetime user/computer | 6/10 | 8,412 (0.9492%) | 17,581 (1.1390%) |
+| Global backoff | 7/10 | 5,780 (0.6522%) | 24,451 (1.5841%) |
+| Global backoff + one-day decay | 7/10 | 5,669 (0.6397%) | 23,528 (1.5243%) |
+
+All three validation burdens are at most 1%; held-out burdens differ. In the already-inspected 2015 window, backoff recalls one more listed tuple with fewer unlabeled alerts. On the second release, decay adds 5,947 alerts relative to its common control, with no labels to establish detection benefit. Its quantized lifetime control differs slightly from the standalone unquantized frequency study; the earlier source/destination edge baseline has additional information and is not the same control.
+
+The common lifetime model assigns zero score to all 126 cold-user test events in 2015 and all 492 in 2014. Both backoff models remove those forced zeros, but alert on 484/492 cold-user events in 2014 (98.37%). No 2015 cold-user test event matches a provided exercise tuple; improved cold-user attack detection remains unmeasured. Thus the implementation adds an interpretable model family and a cross-release failure analysis rather than evidence of universal improvement or a runtime replacement. ([Frozen protocol, aggregate and limitations](../REAL_AUTH_MODELS.md), [Vector figure](../../experiments/figures/real-auth-models.svg))
+
+![Real-authentication model comparison](../../experiments/figures/real-auth-models.png)
+
+Figure 3. Fixed user/computer novelty models on two real releases from the same institution. Exercise counts describe ten correlated retrospective tuples. Alert burden on unlabeled events is not false-positive rate.
+
 ## 6. Validity, limitations and reproducibility
 
 Synthetic generation can favor models that resemble its construction. The five complete fits vary training and samples but still share one generator; they do not establish cross-organization validity. Bootstrap intervals remain conditional on one trained model and have no multiplicity correction. Validation is reused for several selection decisions, introducing selection variance even while test data is excluded. Sample standard deviations and reliability bins do not substitute for population confidence intervals or nested cross-validation. No fairness conclusion follows from device/location diagnostic groups. ([Conditional limitations](../../experiments/robustness.json), [Candidate limitations](../../experiments/candidate-study.json), [Retraining limits](../../experiments/risk-protocol.json))
@@ -210,6 +252,8 @@ python experiments/plot_protocol.py
 python experiments/uncertainty_study.py
 python experiments/plot_uncertainty.py
 ```
+
+Real enterprise acquisition and offline evaluation are separate, standard-library commands in [the LANL protocol](../LANL_STUDY.md). Raw deidentified event identifiers are excluded from version control; the frozen aggregate includes source/prefix hashes and sparse-label denominators. Reacquisition can yield a different bounded prefix, so exact replication requires matching hashes.
 
 Start the complete local Web3 system with `docker compose up --build -d`. Follow [deployment operations](../../deployment/README.md) for retained state and grant confirmation, [integration setup](../INTEGRATION.md) for a connected website and [experiment documentation](../../experiments/README.md) for runtime-dependent analysis. Keep generated metrics, seeds, dataset digests, software versions and test logs with a submission snapshot; latency varies by environment.
 
@@ -257,3 +301,9 @@ The bibliography contains the verified sources used in the narrative. No unsuppo
 [11] A. N. Angelopoulos and S. Bates, *A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification*, arXiv:2107.07511, 2021, revised 2022. [Primary paper](https://arxiv.org/abs/2107.07511).
 
 [12] R. J. Tibshirani, R. F. Barber, E. J. Candes and A. Ramdas, *Conformal Prediction Under Covariate Shift*, arXiv:1904.06019, 2019, revised 2020. [Primary paper](https://arxiv.org/abs/1904.06019).
+
+[13] A. D. Kent, *Comprehensive, Multi-Source Cyber-Security Events*, Los Alamos National Laboratory, 2015. [DOI](https://doi.org/10.17021/1179829), [creator description](https://csr.lanl.gov/data/cyber1/), [institutional mirror](https://lanl.ma.ic.ac.uk/data/cyber1/), accessed 21 October 2026.
+
+[14] A. D. Kent, *User-Computer Authentication Associations in Time*, Los Alamos National Laboratory, 2014. [DOI](https://doi.org/10.11578/1160076), [creator description](https://csr.lanl.gov/data/auth/), accessed 21 October 2026.
+
+[15] N. Heard and P. Rubin-Delanchy, *Network-wide anomaly detection via the Dirichlet process*, IEEE ISI, 2016. [DOI](https://doi.org/10.1109/ISI.2016.7745478), [institutional record](https://spiral.imperial.ac.uk/entities/publication/c3bd8619-ba50-4599-a448-422c8a35e746), [author manuscript](https://people.maths.bris.ac.uk/~pr12244/dirichlet.pdf).

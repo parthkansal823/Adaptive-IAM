@@ -1,0 +1,203 @@
+{
+  "schema_version": "lanl-study-v1",
+  "parser_hardening_validation": {
+    "change": "Exclude empty as well as question-mark source and destination computers",
+    "proof_method": "Stream-decompress exact acquired prefix, check adjacent comma pairs across output-chunk boundaries; any empty interior CSV computer field would require such a pair",
+    "compressed_prefix_sha256": "f7fce0e45cc59525800863be888ea30bf47dbfd53e91cf2171b3a2ebfc5aa42c",
+    "compressed_bytes_checked": 262602752,
+    "decompressed_bytes_checked": 2539418347,
+    "adjacent_comma_pairs": 0,
+    "existing_selection_and_metrics_unchanged": true
+  },
+  "implementation": {
+    "entry_point": "scripts/evaluate_lanl.py",
+    "sha256": "2d262dd73e04e00cdc1e6868896128817564d012b6eb8c110b85dd135aaa7181",
+    "python_version": "3.11.2",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "hash_scope": "Finalized evaluator source; metadata and input-validation edits do not alter reported scoring rules"
+  },
+  "study": "LANL real enterprise authentication novelty (offline)",
+  "evidence_type": "real_enterprise_authentication_with_exercise_redteam",
+  "synthetic": false,
+  "source_real_enterprise": true,
+  "generated_at_utc": "2026-10-21T11:52:08.120457+00:00",
+  "source": {
+    "landing_page": "https://csr.lanl.gov/data/cyber1/",
+    "download_mirror": "https://lanl.ma.ic.ac.uk/data/cyber1/",
+    "doi": "10.17021/1179829",
+    "citation": "A. D. Kent, Comprehensive, Multi-Source Cybersecurity Events, LANL, 2015",
+    "license": "LANL copyright and neighboring-rights waiver (CC0/public-domain dedication)",
+    "kind": "real deidentified enterprise authentication; sparse exercise-redteam reference",
+    "calendar_dates": "Not disclosed by source; relative seconds only",
+    "auth_sha256": "f7fce0e45cc59525800863be888ea30bf47dbfd53e91cf2171b3a2ebfc5aa42c",
+    "redteam_sha256": "e8ffba5383035389b0de67ccbe8ec61ba10d3cb4467e754cb9f5188b3d7a4aff",
+    "auth_compressed_bytes": 262602752,
+    "redteam_compressed_bytes": 4858,
+    "bounded_auth_prefix": true,
+    "full_auth_archive_integrity_verified": false
+  },
+  "selection": {
+    "predicate": "source user matches U[0-9]+@domain, orientation=LogOn, both computers known",
+    "outcomes": "Success and Fail included; current outcome excluded from scores and history updates",
+    "final_second": "Excluded for incomplete prefix; retained for full verified input"
+  },
+  "scan": {
+    "source_rows": 37752359,
+    "selected_rows": 4394776,
+    "source_first_second": 1,
+    "source_last_second": 200020,
+    "selected_first_second": 1,
+    "selected_last_second": 200019
+  },
+  "protocol": {
+    "partition": "chronological source-second windows; equal-second groups never split",
+    "warmup_end_second_inclusive": 100010,
+    "validation_end_second_inclusive": 150015,
+    "warmup_fraction": 0.5,
+    "validation_fraction": 0.25,
+    "alert_budget": 0.01,
+    "threshold_fit": "validation observables only; labels never used",
+    "history": "Prequential updates only after scoring every selected row in a source-second group; update continues in validation/test",
+    "score_definition": {
+      "new_user_source": "1 if user/source unseen in earlier seconds, else 0",
+      "new_user_destination": "1 if user/destination unseen in earlier seconds, else 0",
+      "edge_surprise": "ln(1 + prior user event count) - ln(1 + prior user/source/destination count)"
+    }
+  },
+  "partitions": {
+    "warmup": {
+      "events": 2030503,
+      "first_second": 1,
+      "last_second": 100010,
+      "matched_auth_rows": 0,
+      "known_redteam_unique_tuples": 0,
+      "unlabeled_events": 2030503
+    },
+    "validation": {
+      "events": 1478049,
+      "first_second": 100011,
+      "last_second": 150015,
+      "matched_auth_rows": 0,
+      "known_redteam_unique_tuples": 0,
+      "unlabeled_events": 1478049
+    },
+    "test": {
+      "events": 886224,
+      "first_second": 150016,
+      "last_second": 200019,
+      "matched_auth_rows": 10,
+      "known_redteam_unique_tuples": 10,
+      "unlabeled_events": 886214
+    }
+  },
+  "labels": {
+    "unique_redteam_tuples_in_reference": 715,
+    "reference_first_second": 150885,
+    "reference_last_second": 2557047,
+    "matched_unique_tuples_across_partitions": 10,
+    "matching": "Exact (second, source user@domain, source computer, destination computer); all matching auth duplicates share weak tuple label",
+    "unlisted_events": "UNLABELED; absence of a redteam record is not proof of benign behavior",
+    "detection_metrics_eligible": true,
+    "eligibility_reason": "Test contains exact selected redteam tuples"
+  },
+  "methods": {
+    "new_user_source": {
+      "threshold": {
+        "minimum_score": 1.0,
+        "validation_alerts": 5085,
+        "validation_events": 1478049,
+        "validation_alert_fraction": 0.0034403460237109867,
+        "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+      },
+      "test_alerts": 472,
+      "test_alert_fraction": 0.0005325967249814945,
+      "unlabeled_alerts": 469,
+      "alert_fraction_over_unlabeled": 0.0005292175479060362,
+      "known_redteam_alerted_auth_rows": 3,
+      "known_redteam_recalled_unique_tuples": 3,
+      "known_redteam_tuple_recall": 0.3
+    },
+    "new_user_destination": {
+      "threshold": {
+        "minimum_score": null,
+        "validation_alerts": 0,
+        "validation_events": 1478049,
+        "validation_alert_fraction": 0.0,
+        "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+      },
+      "test_alerts": 0,
+      "test_alert_fraction": 0.0,
+      "unlabeled_alerts": 0,
+      "alert_fraction_over_unlabeled": 0.0,
+      "known_redteam_alerted_auth_rows": 0,
+      "known_redteam_recalled_unique_tuples": 0,
+      "known_redteam_tuple_recall": 0.0
+    },
+    "edge_surprise": {
+      "threshold": {
+        "minimum_score": 5.940207301097358,
+        "validation_alerts": 14771,
+        "validation_events": 1478049,
+        "validation_alert_fraction": 0.009993579373890851,
+        "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+      },
+      "test_alerts": 7492,
+      "test_alert_fraction": 0.008453844626189316,
+      "unlabeled_alerts": 7484,
+      "alert_fraction_over_unlabeled": 0.008444912854005917,
+      "known_redteam_alerted_auth_rows": 8,
+      "known_redteam_recalled_unique_tuples": 8,
+      "known_redteam_tuple_recall": 0.8
+    }
+  },
+  "limitations": [
+    "A single historic institution and contiguous prefix do not establish production generalization or IAM takeover detection.",
+    "The targeted prefix endpoint was chosen after consulting the public first redteam time: label-informed feasibility sampling, not externally preregistered representative or untouched test data. Methods and thresholds were not tuned on test outcomes.",
+    "Redteam events are controlled exercise activity, with incomplete negative labels; no accuracy, precision, FPR or AUROC is claimed.",
+    "Only human-source LogOn events with known computers are selected; machine/service activity and other orientations are excluded.",
+    "Source excludes failures for users without any successful authentication in its full dataset; this creates source selection bias.",
+    "Reference tuple lacks auth type/orientation/outcome; duplicate auth rows cannot be resolved to unique compromise events.",
+    "Validation alert budget is a calibration target; shifted test traffic and tied discrete scores can produce zero alerts or exceed the target.",
+    "Offline logged observables are not trusted live telemetry, randomized interventions or independent operational validation."
+  ],
+  "download_provenance": {
+    "dataset": "LANL Comprehensive, Multi-Source Cyber-Security Events (2015)",
+    "source_url": "https://csr.lanl.gov/data/cyber1/",
+    "mirror_url": "https://lanl.ma.ic.ac.uk/data/cyber1/",
+    "doi": "10.17021/1179829",
+    "license": "LANL copyright and neighboring-rights waiver (CC0/public-domain dedication)",
+    "retrieved_at_utc": "2026-10-21T11:43:27.244621+00:00",
+    "limits": {
+      "auth_compressed_bytes": 268435456,
+      "elapsed_seconds": 600.0,
+      "stop_after_source_second": 200000
+    },
+    "files": {
+      "redteam.txt.gz": {
+        "path": "redteam.txt.gz",
+        "url": "https://lanl.ma.ic.ac.uk/data/cyber1/redteam.txt.gz",
+        "compressed_bytes": 4858,
+        "sha256": "e8ffba5383035389b0de67ccbe8ec61ba10d3cb4467e754cb9f5188b3d7a4aff",
+        "server_content_length": 4858,
+        "full_gzip_integrity_verified": true,
+        "stop_reason": "complete"
+      },
+      "auth.txt.gz": {
+        "path": "auth.txt.gz.prefix",
+        "url": "https://lanl.ma.ic.ac.uk/data/cyber1/auth.txt.gz",
+        "compressed_bytes": 262602752,
+        "sha256": "f7fce0e45cc59525800863be888ea30bf47dbfd53e91cf2171b3a2ebfc5aa42c",
+        "server_content_length": 7626505167,
+        "full_gzip_integrity_verified": false,
+        "stop_reason": "target_second"
+      }
+    },
+    "pilot_scan": {
+      "source_rows": 37752359,
+      "selected_rows": 4394776,
+      "source_first_second": 1,
+      "source_last_second": 200020
+    },
+    "elapsed_seconds": 138.828
+  }
+}

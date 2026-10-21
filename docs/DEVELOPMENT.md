@@ -23,10 +23,16 @@ If Windows application control blocks a native dependency, use the Linux Docker 
 | Portable full checks | `npm run check` |
 | Checks with browser and isolated live EVM | `npm run check:complete` |
 | Reproduce uncertainty stress study | `npm run research:uncertainty` |
+| Real enterprise acquisition/evaluation help | `npm run research:lanl -- --help` |
+| Additional real authentication release | `npm run research:lanl2014 -- --help` |
+| Fixed multi-dataset model comparison | `npm run research:real-auth-models -- --help` |
+| Train and tune on real authentication | `npm run research:train-real-auth -- --help` |
 
 `npm run doctor` uses the repository's virtual environment when present, checks Python/Node and direct dependency versions, and reports missing tools without installing anything or reading runtime credentials. A Python version differing from CI is reported explicitly. `npm run check` uses the same interpreter selection and forwards verification arguments, for example `npm run check -- --changed`. Optional browser fixture regressions and browser prerequisites are documented in [frontend/README.md](../frontend/README.md#browser-regression-checks).
 
 The portable runner is `python scripts/verify.py`, using your active interpreter. It runs Python state-transition/security tests, available experiment adapter tests, Node/Python OIDC relying-party tests, and the frontend typecheck/build. It never installs dependencies. Research evaluation is explicit because it trains models and rewrites measured artifacts. Website setup is in [INTEGRATION.md](INTEGRATION.md).
+
+Direct Python verification and Git hooks discover Node/npm on PATH, then a complete trusted official distribution extracted under `.cache/runtime/node-v<VERSION>-<PLATFORM>-<ARCH>` (for example `node-v24.22.0-win-x64`). They run npm through the resolved Node executable and add its directory only to child-process PATH. This supports editor Git processes that lack Node in their inherited PATH without changing global settings or bypassing checks. No runtime is downloaded automatically. Diagnose with `.venv/Scripts/python.exe scripts/doctor.py`; run `.venv/Scripts/python.exe scripts/verify.py --browser --live-web3` when npm itself is unavailable in your terminal. On Unix, use `.venv/bin/python`.
 
 `npm run check:complete` additionally runs the installed Chromium browser against isolated API fixtures and creates a fresh ephemeral loopback Ganache chain for the real API checkpoint/grant tests. The live-chain runner never uses configured IAM RPC, wallet, database or deployment metadata. Its temporary chain and files are closed/removed after the run. It needs the existing blockchain dependencies and Python backend dependencies; no Docker service is required. The separate Besu consensus experiment remains opt-in.
 

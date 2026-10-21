@@ -27,15 +27,41 @@ const summary = { stats: { pending_requests: 0, active_grants: 0, audit_events: 
 let accessRequests = [], accessGrants = []
 let holdResource = false, resourceChecks = 0, inspectionLifetime = null
 let uncertaintyFail = false, uncertaintyReads = 0
-let lanlFail = false, lanlEligible = false, lanlReads = 0
+let lanlFail = false, lanlEligible = false, lanlAllLabeled = false, lanlReads = 0
+let modelStudyFail = false, modelStudyReads = 0
 const aggregate = mean => ({ mean, sample_std: 0, minimum: mean, maximum: mean })
 const studyPolicy = (detection, friction, coverage) => ({ suspicious_detection_rate: aggregate(detection), legitimate_friction_rate: aggregate(friction), suspicious_direct_allow_rate: aggregate(1 - detection), ...(coverage === undefined ? {} : { coverage: aggregate(coverage), suspicious_coverage: aggregate(coverage - .05), both_labels_rate: aggregate(.2), mean_set_size: aggregate(1.2) }) })
 const uncertaintyStudy = { schema_version: 'uncertainty-study-v1', synthetic: true, alpha: .1, seeds: [0, 1, 2, 3, 4], protocol: { source: 'Isolated synthetic browser fixture' }, limitations: ['Synthetic fixture values exercise the interface; they are not study measurements.'], summary: { iid: { baseline: studyPolicy(.12, .05), marginal_gate: studyPolicy(.9, .1, .91), class_conditional_gate: studyPolicy(.96, .2, .95), always_challenge: studyPolicy(1, 1) }, telemetry_masking: { baseline: studyPolicy(.04, .06), marginal_gate: studyPolicy(.6, .12, .74), class_conditional_gate: studyPolicy(.8, .25, .85), always_challenge: studyPolicy(1, 1) } } }
 const lanlStudy = () => {
   const split = (first, last, exercise = 0) => ({ events: 100, unlabeled_events: 100 - exercise, matched_auth_rows: exercise, known_redteam_unique_tuples: exercise, first_second: first, last_second: last })
-  const method = { threshold: { validation_alert_fraction: .05 }, test_alerts: 10, test_alert_fraction: .1, unlabeled_alerts: lanlEligible ? 8 : 10, alert_fraction_over_unlabeled: lanlEligible ? 8 / 96 : .1, known_redteam_alerted_auth_rows: lanlEligible ? 2 : 0, known_redteam_recalled_unique_tuples: lanlEligible ? 2 : 0, known_redteam_tuple_recall: lanlEligible ? .5 : null }
-  return { schema_version: 'lanl-study-v1', evidence_type: 'real_enterprise_authentication_with_exercise_redteam', synthetic: false, source_real_enterprise: true, source: { kind: 'Isolated browser fixture; not downloaded evidence', bounded_auth_prefix: true, landing_page: 'https://csr.lanl.gov/data/cyber1/' }, scan: { source_rows: 500, selected_rows: 300, source_first_second: 1, source_last_second: 300 }, partitions: { warmup: split(1, 100), validation: split(101, 200), test: split(201, 300, lanlEligible ? 4 : 0) }, labels: { detection_metrics_eligible: lanlEligible, eligibility_reason: lanlEligible ? 'Four recorded exercise tuples in this interface fixture.' : 'No exercise tuples match this interface fixture.', unique_redteam_tuples_in_reference: 12 }, methods: { new_user_source: method, new_user_destination: method, edge_surprise: method }, limitations: ['Fixture values exercise the interface only; they are not LANL measurements.'] }
+  const exerciseEvents = lanlEligible ? lanlAllLabeled ? 100 : 4 : 0
+  const unlabeledEvents = 100 - exerciseEvents
+  const knownAlerts = lanlEligible ? lanlAllLabeled ? 10 : 2 : 0
+  const method = { threshold: { minimum_score: 1, validation_alert_fraction: .05 }, test_alerts: 10, test_alert_fraction: .1, unlabeled_alerts: 10 - knownAlerts, alert_fraction_over_unlabeled: unlabeledEvents ? (10 - knownAlerts) / unlabeledEvents : null, known_redteam_alerted_auth_rows: lanlEligible ? knownAlerts : null, known_redteam_recalled_unique_tuples: lanlEligible ? knownAlerts : null, known_redteam_tuple_recall: lanlEligible ? knownAlerts / exerciseEvents : null }
+  const disabledMethod = { threshold: { minimum_score: null, validation_alert_fraction: 0 }, test_alerts: 0, test_alert_fraction: 0, unlabeled_alerts: 0, alert_fraction_over_unlabeled: unlabeledEvents ? 0 : null, known_redteam_alerted_auth_rows: lanlEligible ? 0 : null, known_redteam_recalled_unique_tuples: lanlEligible ? 0 : null, known_redteam_tuple_recall: lanlEligible ? 0 : null }
+  return { schema_version: 'lanl-study-v1', evidence_type: 'real_enterprise_authentication_with_exercise_redteam', synthetic: false, source_real_enterprise: true, source: { kind: 'Isolated browser fixture; not downloaded evidence', bounded_auth_prefix: true, landing_page: 'https://csr.lanl.gov/data/cyber1/' }, scan: { source_rows: 500, selected_rows: 300, source_first_second: 1, source_last_second: 300 }, partitions: { warmup: split(1, 100), validation: split(101, 200), test: split(201, 300, exerciseEvents) }, labels: { detection_metrics_eligible: lanlEligible, eligibility_reason: lanlEligible ? 'Recorded exercise tuples are present in this interface fixture.' : 'No exercise tuples match this interface fixture.', unique_redteam_tuples_in_reference: Math.max(12, exerciseEvents) }, methods: { new_user_source: method, new_user_destination: disabledMethod, edge_surprise: method }, limitations: ['Fixture values exercise the interface only; they are not LANL measurements.'] }
 }
+const modelNames = ['lifetime_user_computer', 'hierarchical_static', 'hierarchical_decay']
+const modelDataset = labelsAvailable => {
+  const strataNames = ['cold_user', 'known_user_new_computer', 'familiar_user_computer']
+  const stratumEvents = [20, 10, 70], matched = labelsAvailable ? [2, 1, 1] : [0, 0, 0]
+  const alerts = [[0, 3, 2], [4, 3, 3], [5, 3, 4]]
+  const recalled = labelsAvailable ? [[0, 1, 1], [1, 1, 1], [2, 1, 1]] : [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+  const part = (events, first, last, known = 0) => ({ events, first_second: first, last_second: last, matched_auth_rows: known, known_redteam_unique_tuples: labelsAvailable ? known : null, unlabeled_events: events - known })
+  return {
+    source: { kind: 'Isolated model interface fixture; not downloaded study evidence', auth_sha256: (labelsAvailable ? 'a' : 'b').repeat(64), retrospective: labelsAvailable, bounded_prefix: true, source_url: 'https://csr.lanl.gov/data/' },
+    scan: { source_rows: 500, selected_rows: 400, source_first_second: 1, source_last_second: 400 },
+    partition_cutoffs: { warmup_end_second: 200, validation_end_second: 300 },
+    partitions: { warmup: part(200, 1, 200), validation: part(100, 201, 300), test: part(100, 301, 400, labelsAvailable ? 4 : 0) },
+    labels: { available: labelsAvailable, detection_metrics_eligible: labelsAvailable, interpretation: labelsAvailable ? 'Four interface-fixture exercise tuples only.' : 'No attack labels exist for this interface fixture.' },
+    methods: Object.fromEntries(modelNames.map((name, index) => {
+      const total = alerts[index].reduce((sum, value) => sum + value, 0), known = recalled[index].reduce((sum, value) => sum + value, 0), unlabeled = labelsAvailable ? 96 : 100
+      return [name, { threshold: { minimum_score: index + 1, validation_alerts: 2, validation_events: 100, validation_alert_fraction: .02 }, test_alerts: total, test_alert_fraction: total / 100, unlabeled_alerts: total - known, alert_fraction_over_unlabeled: (total - known) / unlabeled, known_redteam_alerted_auth_rows: labelsAvailable ? known : null, known_redteam_recalled_unique_tuples: labelsAvailable ? known : null, known_redteam_tuple_recall: labelsAvailable ? known / 4 : null }]
+    })),
+    test_strata: Object.fromEntries(strataNames.map((name, stratum) => [name, { events: stratumEvents[stratum], unlabeled_events: stratumEvents[stratum] - matched[stratum], matched_auth_rows: matched[stratum], known_redteam_unique_tuples: labelsAvailable ? matched[stratum] : null, methods: Object.fromEntries(modelNames.map((model, index) => [model, { alerts: alerts[index][stratum], unlabeled_alerts: alerts[index][stratum] - recalled[index][stratum], mean_score: stratum === 0 && index === 0 ? 0 : index + 1, zero_scores: stratum === 0 && index === 0 ? 20 : 0, alert_fraction_over_unlabeled: (alerts[index][stratum] - recalled[index][stratum]) / (stratumEvents[stratum] - matched[stratum]), known_redteam_recalled_unique_tuples: labelsAvailable ? recalled[index][stratum] : null }])) }]))
+  }
+}
+const modelStudy = { schema_version: 'real-auth-model-study-v1', synthetic: false, protocol: { validation_alert_budget: .02, source: 'Isolated interface fixture; all methods fixed before interface tests.' }, protocol_sha256: 'c'.repeat(64), datasets: { lanl2015_retrospective: modelDataset(true), lanl2014_unlabeled: modelDataset(false) }, limitations: ['Fixture metrics verify interface behavior only, never research performance.'] }
 const fixtureRequest = (id, overrides = {}) => ({ id, requester_id: 'b', requester_name: users[1].name, resource_id: 'vault', resource_name: resources[0].name, justification: 'Review the synthetic fixture records for the research task.', duration_hours: 1, status: 'pending', created_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', risk, nlp: { label: 'legitimate', confidence: .9, explanation: 'Synthetic fixture' }, reviewers: [{ id: 'a', name: users[0].name, weight: 1.5, is_owner: true }], votes: [], consensus: { approval_weight: 0, total_weight: 1.5, cast_weight: 0, quorum_required: 1, quorum_reached: false }, reviewer_selection: { reason: 'Fixture reviewer' }, can_vote: true, ...overrides })
 const fixtureGrant = (id, overrides = {}) => ({ id, request_id: 'approved-fixture', user_id: 'a', user_name: users[0].name, resource_id: 'vault', resource_name: resources[0].name, scope: 'read', created_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', status: 'active', can_revoke: true, ...overrides })
 let held = null
@@ -60,6 +86,7 @@ const server = createServer(async (req, res) => {
     if (path === '/api/evaluation') return send(res, { dataset: {}, baseline: {}, improved: {} })
     if (path === '/api/research/uncertainty') { uncertaintyReads++; return uncertaintyFail ? send(res, { detail: 'Fixture study unavailable' }, 503) : send(res, uncertaintyStudy) }
     if (path === '/api/research/lanl') { lanlReads++; return lanlFail ? send(res, { detail: 'Fixture real-data study unavailable' }, 503) : send(res, lanlStudy()) }
+    if (path === '/api/research/real-auth-models') { modelStudyReads++; return modelStudyFail ? send(res, { detail: 'Fixture model study unavailable' }, 503) : send(res, modelStudy) }
     if (path === '/api/auth/me') return send(res, { user: identity, risk, session })
     if (path === '/api/overview') return send(res, { ...summary, stats: { ...summary.stats, active_grants: accessGrants.filter(grant => grant.status === 'active').length, pending_requests: accessRequests.filter(request => request.status === 'pending').length, review_queue: accessRequests.filter(request => request.can_vote).length }, recent_requests: accessRequests.slice(0, 5) })
     if (path === '/api/requests') return send(res, { items: accessRequests })
@@ -398,17 +425,64 @@ try {
     await p.wait("document.querySelector('.real-data-eligibility')?.textContent.includes('recall is eligible')", 'Eligible real-data fixture did not load')
     const cells = await p.evaluate("Array.from(document.querySelectorAll('.real-data-methods tbody tr td:last-child')).map(cell => cell.textContent)")
     assert.equal(cells.length, 3)
-    assert(cells.every(cell => cell.includes('50.0%') && cell.includes('2 / 4 known test exercise tuples')))
+    assert([cells[0], cells[2]].every(cell => cell.includes('50.0%') && cell.includes('2 / 4 known test exercise tuples')))
+    assert(cells[1].includes('0.0%') && cells[1].includes('0 / 4 known test exercise tuples'))
+    const disabledRule = await p.evaluate("document.querySelector('.real-data-methods tbody tr:nth-child(2)').textContent")
+    assert(disabledRule.includes('Disabled: validation tie exceeds alert budget'))
+    assert(disabledRule.includes('0 / 100 test events') && disabledRule.includes('0 / 96 unlabeled events'))
     assert.equal(await p.evaluate("document.querySelector('.real-data-study').textContent.includes('8 / 96 unlabeled events')"), true)
+    lanlAllLabeled = true
+    await p.button('Refresh real-data study')
+    await p.wait("document.querySelector('.real-data-methods tbody tr td:nth-child(4)')?.textContent.includes('0 / 0 unlabeled events')", 'Zero-unlabeled fixture did not load')
+    const unlabeledCells = await p.evaluate("Array.from(document.querySelectorAll('.real-data-methods tbody tr td:nth-child(4)')).map(cell => cell.textContent)")
+    assert.equal(unlabeledCells.length, 3)
+    assert(unlabeledCells.every(cell => cell.startsWith('Not estimable') && cell.includes('0 / 0 unlabeled events') && !cell.includes('0.0%')))
+    assert.equal(await p.evaluate("document.querySelector('.real-data-methods tbody tr:last-child td:last-child').textContent.includes('10 / 100 known test exercise tuples')"), true)
     await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
     for (const theme of ['light', 'dark']) {
       if (await p.evaluate('document.documentElement.dataset.theme') !== theme) await p.click('.theme-button')
       await p.wait(`document.documentElement.dataset.theme === '${theme}'`, 'Real-data theme did not change')
       assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
     }
-    console.log('PASS real-data evidence shows exercise recall and unlabeled alert denominators and fits both mobile themes')
+    console.log('PASS real-data evidence distinguishes disabled and undefined rates, preserves denominators, and fits both mobile themes')
   }
-  console.log('Frontend regression checks: 15 passed (isolated API fixtures, no real account mutations).')
+  {
+    modelStudyFail = true
+    const p = await page('/research')
+    await p.wait("document.querySelector('.real-auth-models')?.textContent.includes('Fixture model study unavailable')", 'Failed model study did not show retry state')
+    assert.equal(await p.evaluate("!!document.querySelector('.real-data-methods')"), true)
+    const readsBefore = modelStudyReads
+    modelStudyFail = false
+    await p.button('Retry model study')
+    await p.wait("document.querySelectorAll('.real-auth-model-methods tbody tr').length === 3", 'Model-study retry did not recover three fixed models')
+    assert.equal(modelStudyReads, readsBefore + 1)
+    const exerciseCells = await p.evaluate("Array.from(document.querySelectorAll('.real-auth-model-methods tbody tr td:last-child')).map(cell => cell.textContent)")
+    assert(exerciseCells[0].includes('50.0%') && exerciseCells[0].includes('2 / 4 known test exercise tuples'))
+    assert(exerciseCells[1].includes('75.0%') && exerciseCells[2].includes('100.0%'))
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-models .protocol-list code').textContent"), 'a'.repeat(64))
+    await p.evaluate("document.querySelector('.real-auth-models details summary').click()")
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-model-strata tbody tr:first-child td:nth-child(5)').textContent"), '20 / 20')
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-model-strata tbody tr:nth-child(2) td:nth-child(5)').textContent"), '0 / 20')
+    const beforeSelection = modelStudyReads
+    await p.field('Model study dataset', 'lanl2014_unlabeled')
+    await p.wait("document.querySelector('.model-study-eligibility')?.textContent.includes('No attack labels are available')", 'Unlabeled source did not change interpretation')
+    assert.equal(modelStudyReads, beforeSelection)
+    const unlabeledCells = await p.evaluate("Array.from(document.querySelectorAll('.real-auth-model-methods tbody tr td:last-child')).map(cell => cell.textContent)")
+    assert(unlabeledCells.every(cell => cell.includes('Not estimable') && cell.includes('No attack labels') && !cell.includes('%')))
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-models .protocol-list code').textContent"), 'b'.repeat(64))
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-model-methods tbody tr:last-child td:nth-child(4)').textContent.includes('12 / 100 unlabeled events')"), true)
+    await p.evaluate("window.__modelCreateUrl = URL.createObjectURL; URL.createObjectURL = blob => { window.__modelExport = blob; return window.__modelCreateUrl(blob) }")
+    await p.button('Export model study')
+    assert.deepEqual(await p.evaluate("window.__modelExport.text().then(JSON.parse)"), modelStudy)
+    await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    for (const theme of ['light', 'dark']) {
+      if (await p.evaluate('document.documentElement.dataset.theme') !== theme) await p.click('.theme-button')
+      await p.wait(`document.documentElement.dataset.theme === '${theme}'`, 'Model-study theme did not change')
+      assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
+    }
+    console.log('PASS fixed models retry, switch real-source eligibility, expose cold-start diagnostics, export all datasets and fit both mobile themes')
+  }
+  console.log('Frontend regression checks: 16 passed (isolated API fixtures, no real account mutations).')
 } finally {
   if (held) held.res.destroy()
   for (const p of pages) p.socket.close()

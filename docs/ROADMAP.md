@@ -8,6 +8,10 @@ Research includes five full retraining runs with matched validation controls/rel
 
 Operational additions include encrypted same-host Node website sessions, [validated offline IAM backup/restore](BACKUP.md), request/grant search and expiry-aware displays, and portable checks covering browser fixtures and an ephemeral live EVM/API integration. These controls do not certify a production identity provider.
 
+The [LANL real-data milestone](LANL_STUDY.md) adds bounded public enterprise-log acquisition, chronological prequential novelty baselines, label-free alert-budget calibration, exact sparse exercise-tuple recall and unlabeled alert burden. Its frozen aggregate is served by the API and displayed/exported in Experiments; raw identifiers remain outside Git. A targeted historic prefix does not establish representative deployment performance.
+
+The [second real release](LANL2014_STUDY.md) and [backoff/decay comparison](REAL_AUTH_MODELS.md) are also measured. A common-observable lifetime control, fixed score quantization, shared cold-start strata and immutable protocol commitments distinguish retrospective exercise recall from unlabeled workload evidence. The model family removes forced cold-user zero scores but exposes concentrated cold-user alerts and greater burden on the second release. All results are retained in the console, reports and scientific exports; no runtime model is promoted.
+
 ## Evidence requiring independent collection
 
 Real organizational outcomes and trusted telemetry; representative rare takeover labels; at least two independent human language annotators and separate adjudication; physical-device passkey usability; independently configured BERT measurements; subgroup/fairness and privacy/retention studies. Human access votes must never substitute for attack truth. Improve deployment models only from prespecified validation, then disclose untouched test performance.

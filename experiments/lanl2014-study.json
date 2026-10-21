@@ -1,0 +1,159 @@
+{
+  "schema_version": "lanl2014-study-v1",
+  "synthetic": false,
+  "source_real_enterprise": true,
+  "evidence_type": "real_enterprise_successful_authentication_without_attack_labels",
+  "generated_at_utc": "2026-10-21T12:10:33.853190+00:00",
+  "source": {
+    "kind": "real_enterprise_successful_authentication_without_attack_labels",
+    "source_url": "https://csr.lanl.gov/data/auth/",
+    "mirror_url": "https://lanl.ma.ic.ac.uk/data/auth/",
+    "doi": "10.11578/1160076",
+    "bounded_auth_prefix": true,
+    "compressed_input_sha256": "961ed2e81f75e58920c85299684e61dd1d85b367345954038ab672d0c6dd81f3",
+    "acquisition": {
+      "dataset": "LANL User-Computer Authentication Associations in Time (2014)",
+      "source_url": "https://csr.lanl.gov/data/auth/",
+      "mirror_url": "https://lanl.ma.ic.ac.uk/data/auth/",
+      "doi": "10.11578/1160076",
+      "license": "LANL waiver of copyright and neighboring rights (public-domain dedication)",
+      "retrieved_at_utc": "2026-10-21T12:07:11.901148+00:00",
+      "download_url": "https://lanl.ma.ic.ac.uk/data/auth/lanl-auth-dataset-1-00.bz2",
+      "filename": "lanl-auth-dataset-1-00.bz2.prefix",
+      "compressed_bytes": 16777216,
+      "compressed_prefix_sha256": "961ed2e81f75e58920c85299684e61dd1d85b367345954038ab672d0c6dd81f3",
+      "expected_full_archive_sha256": "c8e5efe0b33e80eb2d17f5414255fc4b78be600f8df5040084018dbb5abe25e8",
+      "full_archive_sha256_verified": false,
+      "full_bzip2_integrity_verified": false,
+      "server_content_length": 225029889,
+      "limits": {
+        "compressed_bytes": 16777216,
+        "network_seconds": 300,
+        "decompressed_bytes": 4294967296
+      },
+      "elapsed_seconds_including_validation": 20.718,
+      "stop_reason": "byte_or_time_bound",
+      "scan": {
+        "source_rows": 4909753,
+        "source_first_second": 1,
+        "source_last_second": 136526,
+        "selected_rows": 4909698,
+        "final_timestamp_rows_excluded": 55
+      }
+    }
+  },
+  "scan": {
+    "source_rows": 4909753,
+    "source_first_second": 1,
+    "source_last_second": 136526,
+    "selected_rows": 4909698,
+    "final_timestamp_rows_excluded": 55
+  },
+  "protocol": {
+    "warmup_time_fraction": 0.5,
+    "validation_time_fraction": 0.25,
+    "test_time_fraction": 0.25,
+    "warmup_end_second": 68263,
+    "validation_end_second": 102394,
+    "alert_budget": 0.01,
+    "score_rounding_decimals": 6,
+    "history": "Score entire equal-second group using prior groups, then update all rows regardless of alert",
+    "selection": "First monthly file, first bounded sequential prefix; no outcome-based window selection",
+    "tail": "Discard entire final timestamp group for partial archives"
+  },
+  "labels": {
+    "attack_labels_available": false,
+    "detection_metrics_eligible": false,
+    "eligibility_reason": "Successful authentication is not proof of benign behavior; no attack reference provided"
+  },
+  "partitions": {
+    "warmup": {
+      "events": 2589367,
+      "first_second": 1,
+      "last_second": 68263,
+      "new_user_events": 9010,
+      "new_computer_events": 9978,
+      "new_user_computer_events": 41730,
+      "new_pair_known_user_events": 32720,
+      "unlabeled_events": 2589367,
+      "new_user_event_fraction": 0.003479614902020455,
+      "new_computer_event_fraction": 0.003853451441993352,
+      "new_user_computer_event_fraction": 0.016115907864740688,
+      "new_pair_known_user_event_fraction": 0.012636292962720232
+    },
+    "validation": {
+      "events": 776833,
+      "first_second": 68264,
+      "last_second": 102394,
+      "new_user_events": 61,
+      "new_computer_events": 53,
+      "new_user_computer_events": 605,
+      "new_pair_known_user_events": 544,
+      "unlabeled_events": 776833,
+      "new_user_event_fraction": 7.852395559920858e-05,
+      "new_computer_event_fraction": 6.822573191406647e-05,
+      "new_user_computer_event_fraction": 0.000778803166188872,
+      "new_pair_known_user_event_fraction": 0.0007002792105896634
+    },
+    "test": {
+      "events": 1543498,
+      "first_second": 102395,
+      "last_second": 136525,
+      "new_user_events": 492,
+      "new_computer_events": 871,
+      "new_user_computer_events": 8006,
+      "new_pair_known_user_events": 7514,
+      "unlabeled_events": 1543498,
+      "new_user_event_fraction": 0.0003187564868888719,
+      "new_computer_event_fraction": 0.000564302642439446,
+      "new_user_computer_event_fraction": 0.005186919581366481,
+      "new_pair_known_user_event_fraction": 0.004868163094477609
+    }
+  },
+  "methods": {
+    "new_user_computer": {
+      "threshold": {
+        "minimum_score": 1.0,
+        "validation_alerts": 605,
+        "validation_events": 776833,
+        "validation_alert_fraction": 0.000778803166188872,
+        "tie_policy": "All scores >= threshold; none when top tied group exceeds budget"
+      },
+      "test_alerts": 8006,
+      "test_alert_fraction": 0.005186919581366481,
+      "known_redteam_tuple_recall": null,
+      "accuracy": null,
+      "false_positive_rate": null
+    },
+    "user_computer_surprise": {
+      "threshold": {
+        "minimum_score": 5.309411,
+        "validation_alerts": 7768,
+        "validation_events": 776833,
+        "validation_alert_fraction": 0.009999575198272988,
+        "tie_policy": "All scores >= threshold; none when top tied group exceeds budget"
+      },
+      "test_alerts": 17596,
+      "test_alert_fraction": 0.011400079559545915,
+      "known_redteam_tuple_recall": null,
+      "accuracy": null,
+      "false_positive_rate": null
+    }
+  },
+  "implementation": {
+    "entry_point": "scripts/evaluate_lanl2014.py",
+    "sha256": "6c255a0709bbfc6c4fe4d6ad9637f0351a234b9fec7791e2ec0d7c271bdeb59a",
+    "python_version": "3.11.2",
+    "platform": "Windows-10-10.0.26300-SP0"
+  },
+  "limitations": [
+    "No attack labels: alert fraction is workload, never false-positive rate or accuracy.",
+    "Successful events alone omit failures and cannot establish legitimate intent.",
+    "Another historic dataset from the same institution is not cross-organization validation; cohort/time overlap is unknown.",
+    "A bounded early-file prefix is not representative of all nine months or contemporary deployments.",
+    "The partial bzip2 archive lacks verified final CRC/trailer and full-file checksum.",
+    "User/computer identifiers are anonymized; domain policy, access intent and device trust are unavailable.",
+    "Sequential history adapts using every prior event, including possible undisclosed malicious events.",
+    "Scores are offline research signals and cannot grant or revoke access."
+  ]
+}

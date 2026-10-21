@@ -10,6 +10,10 @@ RUN pip install --no-cache-dir -r backend/requirements.txt \
 COPY --chown=10001:10001 backend/app backend/app
 COPY --chown=10001:10001 experiments/results.json experiments/results.json
 COPY --chown=10001:10001 experiments/uncertainty-study.json experiments/uncertainty-study.json
+COPY --chown=10001:10001 experiments/lanl-study.json experiments/lanl-study.json
+COPY --chown=10001:10001 experiments/lanl2014-study.json experiments/lanl2014-study.json
+COPY --chown=10001:10001 experiments/real-auth-model-study.json experiments/real-auth-model-study.json
+COPY --chown=10001:10001 experiments/real-auth-training.json experiments/real-auth-training.json
 USER 10001:10001
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

@@ -7,6 +7,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+try:
+    from .node_runtime import NodeRuntimeMissing, find_node_runtime
+except ImportError:  # Direct execution by the Git pre-push hook.
+    from node_runtime import NodeRuntimeMissing, find_node_runtime
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -71,7 +76,14 @@ def changed_paths(refs: list[list[str]]) -> set[str] | None:
 def run(label: str, command: list[str]) -> bool:
     print(f"Running {label}...", flush=True)
     try:
-        return subprocess.run(command, cwd=ROOT, check=False).returncode == 0
+        env = None
+        if command[0] in ("node", "npm", "npm.cmd"):
+            runtime = find_node_runtime(ROOT)
+            command, env = runtime.command(command), runtime.environment()
+        return subprocess.run(command, cwd=ROOT, env=env, check=False).returncode == 0
+    except NodeRuntimeMissing as exc:
+        print(str(exc), file=sys.stderr)
+        return False
     except OSError:
         print(f"Could not start {label}. Check that {command[0]} is installed and available. Run python scripts/doctor.py for prerequisite diagnostics.", file=sys.stderr)
         return False

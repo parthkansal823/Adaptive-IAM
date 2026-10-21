@@ -9,6 +9,11 @@ import shutil
 import subprocess
 import sys
 
+try:
+    from .node_runtime import NodeRuntimeMissing, find_node_runtime
+except ImportError:
+    from node_runtime import NodeRuntimeMissing, find_node_runtime
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -38,13 +43,24 @@ def inspect_environment() -> list[tuple[str, str]]:
         else:
             report("OK" if installed == expected else "FAIL", f"{name}: {installed} (required {expected}).")
 
+    try:
+        runtime = find_node_runtime(ROOT)
+    except NodeRuntimeMissing as exc:
+        report("FAIL", str(exc))
+        runtime = None
     for command in ("node", "npm", "git"):
-        executable = shutil.which(command + ".cmd" if command == "npm" and sys.platform == "win32" else command)
-        if not executable:
-            report("FAIL", f"{command} is missing from PATH. Install it, then open a new terminal.")
-            continue
+        if command in ("node", "npm"):
+            if runtime is None:
+                continue
+            invocation, env = runtime.command([command, "--version"]), runtime.environment()
+        else:
+            executable = shutil.which(command)
+            if not executable:
+                report("FAIL", f"{command} is missing from PATH. Install it, then open a new terminal.")
+                continue
+            invocation, env = [executable, "--version"], None
         try:
-            result = subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=10, check=False)
+            result = subprocess.run(invocation, env=env, capture_output=True, text=True, timeout=10, check=False)
         except (OSError, subprocess.TimeoutExpired):
             report("FAIL", f"{command} could not run. Check its installation and execution permissions.")
             continue

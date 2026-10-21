@@ -2,6 +2,7 @@ import type { Evaluation, Metrics } from './api'
 import { Empty, Icon, PageTitle, PanelTitle, percent } from './components'
 import { UncertaintyStudyView } from './UncertaintyStudyView'
 import { RealDataStudyView } from './RealDataStudyView'
+import { RealAuthModelsView } from './RealAuthModelsView'
 
 function metricsFor(section: Record<string, unknown>): Metrics | null {
   const metrics = typeof section.metrics === 'object' && section.metrics !== null ? section.metrics : section
@@ -26,6 +27,7 @@ export function ExperimentsView({ report, loading, onRefresh }: { report: Evalua
       <div className="experiment-columns"><section className="panel protocol-panel"><PanelTitle title="Evaluation protocol" description="Dataset and split information returned by the experiment." /><dl className="protocol-list">{Object.entries(report.dataset).filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value)).map(([key, value]) => <div key={key}><dt>{prettyKey(key)}</dt><dd>{typeof value === 'boolean' ? value ? 'Yes' : 'No' : String(value)}</dd></div>)}</dl>{Object.entries(report.dataset).filter(([, value]) => value && typeof value === 'object').map(([key, value]) => <details className="protocol-extra" key={key}><summary>{prettyKey(key)}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details>)}</section><section className="panel research-notes"><PanelTitle title="Interpret the result" description="Research claims are only as broad as the evidence." />{report.limitations?.length ? <ul>{report.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul> : <p>These measurements apply to the generated research dataset. Operational performance requires independent validation.</p>}<div className="research-note-callout"><Icon name="signal" size={20} /><p>More than one metric matters. A change in accuracy can hide a change in missed attacks or unnecessary verification.</p></div></section></div>
       {report.nlp && <section className="panel text-experiment"><PanelTitle title="Justification classifier" description="Measured text-model results from the evaluation report." /><dl className="protocol-list horizontal">{Object.entries(report.nlp).filter(([, value]) => ['string', 'number'].includes(typeof value)).map(([key, value]) => <div key={key}><dt>{prettyKey(key)}</dt><dd>{typeof value === 'number' && value >= 0 && value <= 1 && !key.includes('sample') ? percent(value) : String(value)}</dd></div>)}</dl>{Object.entries(report.nlp).filter(([, value]) => value && typeof value === 'object').map(([key, value]) => <details className="protocol-extra" key={key}><summary>{prettyKey(key)}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details>)}</section>}
     </>}
+    <RealAuthModelsView />
     <RealDataStudyView />
     <UncertaintyStudyView />
   </>

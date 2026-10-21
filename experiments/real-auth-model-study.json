@@ -1,0 +1,547 @@
+{
+  "schema_version": "real-auth-model-study-v1",
+  "synthetic": false,
+  "status": "measured",
+  "protocol_frozen_at_utc": "2026-10-21T12:07:34.724764+00:00",
+  "protocol_sha256": "5795a726e0d1383dafd84d44cdb038659ebb7086683a1e22c00ee20c73ef021a",
+  "protocol": {
+    "version": "real-auth-model-protocol-v1",
+    "methods": [
+      "lifetime_user_computer",
+      "hierarchical_static",
+      "hierarchical_decay"
+    ],
+    "common_observables": "relative second, source user, destination computer; no outcome or label features",
+    "lifetime_user_computer": "ln(1+past user count)-ln(1+past user/computer count)",
+    "hierarchical_propensity": "pG=(global computer count+1)/(global count+2); pU=(user/computer count+8*pG)/(user count+8); score=-ln(pU)",
+    "propensity_interpretation": "Empirical-Bayes-style smoothed per-computer marginal Bernoulli propensity; not normalized categorical likelihood or attack probability",
+    "backoff_strength": 8.0,
+    "global_positive_prior": 1.0,
+    "global_negative_prior": 1.0,
+    "decay_half_life_seconds": 86400.0,
+    "decay": "All four counts exponentially decay to current source second before scoring; lazy updates use elapsed seconds",
+    "score_quantum": 0.001,
+    "score_quantization": "Floor scores to fixed0.001bins before threshold calibration and evaluation",
+    "probability_floor": 1e-12,
+    "warmup_fraction": 0.5,
+    "validation_fraction": 0.25,
+    "validation_alert_budget": 0.01,
+    "threshold": "Conservative upper-score threshold; no tied-score splitting; top tie over budget disables alerts",
+    "history": "Score every event in a source-second group from strictly earlier seconds, then update all methods together; online history continues through validation/test",
+    "tail_policy": "Exclude whole final source-second group of incomplete compressed prefixes",
+    "strata": [
+      "cold_user",
+      "known_user_new_computer",
+      "familiar_user_computer"
+    ],
+    "stratum_definition": "Lifetime strictly prior user and user/computer counts shared across all methods",
+    "evaluation_scope": "LANL2015 targeted prefix is already-inspected retrospective diagnostic; LANL2014 separate real logs have no attack labels and measure burden only",
+    "model_selection": "All three prespecified methods reported, including regressions; no test-driven selection, tuning or automatic runtime replacement"
+  },
+  "datasets": {
+    "lanl2015_retrospective": {
+      "source": {
+        "kind": "Real enterprise background with sparse exercise-redteam reference",
+        "retrospective": true,
+        "source_url": "https://csr.lanl.gov/data/cyber1/",
+        "auth_sha256": "f7fce0e45cc59525800863be888ea30bf47dbfd53e91cf2171b3a2ebfc5aa42c",
+        "redteam_sha256": "e8ffba5383035389b0de67ccbe8ec61ba10d3cb4467e754cb9f5188b3d7a4aff",
+        "bounded_prefix": true,
+        "limitations": "Previously inspected targeted prefix; diagnostic reuse, not untouched confirmation. Source/destination labels matched exactly; model observes user/destination only."
+      },
+      "scan": {
+        "source_rows": 37752359,
+        "selected_rows": 4394776,
+        "source_first_second": 1,
+        "source_last_second": 200020,
+        "selected_first_second": 1,
+        "selected_last_second": 200019
+      },
+      "partition_cutoffs": {
+        "warmup_end_second": 100010,
+        "validation_end_second": 150015
+      },
+      "partitions": {
+        "warmup": {
+          "events": 2030503,
+          "first_second": 1,
+          "last_second": 100010,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": 0,
+          "unlabeled_events": 2030503
+        },
+        "validation": {
+          "events": 1478049,
+          "first_second": 100011,
+          "last_second": 150015,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": 0,
+          "unlabeled_events": 1478049
+        },
+        "test": {
+          "events": 886224,
+          "first_second": 150016,
+          "last_second": 200019,
+          "matched_auth_rows": 10,
+          "known_redteam_unique_tuples": 10,
+          "unlabeled_events": 886214
+        }
+      },
+      "methods": {
+        "lifetime_user_computer": {
+          "threshold": {
+            "minimum_score": 5.25,
+            "validation_alerts": 14755,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009982754292990286,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 8418,
+          "test_alert_fraction": 0.009498727184097926,
+          "unlabeled_alerts": 8412,
+          "alert_fraction_over_unlabeled": 0.009492063993572658,
+          "known_redteam_alerted_auth_rows": 6,
+          "known_redteam_recalled_unique_tuples": 6,
+          "known_redteam_tuple_recall": 0.6
+        },
+        "hierarchical_static": {
+          "threshold": {
+            "minimum_score": 5.596,
+            "validation_alerts": 14773,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009994932509003423,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 5787,
+          "test_alert_fraction": 0.0065299517954828575,
+          "unlabeled_alerts": 5780,
+          "alert_fraction_over_unlabeled": 0.00652212670980147,
+          "known_redteam_alerted_auth_rows": 7,
+          "known_redteam_recalled_unique_tuples": 7,
+          "known_redteam_tuple_recall": 0.7
+        },
+        "hierarchical_decay": {
+          "threshold": {
+            "minimum_score": 5.4110000000000005,
+            "validation_alerts": 14777,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009997638779228563,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 5676,
+          "test_alert_fraction": 0.006404701294480853,
+          "unlabeled_alerts": 5669,
+          "alert_fraction_over_unlabeled": 0.006396874795478293,
+          "known_redteam_alerted_auth_rows": 7,
+          "known_redteam_recalled_unique_tuples": 7,
+          "known_redteam_tuple_recall": 0.7
+        }
+      },
+      "test_strata": {
+        "cold_user": {
+          "events": 126,
+          "matched_auth_rows": 0,
+          "methods": {
+            "lifetime_user_computer": {
+              "alerts": 0,
+              "unlabeled_alerts": 0,
+              "zero_scores": 126,
+              "mean_score": 0.0,
+              "alert_fraction_over_unlabeled": 0.0,
+              "known_redteam_recalled_unique_tuples": 0
+            },
+            "hierarchical_static": {
+              "alerts": 36,
+              "unlabeled_alerts": 36,
+              "zero_scores": 0,
+              "mean_score": 5.533285714285715,
+              "alert_fraction_over_unlabeled": 0.2857142857142857,
+              "known_redteam_recalled_unique_tuples": 0
+            },
+            "hierarchical_decay": {
+              "alerts": 38,
+              "unlabeled_alerts": 38,
+              "zero_scores": 0,
+              "mean_score": 5.459357142857144,
+              "alert_fraction_over_unlabeled": 0.30158730158730157,
+              "known_redteam_recalled_unique_tuples": 0
+            }
+          },
+          "known_redteam_unique_tuples": 0,
+          "unlabeled_events": 126
+        },
+        "known_user_new_computer": {
+          "events": 2814,
+          "matched_auth_rows": 4,
+          "methods": {
+            "lifetime_user_computer": {
+              "alerts": 1651,
+              "unlabeled_alerts": 1648,
+              "zero_scores": 0,
+              "mean_score": 5.068636460554376,
+              "alert_fraction_over_unlabeled": 0.5864768683274021,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "hierarchical_static": {
+              "alerts": 2209,
+              "unlabeled_alerts": 2205,
+              "zero_scores": 0,
+              "mean_score": 6.927157782515984,
+              "alert_fraction_over_unlabeled": 0.7846975088967971,
+              "known_redteam_recalled_unique_tuples": 4
+            },
+            "hierarchical_decay": {
+              "alerts": 1943,
+              "unlabeled_alerts": 1939,
+              "zero_scores": 0,
+              "mean_score": 6.457526652452031,
+              "alert_fraction_over_unlabeled": 0.6900355871886121,
+              "known_redteam_recalled_unique_tuples": 4
+            }
+          },
+          "known_redteam_unique_tuples": 4,
+          "unlabeled_events": 2810
+        },
+        "familiar_user_computer": {
+          "events": 883284,
+          "matched_auth_rows": 6,
+          "methods": {
+            "lifetime_user_computer": {
+              "alerts": 6767,
+              "unlabeled_alerts": 6764,
+              "zero_scores": 47468,
+              "mean_score": 1.6277948881675246,
+              "alert_fraction_over_unlabeled": 0.007657838189109205,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "hierarchical_static": {
+              "alerts": 3542,
+              "unlabeled_alerts": 3539,
+              "zero_scores": 26126,
+              "mean_score": 1.648845518542135,
+              "alert_fraction_over_unlabeled": 0.0040066660779505435,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "hierarchical_decay": {
+              "alerts": 3695,
+              "unlabeled_alerts": 3692,
+              "zero_scores": 20496,
+              "mean_score": 1.592131826229676,
+              "alert_fraction_over_unlabeled": 0.0041798844757822565,
+              "known_redteam_recalled_unique_tuples": 3
+            }
+          },
+          "known_redteam_unique_tuples": 6,
+          "unlabeled_events": 883278
+        }
+      },
+      "labels": {
+        "available": true,
+        "detection_metrics_eligible": true,
+        "interpretation": "Listed controlled-exercise tuples; all unlisted events UNLABELED"
+      },
+      "implementation_sha256": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+      "execution_environment": {
+        "python_version": "3.11.2",
+        "platform": "Windows-10-10.0.26300-SP0"
+      },
+      "execution_commitment": {
+        "module_sha256": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+        "datasets": [
+          "lanl2015_retrospective",
+          "lanl2014_unlabeled"
+        ],
+        "recorded_before_evaluation": true,
+        "recorded_at_utc": null,
+        "note": "Hash recorded before evaluation, not at the initial protocol freeze; exact recording timestamp was not retained."
+      }
+    },
+    "lanl2014_unlabeled": {
+      "source": {
+        "kind": "Real enterprise successful authentication; no attack labels",
+        "retrospective": false,
+        "source_url": "https://csr.lanl.gov/data/auth/",
+        "auth_sha256": "961ed2e81f75e58920c85299684e61dd1d85b367345954038ab672d0c6dd81f3",
+        "bounded_prefix": true,
+        "provenance": {
+          "dataset": "LANL User-Computer Authentication Associations in Time (2014)",
+          "source_url": "https://csr.lanl.gov/data/auth/",
+          "mirror_url": "https://lanl.ma.ic.ac.uk/data/auth/",
+          "doi": "10.11578/1160076",
+          "license": "LANL waiver of copyright and neighboring rights (public-domain dedication)",
+          "retrieved_at_utc": "2026-10-21T12:07:11.901148+00:00",
+          "download_url": "https://lanl.ma.ic.ac.uk/data/auth/lanl-auth-dataset-1-00.bz2",
+          "filename": "lanl-auth-dataset-1-00.bz2.prefix",
+          "compressed_bytes": 16777216,
+          "compressed_prefix_sha256": "961ed2e81f75e58920c85299684e61dd1d85b367345954038ab672d0c6dd81f3",
+          "expected_full_archive_sha256": "c8e5efe0b33e80eb2d17f5414255fc4b78be600f8df5040084018dbb5abe25e8",
+          "full_archive_sha256_verified": false,
+          "full_bzip2_integrity_verified": false,
+          "server_content_length": 225029889,
+          "limits": {
+            "compressed_bytes": 16777216,
+            "network_seconds": 300,
+            "decompressed_bytes": 4294967296
+          },
+          "elapsed_seconds_including_validation": 20.718,
+          "stop_reason": "byte_or_time_bound",
+          "scan": {
+            "source_rows": 4909753,
+            "source_first_second": 1,
+            "source_last_second": 136526,
+            "selected_rows": 4909698,
+            "final_timestamp_rows_excluded": 55
+          }
+        }
+      },
+      "scan": {
+        "source_rows": 4909753,
+        "source_first_second": 1,
+        "source_last_second": 136526,
+        "selected_rows": 4909698,
+        "final_timestamp_rows_excluded": 55
+      },
+      "partition_cutoffs": {
+        "warmup_end_second": 68263,
+        "validation_end_second": 102394
+      },
+      "partitions": {
+        "warmup": {
+          "events": 2589367,
+          "first_second": 1,
+          "last_second": 68263,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 2589367
+        },
+        "validation": {
+          "events": 776833,
+          "first_second": 68264,
+          "last_second": 102394,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 776833
+        },
+        "test": {
+          "events": 1543498,
+          "first_second": 102395,
+          "last_second": 136525,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 1543498
+        }
+      },
+      "methods": {
+        "lifetime_user_computer": {
+          "threshold": {
+            "minimum_score": 5.3100000000000005,
+            "validation_alerts": 7746,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.009971255083138847,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 17581,
+          "test_alert_fraction": 0.011390361373970034,
+          "unlabeled_alerts": 17581,
+          "alert_fraction_over_unlabeled": 0.011390361373970034,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "hierarchical_static": {
+          "threshold": {
+            "minimum_score": 5.332,
+            "validation_alerts": 7759,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.009987989696627203,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 24451,
+          "test_alert_fraction": 0.015841290367723186,
+          "unlabeled_alerts": 24451,
+          "alert_fraction_over_unlabeled": 0.015841290367723186,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "hierarchical_decay": {
+          "threshold": {
+            "minimum_score": 5.314,
+            "validation_alerts": 7751,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.00997769147294206,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 23528,
+          "test_alert_fraction": 0.015243298015287354,
+          "unlabeled_alerts": 23528,
+          "alert_fraction_over_unlabeled": 0.015243298015287354,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        }
+      },
+      "test_strata": {
+        "cold_user": {
+          "events": 492,
+          "matched_auth_rows": 0,
+          "methods": {
+            "lifetime_user_computer": {
+              "alerts": 0,
+              "unlabeled_alerts": 0,
+              "zero_scores": 492,
+              "mean_score": 0.0,
+              "alert_fraction_over_unlabeled": 0.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 484,
+              "unlabeled_alerts": 484,
+              "zero_scores": 0,
+              "mean_score": 12.432609756097557,
+              "alert_fraction_over_unlabeled": 0.983739837398374,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 484,
+              "unlabeled_alerts": 484,
+              "zero_scores": 0,
+              "mean_score": 12.155792682926828,
+              "alert_fraction_over_unlabeled": 0.983739837398374,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          },
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 492
+        },
+        "known_user_new_computer": {
+          "events": 7514,
+          "matched_auth_rows": 0,
+          "methods": {
+            "lifetime_user_computer": {
+              "alerts": 3077,
+              "unlabeled_alerts": 3077,
+              "zero_scores": 0,
+              "mean_score": 4.652932659036492,
+              "alert_fraction_over_unlabeled": 0.4095022624434389,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 7068,
+              "unlabeled_alerts": 7068,
+              "zero_scores": 0,
+              "mean_score": 10.079504258717082,
+              "alert_fraction_over_unlabeled": 0.9406441309555497,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 7053,
+              "unlabeled_alerts": 7053,
+              "zero_scores": 0,
+              "mean_score": 9.737967660367342,
+              "alert_fraction_over_unlabeled": 0.9386478573329784,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          },
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 7514
+        },
+        "familiar_user_computer": {
+          "events": 1535492,
+          "matched_auth_rows": 0,
+          "methods": {
+            "lifetime_user_computer": {
+              "alerts": 14504,
+              "unlabeled_alerts": 14504,
+              "zero_scores": 117339,
+              "mean_score": 1.0625693035195845,
+              "alert_fraction_over_unlabeled": 0.009445832345593465,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 16899,
+              "unlabeled_alerts": 16899,
+              "zero_scores": 6500,
+              "mean_score": 1.0995348044793865,
+              "alert_fraction_over_unlabeled": 0.011005592995600107,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 15991,
+              "unlabeled_alerts": 15991,
+              "zero_scores": 6500,
+              "mean_score": 1.0927156533546805,
+              "alert_fraction_over_unlabeled": 0.010414251588415961,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          },
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 1535492
+        }
+      },
+      "labels": {
+        "available": false,
+        "detection_metrics_eligible": false,
+        "interpretation": "No attack labels exist for this source; burden only, no detection superiority inference"
+      },
+      "implementation_sha256": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+      "execution_environment": {
+        "python_version": "3.11.2",
+        "platform": "Windows-10-10.0.26300-SP0"
+      },
+      "execution_commitment": {
+        "module_sha256": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+        "datasets": [
+          "lanl2015_retrospective",
+          "lanl2014_unlabeled"
+        ],
+        "recorded_before_evaluation": true,
+        "recorded_at_utc": null,
+        "note": "Hash recorded before evaluation, not at the initial protocol freeze; exact recording timestamp was not retained."
+      }
+    }
+  },
+  "generated_at_utc": "2026-10-21T12:14:27.740488+00:00",
+  "implementation": {
+    "module": "experiments/real_auth_models.py",
+    "sha256": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+    "python_version": "3.11.2",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "mixed_dataset_implementations": false,
+    "dataset_sha256": {
+      "lanl2015_retrospective": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+      "lanl2014_unlabeled": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11"
+    }
+  },
+  "limitations": [
+    "Marginal novelty scores are not calibrated attack probabilities or runtime authorization decisions.",
+    "Methods use identical user/computer observables; older source+destination baseline scores are not a like-for-like control.",
+    "Previously inspected LANL2015 prefix is retrospective; ten clustered exercise tuples cannot support broad superiority.",
+    "LANL2014 has no attack labels, so alert burden cannot establish detection sensitivity or false-positive rate.",
+    "Both releases originate at LANL. Publication years do not prove independent collection periods; calendar dates are undisclosed and temporal overlap cannot be ruled out.",
+    "Exponential decay adapts familiarity but can forget legitimate infrequent pairs, while unlabeled compromise can poison all histories.",
+    "Validation budgets do not guarantee identical test burden; all fixed methods are reported regardless of regressions."
+  ],
+  "implementation_sha256_before_evaluation": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+  "initial_implementation_sha256_at_freeze_recorded": false,
+  "execution_commitment": {
+    "module_sha256": "c1182da4dac8ad8a254f20bda445be50935f7489d66808b139edd3146379cd11",
+    "datasets": [
+      "lanl2015_retrospective",
+      "lanl2014_unlabeled"
+    ],
+    "recorded_before_evaluation": true,
+    "recorded_at_utc": null,
+    "note": "Hash recorded before evaluation, not at the initial protocol freeze; exact recording timestamp was not retained."
+  },
+  "provenance_metadata_revision": {
+    "revised_at_utc": "2026-10-21T16:33:59.557537+00:00",
+    "module_sha256": "220f59832720796c02b2f0a8284ed52442fdee66dd2d4502fdd56d7938372d60",
+    "evaluation_rerun": false,
+    "changes": "Corrected initial-freeze versus pre-evaluation hash attribution and added per-dataset executed identities. All measured values and source metadata are unchanged.",
+    "unchanged_measurement_payload_sha256": {
+      "lanl2015_retrospective": "61945fbd9ebdb3d33c7684bea31b4e2a35e6368a320c7b1f0c65a29199334609",
+      "lanl2014_unlabeled": "3f8210fff087a071444a862024befc4dd76ec339e20b7f0d0c650a9e6bb41574"
+    }
+  }
+}

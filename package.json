@@ -14,6 +14,10 @@
     "build": "npm --prefix frontend run build",
     "context": "python scripts/context.py",
     "research:verify": "python scripts/verify_research.py",
-    "research:uncertainty": "node scripts/verify.mjs --uncertainty"
+    "research:uncertainty": "node scripts/verify.mjs --uncertainty",
+    "research:lanl": "node scripts/verify.mjs --lanl",
+    "research:lanl2014": "node scripts/verify.mjs --lanl2014",
+    "research:real-auth-models": "node scripts/verify.mjs --real-auth-models",
+    "research:train-real-auth": "node scripts/verify.mjs --train-real-auth"
   }
 }

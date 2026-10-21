@@ -1,0 +1,102 @@
+{
+  "schema_version": "real-auth-training-v1",
+  "synthetic": false,
+  "status": "protocol_frozen",
+  "protocol": {
+    "version": "real-auth-training-protocol-v1",
+    "features": [
+      "negative_log_prior_user_fraction",
+      "negative_log_prior_pair_given_user_fraction",
+      "negative_log_prior_computer_fraction",
+      "log1p_prior_global_event_rate",
+      "smoothed_prior_user_computer_diversity",
+      "unseen_user",
+      "unseen_pair",
+      "normalized_log_user_elapsed_seconds",
+      "normalized_log_pair_elapsed_seconds"
+    ],
+    "feature_history": "Strictly earlier source seconds; complete equal-second groups score before update",
+    "feature_fractions": "-ln((user+1)/(global+2)); -ln((pair+1)/(user+2)); -ln((computer+1)/(global+2)); diversity=(user distinct computers+1)/(user count+2)",
+    "feature_event_rate": "log1p(prior global count/max(1,current second-first observed source second))",
+    "feature_normalization": "Use relative count/rate features instead of raw cumulative counts to reduce trivial elapsed-history drift; no stationarity guarantee",
+    "feature_elapsed": "log1p(min(86400,seconds since last event))/log1p(86400); unseen history uses 86400",
+    "excluded_features": [
+      "identifiers",
+      "authentication outcome",
+      "exercise labels",
+      "future counts"
+    ],
+    "learning": "Unsupervised IsolationForest; no benign or malicious training labels",
+    "estimator": {
+      "n_estimators": 100,
+      "max_samples": 256,
+      "contamination": "auto",
+      "max_features": 1.0,
+      "bootstrap": false,
+      "random_state": 20261021,
+      "n_jobs": 1
+    },
+    "reservoir_capacity": 30000,
+    "reservoir_seed": 20261021,
+    "reservoir": "Uniform Algorithm R over warmup event rows; canonical user/computer ordering inside each second; duplicates retain event multiplicity",
+    "fit_scope": "Each release/month fits six forests on warmup only; validation selects parameters, test never fits or selects",
+    "warmup_fraction": 0.5,
+    "validation_fraction": 0.25,
+    "validation_alert_budget": 0.01,
+    "forest_score": "floor((-score_samples)*10000)/10000; larger means more unusual, not attack probability",
+    "forest_score_quantum": 0.0001,
+    "baseline_score_quantum": 0.001,
+    "threshold": "Conservative validation upper-score budget; never split tied bins; disable if top tie exceeds allowance",
+    "baselines": [
+      "lifetime_user_computer",
+      "hierarchical_static",
+      "hierarchical_decay"
+    ],
+    "backoff_strength": 8.0,
+    "decay_half_life_seconds": 86400.0,
+    "history_update": "All observed rows update feature and baseline histories irrespective of alert or label; forest weights remain frozen after warmup",
+    "tail": "Exclude the complete final source-second group of each incomplete compressed prefix",
+    "batching": "Batch up to8192 distinct within-second user/computer feature vectors; multiplicities weight all metrics and calibration",
+    "strata": [
+      "cold_user",
+      "known_user_new_computer",
+      "familiar_user_computer"
+    ],
+    "test_reuse": "2015 and month00 windows were inspected previously; retrospective diagnostics. Month01 is another same-institution slice without attack labels.",
+    "tuning": {
+      "tool": "sklearn.model_selection.ParameterGrid",
+      "grid": {
+        "max_samples": [
+          128,
+          256,
+          512
+        ],
+        "max_features": [
+          0.75,
+          1.0
+        ]
+      },
+      "all_other_settings": "Identical fixed estimator settings and warmup reservoir",
+      "validation_split": "First half of validation source-time span calibrates1% thresholds; later half measures budget stability, whole seconds only",
+      "objective": "Minimize abs(later validation alert fraction-0.01), not detection accuracy",
+      "eligibility": "Both validation halves nonempty, at least two calibration score bins, non-null calibration threshold",
+      "tie_break": "Smallest max_samples, then smallest max_features, then stable candidate ID",
+      "fallback": "Fixed max_samples256/max_features1.0 if no eligible candidate; disclose fallback",
+      "final_threshold": "Recalibrate selected candidate on all validation only; freeze before test",
+      "test": "Evaluate fixed forest plus selected forest and every count control; do not select a test winner"
+    },
+    "reporting": "Report every fixed method and regression; never choose a winner from held-out outcomes or replace runtime policy"
+  },
+  "protocol_sha256": "52e21b5b223b0bf7b86634eb12dc986d60301ae1bd35270cac15df2255f1e9a1",
+  "protocol_frozen_at_utc": "2026-10-21T16:49:56.124493+00:00",
+  "datasets": {},
+  "pending_execution_commitment": {
+    "module_sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+    "datasets": [
+      "lanl2015_retrospective",
+      "lanl2014_month00",
+      "lanl2014_month01"
+    ],
+    "recorded_at_utc": "2026-10-21T16:50:03.828784+00:00"
+  }
+}

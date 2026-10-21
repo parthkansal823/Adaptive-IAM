@@ -9,8 +9,10 @@ import argparse
 import hashlib
 import json
 import math
+import platform
 import re
 import sys
+import tempfile
 import time
 import urllib.request
 import zlib
@@ -42,6 +44,12 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def implementation_metadata() -> dict:
+    return {"entry_point": "scripts/evaluate_lanl.py", "sha256": sha256_file(Path(__file__)),
+            "python_version": platform.python_version(), "platform": platform.platform(),
+            "hash_scope": "Finalized evaluator source; metadata and input-validation edits do not alter reported scoring rules"}
+
+
 def bounded_bytes(response, limit: int, deadline: float):
     """Read no more than the caller's transfer allowance, even without EOF."""
     read = 0
@@ -53,7 +61,7 @@ def bounded_bytes(response, limit: int, deadline: float):
         yield chunk
 
 
-def gzip_lines(chunks, *, allow_prefix: bool = False, max_output_bytes: int = 16 * 1024**3):
+def gzip_lines(chunks, *, allow_prefix: bool = False, max_output_bytes: int = 256 * 1024**3):
     """Yield complete lines only; truncated gzip needs explicit prefix permission.
 
     A streaming prefix cannot verify the archive CRC/trailer. Even if a byte cap
@@ -63,9 +71,13 @@ def gzip_lines(chunks, *, allow_prefix: bool = False, max_output_bytes: int = 16
     pending = b""
     emitted = 0
     for chunk in chunks:
+        if decoder.eof and chunk:
+            raise ValueError("Concatenated gzip members or trailing bytes are unsupported")
         compressed = chunk
         while compressed:
             output = decoder.decompress(compressed, 1024 * 1024)
+            if decoder.unused_data:
+                raise ValueError("Concatenated gzip members or trailing bytes are unsupported")
             compressed = decoder.unconsumed_tail
             emitted += len(output)
             if emitted > max_output_bytes:
@@ -116,9 +128,9 @@ def auth_event(line: str) -> tuple[int, Event | None]:
     second = int(fields[0])
     if second < 1:
         raise ValueError("LANL seconds must be positive")
-    # Preregistered observable selection; outcome is never read or used. Both
+    # Fixed observable selection; outcome is never read or used. Both
     # Success and Fail rows are eligible. Missing host values are excluded.
-    selected = bool(HUMAN.fullmatch(fields[1])) and fields[7] == "LogOn" and fields[3] != "?" and fields[4] != "?"
+    selected = bool(HUMAN.fullmatch(fields[1])) and fields[7] == "LogOn" and fields[3] not in {"", "?"} and fields[4] not in {"", "?"}
     return second, Event(second, fields[1], fields[3], fields[4]) if selected else None
 
 
@@ -194,6 +206,8 @@ def fetch(output: Path, max_bytes: int, max_seconds: float, stop_second: int | N
                         compressed = chunk
                         while compressed:
                             text = decoder.decompress(compressed, 1024 * 1024)
+                            if decoder.unused_data:
+                                raise ValueError("Concatenated gzip members or trailing bytes are unsupported")
                             compressed = decoder.unconsumed_tail
                             pending += text
                             parts = pending.split(b"\n")
@@ -216,7 +230,7 @@ def fetch(output: Path, max_bytes: int, max_seconds: float, stop_second: int | N
                 handle.flush()
             if name.startswith("redteam"):
                 # This also checks the gzip checksum and complete trailer.
-                redteam = list(gzip_lines([temporary.read_bytes()]))
+                redteam = list(gzip_lines([temporary.read_bytes()], max_output_bytes=4 * 1024**2))
                 if not redteam:
                     raise ValueError("Redteam reference is empty")
                 if any(len(line.split(",")) != 4 for line in redteam):
@@ -374,7 +388,7 @@ def evaluate(auth: Path, redteam: Path, *, prefix: bool = False, budget: float =
             "known_redteam_tuple_recall": len(recalled_keys[index]) / len(positive_keys["test"]) if eligible else None}
     artifact = {"schema_version": "lanl-study-v1", "study": "LANL real enterprise authentication novelty (offline)",
         "evidence_type": "real_enterprise_authentication_with_exercise_redteam", "synthetic": False,
-        "source_real_enterprise": True,
+        "source_real_enterprise": True, "implementation": implementation_metadata(),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": {"landing_page": SOURCE, "download_mirror": MIRROR, "doi": "10.17021/1179829",
             "citation": "A. D. Kent, Comprehensive, Multi-Source Cybersecurity Events, LANL, 2015",
@@ -408,6 +422,7 @@ def evaluate(auth: Path, redteam: Path, *, prefix: bool = False, budget: float =
             "eligibility_reason": "Test contains exact selected redteam tuples" if eligible else "No exact selected redteam tuple in test; known-redteam detection metrics withheld"},
         "methods": methods,
         "limitations": ["A single historic institution and contiguous prefix do not establish production generalization or IAM takeover detection.",
+            "The targeted prefix endpoint was chosen after consulting the public first redteam time: label-informed feasibility sampling, not externally preregistered representative or untouched test data. Methods and thresholds were not tuned on test outcomes.",
             "Redteam events are controlled exercise activity, with incomplete negative labels; no accuracy, precision, FPR or AUROC is claimed.",
             "Only human-source LogOn events with known computers are selected; machine/service activity and other orientations are excluded.",
             "Source excludes failures for users without any successful authentication in its full dataset; this creates source selection bias.",
@@ -445,6 +460,10 @@ def main():
             print(json.dumps({"downloaded_bytes": {name: entry["compressed_bytes"] for name, entry in result["files"].items()},
                               "pilot_scan": result["pilot_scan"], "elapsed_seconds": result["elapsed_seconds"]}))
         else:
+            # Fail before the long streaming passes when report writes are denied.
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(dir=args.output.parent, prefix=".lanl-write-check-", delete=True):
+                pass
             result = evaluate(args.auth, args.redteam, prefix=args.prefix, budget=args.budget, provenance=args.provenance)
             atomic_json(args.output, result)
             print(json.dumps({"source_rows": result["scan"]["source_rows"], "test_rows": result["partitions"]["test"]["events"],
