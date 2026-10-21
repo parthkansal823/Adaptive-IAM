@@ -10,6 +10,25 @@ from backend.app import research
 
 
 class FrozenResearchTests(unittest.TestCase):
+    def test_packaged_training_report_exposes_real_fit_and_validation_selection_boundaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = Path(directory) / "unused-runtime"
+            response = TestClient(create_app(runtime)).get("/api/research/real-auth-training")
+            self.assertEqual(response.status_code, 200)
+            report = response.json()
+            self.assertFalse(report["synthetic"])
+            self.assertEqual(len(report["datasets"]), 3)
+            for dataset in report["datasets"].values():
+                training = dataset["training"]
+                self.assertEqual(training["reservoir_events"], 30000)
+                self.assertEqual(training["fitted_feature_dimensions"], 9)
+                self.assertEqual(len(training["tuning"]["candidates"]), 6)
+                self.assertEqual(training["weights_frozen_after"], "warmup")
+                if not dataset["labels"]["detection_metrics_eligible"]:
+                    for method in dataset["methods"].values():
+                        self.assertIsNone(method["known_redteam_tuple_recall"])
+            self.assertFalse(runtime.exists())
+
     def test_packaged_real_model_report_preserves_both_dataset_label_boundaries(self):
         response = TestClient(create_app()).get("/api/research/real-auth-models")
         self.assertEqual(response.status_code, 200)

@@ -4,6 +4,7 @@ import json
 import math
 import tempfile
 import unittest
+import warnings
 from collections import Counter
 from pathlib import Path
 
@@ -18,6 +19,14 @@ from experiments.real_auth_training import (
 
 
 class RealAuthTrainingTests(unittest.TestCase):
+    def setUp(self):
+        # Tiny mechanics fixtures intentionally have fewer rows than production
+        # subsamples; sklearn's documented clamping warning is expected here.
+        context = warnings.catch_warnings()
+        context.__enter__()
+        self.addCleanup(context.__exit__, None, None, None)
+        warnings.filterwarnings("ignore", message=r"max_samples \(\d+\) is greater than the total number of samples", category=UserWarning)
+
     def event(self, second, user="u", computer="c", source="source"):
         return AuthEvent(second, user, computer, source, computer)
 
@@ -111,6 +120,41 @@ class RealAuthTrainingTests(unittest.TestCase):
         self.assertTrue(fallback)
         self.assertTrue(all(not entry["eligible"] for entry in metrics))
 
+    def test_empty_calibration_half_is_ineligible_and_falls_back(self):
+        hist = {entry["id"]: {"calibration": Counter(), "selection": Counter({.1: 990, .9: 10}), "all": Counter()}
+                for entry in candidate_configs()}
+        selected, metrics, fallback = choose_candidate(hist)
+        self.assertEqual(selected, "if_256_1p0")
+        self.assertTrue(fallback)
+        for entry in metrics:
+            self.assertFalse(entry["eligible"])
+            self.assertEqual(entry["calibration_events"], 0)
+            self.assertIsNone(entry["calibration_threshold"]["minimum_score"])
+            self.assertIsNone(entry["calibration_threshold"]["validation_alert_fraction"])
+            self.assertIsNone(entry["objective_distance_to_budget"])
+
+    def test_empty_selection_half_is_ineligible_and_falls_back(self):
+        hist = {entry["id"]: {"calibration": Counter({.1: 990, .9: 10}), "selection": Counter(), "all": Counter()}
+                for entry in candidate_configs()}
+        selected, metrics, fallback = choose_candidate(hist)
+        self.assertEqual(selected, "if_256_1p0")
+        self.assertTrue(fallback)
+        self.assertTrue(all(not entry["eligible"] for entry in metrics))
+        self.assertTrue(all(entry["selection_alert_fraction"] is None for entry in metrics))
+
+    def test_wholly_empty_validation_has_clear_failure(self):
+        hist = {entry["id"]: {"calibration": Counter(), "selection": Counter(), "all": Counter()}
+                for entry in candidate_configs()}
+        with self.assertRaisesRegex(ValueError, "Validation window has no selected events"):
+            choose_candidate(hist)
+
+    def test_sparse_validation_first_half_runs_fallback_without_retraining(self):
+        groups = [(second, events) for second, events in self.groups() if not 50 < second <= 62]
+        report = evaluate_groups(iter(groups), self.scan(groups), None, {})
+        self.assertTrue(report["training"]["tuning"]["fallback_used"])
+        self.assertEqual(report["training"]["tuning"]["selected_candidate_id"], "if_256_1p0")
+        self.assertEqual(report["methods"]["isolation_forest_tuned"], report["methods"]["isolation_forest"])
+
     def test_labels_never_change_weights_thresholds_or_selected_parameters(self):
         groups = self.groups()
         a = evaluate_groups(iter(groups), self.scan(groups), None, {}, batch_size=19)
@@ -162,6 +206,17 @@ class RealAuthTrainingTests(unittest.TestCase):
         self.assertEqual(report["training"]["tuning"]["calibration_end_second"], 62)
         for method in METHODS:
             self.assertEqual(sum(entry["methods"][method]["alerts"] for entry in report["test_strata"].values()), report["methods"][method]["test_alerts"])
+
+    def test_duplicate_rows_match_one_exercise_tuple_without_fake_negative_labels(self):
+        groups = self.groups()
+        label = groups[-1][1][0].label_key
+        report = evaluate_groups(iter(groups), self.scan(groups), {label}, {})
+        test = report["partitions"]["test"]
+        self.assertEqual(test["matched_auth_rows"], len(groups[-1][1]))
+        self.assertEqual(test["known_redteam_unique_tuples"], 1)
+        self.assertEqual(test["unlabeled_events"], test["events"] - len(groups[-1][1]))
+        for method in report["methods"].values():
+            self.assertIn(method["known_redteam_tuple_recall"], (0., 1.))
 
     def test_invalid_order_and_source_count_mismatch_are_rejected(self):
         groups = self.groups()

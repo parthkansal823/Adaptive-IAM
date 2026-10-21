@@ -49,6 +49,24 @@ class QbftBoundaryTests(unittest.TestCase):
                     RegistrySigner("http://registry-signer:9100", token).submit("revoke", [])
             network.assert_not_called()
 
+    def test_audit_batch_uses_the_authenticated_fixed_signer_operation(self):
+        arguments = [1, 3, "0x" + "11" * 32, "0x" + "22" * 32, "0x" + "00" * 32]
+        response = {"transaction_hash": "0x" + "33" * 32, "block_number": 4}
+        with tempfile.TemporaryDirectory() as directory:
+            token = Path(directory) / "fixture-token"
+            token.write_text("a" * 64, encoding="utf-8")
+            signer = RegistrySigner("http://registry-signer:9100", token)
+            with patch("backend.app.chain_signer.urlopen") as network:
+                network.return_value.__enter__.return_value.read.return_value = json.dumps(response).encode()
+                self.assertEqual(signer.submit("audit_batch", arguments), response)
+                request = network.call_args.args[0]
+                self.assertEqual(request.full_url, "http://registry-signer:9100/transaction")
+                self.assertEqual(request.get_header("Authorization"), "Bearer " + "a" * 64)
+                self.assertEqual(json.loads(request.data), {"kind": "audit_batch", "arguments": arguments})
+                with self.assertRaises(RuntimeError):
+                    signer.submit("arbitrary_batch_method", arguments)
+                self.assertEqual(network.call_count, 1)
+
     def test_quorum_outage_denies_without_cached_receipts(self):
         with tempfile.TemporaryDirectory() as directory:
             with patch.dict(os.environ, {"IAM_WEB3_NETWORK": "qbft"}):

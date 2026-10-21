@@ -2,9 +2,11 @@ import { useState } from 'react'
 import type { AuditEvent, Identity, Verification } from './api'
 import { Badge, Empty, formatDate, Icon, PageTitle, PanelTitle } from './components'
 import { ChainPanel } from './ChainPanel'
+import { AuditProofsPanel } from './AuditProofsPanel'
 
 export function AuditView({ events, verification, user, token, busy, onVerify, onLogin }: { events: AuditEvent[]; verification: Verification | null; user: Identity | null; token: string | null; busy: boolean; onVerify: () => Promise<boolean>; onLogin: () => void }) {
   const [query, setQuery] = useState('')
+  const [proofsOpen, setProofsOpen] = useState(false)
   const filtered = events.filter(event => `${event.event_type} ${event.actor_name || ''} ${event.actor_id || ''} ${event.id}`.toLowerCase().includes(query.toLowerCase()))
   return <>
     <PageTitle title="Audit log" description="Find recorded activity and verify the local audit history." action={user && <button className="button primary" onClick={onVerify} disabled={busy}><Icon name="shield" size={18} />{busy ? 'Verifying…' : 'Verify history'}</button>} />
@@ -13,6 +15,7 @@ export function AuditView({ events, verification, user, token, busy, onVerify, o
       <section className="panel audit-panel"><PanelTitle title="Activity" description={`${filtered.length} of ${events.length} recorded events`} action={<label className="search-field"><span className="sr-only">Search activity</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search event or identity" /></label>} />{filtered.length ? <div className="ledger-events">{filtered.map(event => <details className="ledger-event" key={event.id}><summary><span className="ledger-event-dot" /><time dateTime={event.timestamp}>{formatDate(event.timestamp)}</time><strong>{event.event_type.replaceAll('_', ' ')}</strong><span className="ledger-event-actor">{event.actor_name || event.actor_id || 'System'}</span><Icon name="chevron" size={16} /></summary><div className="ledger-event-detail"><div><span>Event ID</span><code>{event.id}</code></div><div><span>Event hash</span><code>{event.hash}</code></div><div><span>Previous hash</span><code>{event.previous_hash}</code></div><div className="ledger-payload"><span>Recorded details</span><pre>{JSON.stringify(event.payload, null, 2)}</pre></div></div></details>)}</div> : <Empty icon="audit" title={query ? 'No matching events' : 'No recorded activity'}>{query ? 'Try another event name, identity, or event ID.' : 'Actions appear after the server records them.'}</Empty>}</section>
       <details className="protocol-extra"><summary>How history verification works</summary><p>Each event includes the previous event’s hash. Verification recomputes this local chain to detect changes. This is a tamper-evident local record, not a distributed blockchain or a tamper-proof store.</p></details>
       <details className="chain-disclosure"><summary>Blockchain confirmations</summary><ChainPanel key={user.id} token={token} user={user} /></details>
+      {user.role === 'security_reviewer' && token && <details className="chain-disclosure" onToggle={event => setProofsOpen(event.currentTarget.open)}><summary>Audit inclusion proofs</summary>{proofsOpen && <AuditProofsPanel key={token} token={token} />}</details>}
     </>}
   </>
 }

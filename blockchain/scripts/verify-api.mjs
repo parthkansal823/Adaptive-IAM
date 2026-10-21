@@ -36,12 +36,17 @@ try {
   env.IAM_TEST_WEB3_RPC_URL = rpc
   env.IAM_TEST_WEB3_DEPLOYMENT_FILE = metadataPath
   console.log('Running API security tests against a new isolated Ganache chain (no workspace state).')
-  const result = await new Promise((resolve, reject) => {
-    child = spawn(python, ['scripts/run_tests.py', '-s', 'backend/tests', '-p', 'test_blockchain.py'], { cwd: root, env, stdio: 'inherit', windowsHide: true })
-    const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('Live API verification exceeded three minutes.')) }, 180_000)
-    child.once('error', () => { clearTimeout(timer); reject(new Error('Could not start Python; install backend test dependencies and retry.')) })
-    child.once('exit', (code, signal) => { clearTimeout(timer); resolve(signal ? 1 : code ?? 1) })
-  })
+  let result = 0
+  for (const pattern of ['test_blockchain.py', 'test_audit_proofs.py']) {
+    if (interrupted) throw new Error('Verification interrupted before the next test group.')
+    result = await new Promise((resolve, reject) => {
+      child = spawn(python, ['scripts/run_tests.py', '-s', 'backend/tests', '-p', pattern], { cwd: root, env, stdio: 'inherit', windowsHide: true })
+      const timer = setTimeout(() => { child.kill('SIGTERM'); reject(new Error('Live API test group exceeded three minutes.')) }, 180_000)
+      child.once('error', () => { clearTimeout(timer); reject(new Error('Could not start Python; install backend test dependencies and retry.')) })
+      child.once('exit', (code, signal) => { clearTimeout(timer); resolve(signal ? 1 : code ?? 1) })
+    })
+    if (result !== 0) break
+  }
   process.exitCode = result
   if (result === 0) console.log('Isolated live-chain API verification passed.')
 } catch (error) {

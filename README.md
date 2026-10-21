@@ -45,7 +45,17 @@ Recommended prerequisites: Python 3.13, Node.js 24 LTS, npm and Git, matching Do
 npm run dev
 ```
 
-`npm run dev` starts the API and frontend together. Ctrl+C stops both. For separate terminals or backend hot reload, use:
+`npm run dev` starts the API and frontend together. Ctrl+C stops both.
+
+If this workspace's trusted portable runtime is present but Node/npm are absent from PATH, start the same launcher directly:
+
+```powershell
+& ./.cache/runtime/node-v24.22.0-win-x64/node.exe scripts/dev.mjs
+```
+
+Open [the console](http://127.0.0.1:5173/) and use **Experiments → Real authentication models → Trained Isolation Forest** for the training study. **Audit log → Audit inclusion proofs** is available to security reviewers. In demo mode, the listed Kavya Sen account has that role. The separate Orbit website requires the optional website profile above. Restart the development launcher after backend code changes.
+
+For separate terminals or backend hot reload, use:
 
 ```powershell
 .\scripts\dev.ps1 -Service backend
@@ -89,6 +99,8 @@ The [multi-dataset model extension](docs/REAL_AUTH_MODELS.md) adds a separate [L
 The [real-data training guide](docs/REAL_AUTH_TRAINING.md) covers learned Isolation Forests, an additional [monthly sample](docs/LANL_MONTH01.md), warmup-only fitting, validation-only parameter search and later testing. Fitted artifacts stay local with hashes; the Experiments model panel switches between count controls and trained models. The search targets validation alert-budget stability because most records lack attack labels. Start with `npm run research:train-real-auth -- --help`; sources, features, selection rules, results, limitations and reproduction are documented together.
 
 Node website sessions can survive restarts using encrypted local SQLite; the Docker website enables this in its own volume. [Integration settings](docs/INTEGRATION.md) describe keys and same-host workers. [Offline backup/restore](docs/BACKUP.md) preserves IAM SQLite state, signing identity and enrolled-factor keys with validation before installation.
+
+[Merkle audit proofs](docs/AUDIT_PROOFS.md) add append-only local batch commitments, hash-only inclusion exports, an offline trusted-root verifier and optional live EVM batch confirmation. The console exposes sealing/export/verification to security reviewers. Existing per-event anchors and grant policy remain authoritative; supplemental batch roots do not establish independent consensus or reduce current transaction costs.
 
 Run `npm run check:complete` to include installed-browser regressions and fresh isolated live-chain API checks. The command preserves existing IAM/chain state and requires no running Docker stack.
 

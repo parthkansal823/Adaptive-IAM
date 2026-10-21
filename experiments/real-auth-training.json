@@ -1,7 +1,7 @@
 {
   "schema_version": "real-auth-training-v1",
   "synthetic": false,
-  "status": "protocol_frozen",
+  "status": "measured",
   "protocol": {
     "version": "real-auth-training-protocol-v1",
     "features": [
@@ -89,8 +89,1337 @@
   },
   "protocol_sha256": "52e21b5b223b0bf7b86634eb12dc986d60301ae1bd35270cac15df2255f1e9a1",
   "protocol_frozen_at_utc": "2026-10-21T16:49:56.124493+00:00",
-  "datasets": {},
-  "pending_execution_commitment": {
+  "datasets": {
+    "lanl2015_retrospective": {
+      "source": {
+        "source_url": "https://csr.lanl.gov/data/cyber1/",
+        "auth_sha256": "f7fce0e45cc59525800863be888ea30bf47dbfd53e91cf2171b3a2ebfc5aa42c",
+        "redteam_sha256": "e8ffba5383035389b0de67ccbe8ec61ba10d3cb4467e754cb9f5188b3d7a4aff",
+        "bounded_prefix": true,
+        "retrospective": true,
+        "release": "LANL2015 cyber1",
+        "actual_calendar_dates_disclosed": false
+      },
+      "scan": {
+        "source_rows": 37752359,
+        "selected_rows": 4394776,
+        "source_first_second": 1,
+        "source_last_second": 200020,
+        "selected_first_second": 1,
+        "selected_last_second": 200019
+      },
+      "partitions": {
+        "warmup": {
+          "events": 2030503,
+          "first_second": 1,
+          "last_second": 100010,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": 0,
+          "unlabeled_events": 2030503,
+          "canonical_selected_stream_sha256": "ecadb54325a99a47e87204ecaf4d8299a6a75d87c6da4ddf4a6ea8114a23be59"
+        },
+        "validation": {
+          "events": 1478049,
+          "first_second": 100011,
+          "last_second": 150015,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": 0,
+          "unlabeled_events": 1478049,
+          "canonical_selected_stream_sha256": "c45714ab8a5b91120ad2e4b3d481adf40120e60a0b733248e3b283b457d5e566"
+        },
+        "test": {
+          "events": 886224,
+          "first_second": 150016,
+          "last_second": 200019,
+          "matched_auth_rows": 10,
+          "known_redteam_unique_tuples": 10,
+          "unlabeled_events": 886214,
+          "canonical_selected_stream_sha256": "8a38c877ee55f1c9e5b4c2ea7bee7c9c82fe126513ec1fdad8cac9a8200148aa"
+        }
+      },
+      "partition_cutoffs": {
+        "warmup_end_second": 100010,
+        "validation_end_second": 150015
+      },
+      "labels": {
+        "available": true,
+        "detection_metrics_eligible": true,
+        "interpretation": "Sparse exercise reference; unlisted events unlabeled"
+      },
+      "training": {
+        "algorithm": "IsolationForest",
+        "warmup_events_seen": 2030503,
+        "reservoir_events": 30000,
+        "fitted_feature_dimensions": 9,
+        "feature_tensor_sha256": "fb15f297c8d21d4f7d9bd5bf41315337926e2a9c98ee75658ad807aace66af52",
+        "feature_tensor_dtype": "little-endian float64, C order",
+        "model_sha256": "27dab10797310234f4bada2b4e747c438c42a1264cb3beed51dd197bfdc0036c",
+        "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.joblib",
+        "actual_max_samples": 256,
+        "fitted_tree_count": 100,
+        "weights_frozen_after": "warmup",
+        "elapsed_seconds": 201.547,
+        "tuning": {
+          "tool": "sklearn.model_selection.ParameterGrid",
+          "objective": "Minimize abs(later validation alert fraction-0.01), not detection accuracy",
+          "calibration_end_second": 125012,
+          "selected_candidate_id": "if_128_0p75",
+          "selected_params": {
+            "max_features": 0.75,
+            "max_samples": 128
+          },
+          "fallback_used": false,
+          "candidates": [
+            {
+              "id": "if_128_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 128
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.6244,
+                "validation_alerts": 6548,
+                "validation_events": 655974,
+                "validation_alert_fraction": 0.009982102949202255,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 655974,
+              "selection_events": 822075,
+              "selection_alerts": 5344,
+              "selection_alert_fraction": 0.006500623422437126,
+              "objective_distance_to_budget": 0.0034993765775628745,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.if_128_0p75.joblib",
+              "model_sha256": "3977f7dc1eef8f62c7f58961f203f26614c86945ca74b1dc90349bb6aabf1596"
+            },
+            {
+              "id": "if_256_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 256
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.6241,
+                "validation_alerts": 6559,
+                "validation_events": 655974,
+                "validation_alert_fraction": 0.00999887190650849,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 655974,
+              "selection_events": 822075,
+              "selection_alerts": 5161,
+              "selection_alert_fraction": 0.0062780159961074115,
+              "objective_distance_to_budget": 0.0037219840038925887,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.if_256_0p75.joblib",
+              "model_sha256": "085ac32b89aa89b00d5e72e53458a9909de61aa700b0498957ff772879b05f14"
+            },
+            {
+              "id": "if_512_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 512
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.6246,
+                "validation_alerts": 6558,
+                "validation_events": 655974,
+                "validation_alert_fraction": 0.009997347455844286,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 655974,
+              "selection_events": 822075,
+              "selection_alerts": 4989,
+              "selection_alert_fraction": 0.006068789344037952,
+              "objective_distance_to_budget": 0.003931210655962048,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.if_512_0p75.joblib",
+              "model_sha256": "b2a64fdd0b54e38ed05dff5e373cf54bae3a3f69429262c693bcbc5be5f28832"
+            },
+            {
+              "id": "if_128_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 128
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.6468,
+                "validation_alerts": 6555,
+                "validation_events": 655974,
+                "validation_alert_fraction": 0.009992774103851677,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 655974,
+              "selection_events": 822075,
+              "selection_alerts": 4723,
+              "selection_alert_fraction": 0.005745217893744488,
+              "objective_distance_to_budget": 0.0042547821062555126,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.if_128_1p0.joblib",
+              "model_sha256": "0a1aebe38593e711b74e20549d6c41d4b8d2f06c46ea66e6bd1b0cc65abd17fb"
+            },
+            {
+              "id": "if_256_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 256
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.6408,
+                "validation_alerts": 6546,
+                "validation_events": 655974,
+                "validation_alert_fraction": 0.009979054047873848,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 655974,
+              "selection_events": 822075,
+              "selection_alerts": 5052,
+              "selection_alert_fraction": 0.00614542468752851,
+              "objective_distance_to_budget": 0.0038545753124714904,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.joblib",
+              "model_sha256": "27dab10797310234f4bada2b4e747c438c42a1264cb3beed51dd197bfdc0036c"
+            },
+            {
+              "id": "if_512_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 512
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.64,
+                "validation_alerts": 6528,
+                "validation_events": 655974,
+                "validation_alert_fraction": 0.009951613935918192,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 655974,
+              "selection_events": 822075,
+              "selection_alerts": 4336,
+              "selection_alert_fraction": 0.005274457926588207,
+              "objective_distance_to_budget": 0.004725542073411793,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.if_512_1p0.joblib",
+              "model_sha256": "3c71c33473a6a7878ca7886e223a21a180e6219ea6eaa2bb3e7baa642480e1c9"
+            }
+          ],
+          "selected_model_sha256": "3977f7dc1eef8f62c7f58961f203f26614c86945ca74b1dc90349bb6aabf1596",
+          "selected_model_artifact": "data/real-auth-models/lanl2015_retrospective.isolation-forest.if_128_0p75.joblib",
+          "final_threshold_scope": "all validation; frozen before test"
+        }
+      },
+      "methods": {
+        "isolation_forest": {
+          "threshold": {
+            "minimum_score": 0.6336,
+            "validation_alerts": 14769,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009992226238778282,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 3539,
+          "test_alert_fraction": 0.003993347054469299,
+          "unlabeled_alerts": 3533,
+          "alert_fraction_over_unlabeled": 0.003986621741475536,
+          "known_redteam_alerted_auth_rows": 6,
+          "known_redteam_recalled_unique_tuples": 6,
+          "known_redteam_tuple_recall": 0.6
+        },
+        "isolation_forest_tuned": {
+          "threshold": {
+            "minimum_score": 0.6157,
+            "validation_alerts": 14768,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009991549671221995,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 3514,
+          "test_alert_fraction": 0.003965137482171551,
+          "unlabeled_alerts": 3507,
+          "alert_fraction_over_unlabeled": 0.003957283455237674,
+          "known_redteam_alerted_auth_rows": 7,
+          "known_redteam_recalled_unique_tuples": 7,
+          "known_redteam_tuple_recall": 0.7
+        },
+        "lifetime_user_computer": {
+          "threshold": {
+            "minimum_score": 5.25,
+            "validation_alerts": 14755,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009982754292990286,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 8418,
+          "test_alert_fraction": 0.009498727184097926,
+          "unlabeled_alerts": 8412,
+          "alert_fraction_over_unlabeled": 0.009492063993572658,
+          "known_redteam_alerted_auth_rows": 6,
+          "known_redteam_recalled_unique_tuples": 6,
+          "known_redteam_tuple_recall": 0.6
+        },
+        "hierarchical_static": {
+          "threshold": {
+            "minimum_score": 5.596,
+            "validation_alerts": 14773,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009994932509003423,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 5787,
+          "test_alert_fraction": 0.0065299517954828575,
+          "unlabeled_alerts": 5780,
+          "alert_fraction_over_unlabeled": 0.00652212670980147,
+          "known_redteam_alerted_auth_rows": 7,
+          "known_redteam_recalled_unique_tuples": 7,
+          "known_redteam_tuple_recall": 0.7
+        },
+        "hierarchical_decay": {
+          "threshold": {
+            "minimum_score": 5.4110000000000005,
+            "validation_alerts": 14777,
+            "validation_events": 1478049,
+            "validation_alert_fraction": 0.009997638779228563,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 5676,
+          "test_alert_fraction": 0.006404701294480853,
+          "unlabeled_alerts": 5669,
+          "alert_fraction_over_unlabeled": 0.006396874795478293,
+          "known_redteam_alerted_auth_rows": 7,
+          "known_redteam_recalled_unique_tuples": 7,
+          "known_redteam_tuple_recall": 0.7
+        }
+      },
+      "test_strata": {
+        "cold_user": {
+          "events": 126,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 126,
+              "unlabeled_alerts": 126,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": 0
+            },
+            "isolation_forest_tuned": {
+              "alerts": 126,
+              "unlabeled_alerts": 126,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": 0
+            },
+            "lifetime_user_computer": {
+              "alerts": 0,
+              "unlabeled_alerts": 0,
+              "alert_fraction": 0.0,
+              "known_redteam_recalled_unique_tuples": 0
+            },
+            "hierarchical_static": {
+              "alerts": 36,
+              "unlabeled_alerts": 36,
+              "alert_fraction": 0.2857142857142857,
+              "known_redteam_recalled_unique_tuples": 0
+            },
+            "hierarchical_decay": {
+              "alerts": 38,
+              "unlabeled_alerts": 38,
+              "alert_fraction": 0.30158730158730157,
+              "known_redteam_recalled_unique_tuples": 0
+            }
+          }
+        },
+        "known_user_new_computer": {
+          "events": 2814,
+          "matched_auth_rows": 4,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 2651,
+              "unlabeled_alerts": 2647,
+              "alert_fraction": 0.9420753375977257,
+              "known_redteam_recalled_unique_tuples": 4
+            },
+            "isolation_forest_tuned": {
+              "alerts": 1818,
+              "unlabeled_alerts": 1814,
+              "alert_fraction": 0.6460554371002132,
+              "known_redteam_recalled_unique_tuples": 4
+            },
+            "lifetime_user_computer": {
+              "alerts": 1651,
+              "unlabeled_alerts": 1648,
+              "alert_fraction": 0.5867093105899076,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "hierarchical_static": {
+              "alerts": 2209,
+              "unlabeled_alerts": 2205,
+              "alert_fraction": 0.7850035536602701,
+              "known_redteam_recalled_unique_tuples": 4
+            },
+            "hierarchical_decay": {
+              "alerts": 1943,
+              "unlabeled_alerts": 1939,
+              "alert_fraction": 0.6904761904761905,
+              "known_redteam_recalled_unique_tuples": 4
+            }
+          }
+        },
+        "familiar_user_computer": {
+          "events": 883284,
+          "matched_auth_rows": 6,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 762,
+              "unlabeled_alerts": 760,
+              "alert_fraction": 0.0008626896898392815,
+              "known_redteam_recalled_unique_tuples": 2
+            },
+            "isolation_forest_tuned": {
+              "alerts": 1570,
+              "unlabeled_alerts": 1567,
+              "alert_fraction": 0.0017774577599050814,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "lifetime_user_computer": {
+              "alerts": 6767,
+              "unlabeled_alerts": 6764,
+              "alert_fraction": 0.007661182586801074,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "hierarchical_static": {
+              "alerts": 3542,
+              "unlabeled_alerts": 3539,
+              "alert_fraction": 0.00401003527744191,
+              "known_redteam_recalled_unique_tuples": 3
+            },
+            "hierarchical_decay": {
+              "alerts": 3695,
+              "unlabeled_alerts": 3692,
+              "alert_fraction": 0.004183252498630112,
+              "known_redteam_recalled_unique_tuples": 3
+            }
+          }
+        }
+      },
+      "implementation_sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+      "execution_environment": {
+        "python_version": "3.11.2",
+        "platform": "Windows-10-10.0.26300-SP0",
+        "numpy": "2.4.6",
+        "scikit_learn": "1.9.1",
+        "joblib": "1.5.3"
+      },
+      "measured_at_utc": "2026-10-21T16:53:25.688410+00:00"
+    },
+    "lanl2014_month00": {
+      "source": {
+        "source_url": "https://csr.lanl.gov/data/auth/",
+        "auth_sha256": "961ed2e81f75e58920c85299684e61dd1d85b367345954038ab672d0c6dd81f3",
+        "bounded_prefix": true,
+        "retrospective": true,
+        "release": "LANL2014 successful auth",
+        "monthly_file": "lanl-auth-dataset-1-00.bz2.prefix",
+        "actual_calendar_dates_disclosed": false,
+        "provenance": {
+          "dataset": "LANL User-Computer Authentication Associations in Time (2014)",
+          "source_url": "https://csr.lanl.gov/data/auth/",
+          "mirror_url": "https://lanl.ma.ic.ac.uk/data/auth/",
+          "doi": "10.11578/1160076",
+          "license": "LANL waiver of copyright and neighboring rights (public-domain dedication)",
+          "retrieved_at_utc": "2026-10-21T12:07:11.901148+00:00",
+          "download_url": "https://lanl.ma.ic.ac.uk/data/auth/lanl-auth-dataset-1-00.bz2",
+          "filename": "lanl-auth-dataset-1-00.bz2.prefix",
+          "compressed_bytes": 16777216,
+          "compressed_prefix_sha256": "961ed2e81f75e58920c85299684e61dd1d85b367345954038ab672d0c6dd81f3",
+          "expected_full_archive_sha256": "c8e5efe0b33e80eb2d17f5414255fc4b78be600f8df5040084018dbb5abe25e8",
+          "full_archive_sha256_verified": false,
+          "full_bzip2_integrity_verified": false,
+          "server_content_length": 225029889,
+          "limits": {
+            "compressed_bytes": 16777216,
+            "network_seconds": 300,
+            "decompressed_bytes": 4294967296
+          },
+          "elapsed_seconds_including_validation": 20.718,
+          "stop_reason": "byte_or_time_bound",
+          "scan": {
+            "source_rows": 4909753,
+            "source_first_second": 1,
+            "source_last_second": 136526,
+            "selected_rows": 4909698,
+            "final_timestamp_rows_excluded": 55
+          }
+        }
+      },
+      "scan": {
+        "source_rows": 4909753,
+        "source_first_second": 1,
+        "source_last_second": 136526,
+        "selected_rows": 4909698,
+        "final_timestamp_rows_excluded": 55
+      },
+      "partitions": {
+        "warmup": {
+          "events": 2589367,
+          "first_second": 1,
+          "last_second": 68263,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 2589367,
+          "canonical_selected_stream_sha256": "c6c13ac898912711841a3ba60ae77bb4c686005e1328fccb740e20ee2e270ee7"
+        },
+        "validation": {
+          "events": 776833,
+          "first_second": 68264,
+          "last_second": 102394,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 776833,
+          "canonical_selected_stream_sha256": "81b5b760ed47d8b36f41a2b24f185f269ef2b9cf4b4491af5b329c7d618d323c"
+        },
+        "test": {
+          "events": 1543498,
+          "first_second": 102395,
+          "last_second": 136525,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 1543498,
+          "canonical_selected_stream_sha256": "775b27a14ea1acee9099f1b63c8704168acfca5a5cf94c0af345f1c751401cc7"
+        }
+      },
+      "partition_cutoffs": {
+        "warmup_end_second": 68263,
+        "validation_end_second": 102394
+      },
+      "labels": {
+        "available": false,
+        "detection_metrics_eligible": false,
+        "interpretation": "No attack labels; alert burden only"
+      },
+      "training": {
+        "algorithm": "IsolationForest",
+        "warmup_events_seen": 2589367,
+        "reservoir_events": 30000,
+        "fitted_feature_dimensions": 9,
+        "feature_tensor_sha256": "40bce68ab4a0716fa921dd6a5f7d837ddda4e9641bf0fe358ebdd8d63b3109e4",
+        "feature_tensor_dtype": "little-endian float64, C order",
+        "model_sha256": "47a9138a1a595ae64cf9a709c85b7241e27e373858ead3390016b80f051ccce9",
+        "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.joblib",
+        "actual_max_samples": 256,
+        "fitted_tree_count": 100,
+        "weights_frozen_after": "warmup",
+        "elapsed_seconds": 145.532,
+        "tuning": {
+          "tool": "sklearn.model_selection.ParameterGrid",
+          "objective": "Minimize abs(later validation alert fraction-0.01), not detection accuracy",
+          "calibration_end_second": 85328,
+          "selected_candidate_id": "if_128_0p75",
+          "selected_params": {
+            "max_features": 0.75,
+            "max_samples": 128
+          },
+          "fallback_used": false,
+          "candidates": [
+            {
+              "id": "if_128_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 128
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5711,
+                "validation_alerts": 4065,
+                "validation_events": 407260,
+                "validation_alert_fraction": 0.00998133870254874,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 407260,
+              "selection_events": 369573,
+              "selection_alerts": 3318,
+              "selection_alert_fraction": 0.008977928582445146,
+              "objective_distance_to_budget": 0.0010220714175548547,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.if_128_0p75.joblib",
+              "model_sha256": "86c5f091913e0c8ad3be6c98b521a58ac17c7d1694d04d58c54c6575d9436712"
+            },
+            {
+              "id": "if_256_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 256
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5666,
+                "validation_alerts": 4070,
+                "validation_events": 407260,
+                "validation_alert_fraction": 0.00999361587192457,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 407260,
+              "selection_events": 369573,
+              "selection_alerts": 2988,
+              "selection_alert_fraction": 0.008085006209869227,
+              "objective_distance_to_budget": 0.0019149937901307736,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.if_256_0p75.joblib",
+              "model_sha256": "8550f7972bd6394a615c4845eb312b603d2301d7b4a86af6bfdd594c19f90a9e"
+            },
+            {
+              "id": "if_512_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 512
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5677,
+                "validation_alerts": 4060,
+                "validation_events": 407260,
+                "validation_alert_fraction": 0.009969061533172912,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 407260,
+              "selection_events": 369573,
+              "selection_alerts": 2820,
+              "selection_alert_fraction": 0.007630427547466942,
+              "objective_distance_to_budget": 0.0023695724525330582,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.if_512_0p75.joblib",
+              "model_sha256": "48f1d232261e8b901e5e44d8ad7a064c94ec0a5052f44b0cab2c09541c6572c2"
+            },
+            {
+              "id": "if_128_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 128
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5862,
+                "validation_alerts": 4040,
+                "validation_events": 407260,
+                "validation_alert_fraction": 0.009919952855669597,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 407260,
+              "selection_events": 369573,
+              "selection_alerts": 2633,
+              "selection_alert_fraction": 0.0071244382030072545,
+              "objective_distance_to_budget": 0.0028755617969927457,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.if_128_1p0.joblib",
+              "model_sha256": "6856baa169e51abf3e3b378a814c69812c3ae1eea2a9c739ba8b3033683544eb"
+            },
+            {
+              "id": "if_256_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 256
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5857,
+                "validation_alerts": 4064,
+                "validation_events": 407260,
+                "validation_alert_fraction": 0.009978883268673574,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 407260,
+              "selection_events": 369573,
+              "selection_alerts": 3036,
+              "selection_alert_fraction": 0.008214885827698451,
+              "objective_distance_to_budget": 0.0017851141723015489,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.joblib",
+              "model_sha256": "47a9138a1a595ae64cf9a709c85b7241e27e373858ead3390016b80f051ccce9"
+            },
+            {
+              "id": "if_512_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 512
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5673,
+                "validation_alerts": 4066,
+                "validation_events": 407260,
+                "validation_alert_fraction": 0.009983794136423906,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 407260,
+              "selection_events": 369573,
+              "selection_alerts": 3100,
+              "selection_alert_fraction": 0.008388058651470751,
+              "objective_distance_to_budget": 0.0016119413485292493,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.if_512_1p0.joblib",
+              "model_sha256": "a1a8be7d0b4082e4a56dae69ac307fed6707490d2c2c7f20452483a05520e38a"
+            }
+          ],
+          "selected_model_sha256": "86c5f091913e0c8ad3be6c98b521a58ac17c7d1694d04d58c54c6575d9436712",
+          "selected_model_artifact": "data/real-auth-models/lanl2014_month00.isolation-forest.if_128_0p75.joblib",
+          "final_threshold_scope": "all validation; frozen before test"
+        }
+      },
+      "methods": {
+        "isolation_forest": {
+          "threshold": {
+            "minimum_score": 0.5835,
+            "validation_alerts": 7752,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.009978978750902704,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 26948,
+          "test_alert_fraction": 0.017459044326588048,
+          "unlabeled_alerts": 26948,
+          "alert_fraction_over_unlabeled": 0.017459044326588048,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "isolation_forest_tuned": {
+          "threshold": {
+            "minimum_score": 0.57,
+            "validation_alerts": 7752,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.009978978750902704,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 30574,
+          "test_alert_fraction": 0.019808253719797497,
+          "unlabeled_alerts": 30574,
+          "alert_fraction_over_unlabeled": 0.019808253719797497,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "lifetime_user_computer": {
+          "threshold": {
+            "minimum_score": 5.3100000000000005,
+            "validation_alerts": 7746,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.009971255083138847,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 17581,
+          "test_alert_fraction": 0.011390361373970034,
+          "unlabeled_alerts": 17581,
+          "alert_fraction_over_unlabeled": 0.011390361373970034,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "hierarchical_static": {
+          "threshold": {
+            "minimum_score": 5.332,
+            "validation_alerts": 7759,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.009987989696627203,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 24451,
+          "test_alert_fraction": 0.015841290367723186,
+          "unlabeled_alerts": 24451,
+          "alert_fraction_over_unlabeled": 0.015841290367723186,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "hierarchical_decay": {
+          "threshold": {
+            "minimum_score": 5.314,
+            "validation_alerts": 7751,
+            "validation_events": 776833,
+            "validation_alert_fraction": 0.00997769147294206,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 23528,
+          "test_alert_fraction": 0.015243298015287354,
+          "unlabeled_alerts": 23528,
+          "alert_fraction_over_unlabeled": 0.015243298015287354,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        }
+      },
+      "test_strata": {
+        "cold_user": {
+          "events": 492,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 492,
+              "unlabeled_alerts": 492,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "isolation_forest_tuned": {
+              "alerts": 492,
+              "unlabeled_alerts": 492,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "lifetime_user_computer": {
+              "alerts": 0,
+              "unlabeled_alerts": 0,
+              "alert_fraction": 0.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 484,
+              "unlabeled_alerts": 484,
+              "alert_fraction": 0.983739837398374,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 484,
+              "unlabeled_alerts": 484,
+              "alert_fraction": 0.983739837398374,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          }
+        },
+        "known_user_new_computer": {
+          "events": 7514,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 7514,
+              "unlabeled_alerts": 7514,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "isolation_forest_tuned": {
+              "alerts": 7514,
+              "unlabeled_alerts": 7514,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "lifetime_user_computer": {
+              "alerts": 3077,
+              "unlabeled_alerts": 3077,
+              "alert_fraction": 0.4095022624434389,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 7068,
+              "unlabeled_alerts": 7068,
+              "alert_fraction": 0.9406441309555497,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 7053,
+              "unlabeled_alerts": 7053,
+              "alert_fraction": 0.9386478573329784,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          }
+        },
+        "familiar_user_computer": {
+          "events": 1535492,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 18942,
+              "unlabeled_alerts": 18942,
+              "alert_fraction": 0.012336111161764437,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "isolation_forest_tuned": {
+              "alerts": 22568,
+              "unlabeled_alerts": 22568,
+              "alert_fraction": 0.014697569248162803,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "lifetime_user_computer": {
+              "alerts": 14504,
+              "unlabeled_alerts": 14504,
+              "alert_fraction": 0.009445832345593465,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 16899,
+              "unlabeled_alerts": 16899,
+              "alert_fraction": 0.011005592995600107,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 15991,
+              "unlabeled_alerts": 15991,
+              "alert_fraction": 0.010414251588415961,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          }
+        }
+      },
+      "implementation_sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+      "execution_environment": {
+        "python_version": "3.11.2",
+        "platform": "Windows-10-10.0.26300-SP0",
+        "numpy": "2.4.6",
+        "scikit_learn": "1.9.1",
+        "joblib": "1.5.3"
+      },
+      "measured_at_utc": "2026-10-21T16:55:51.274092+00:00"
+    },
+    "lanl2014_month01": {
+      "source": {
+        "source_url": "https://csr.lanl.gov/data/auth/",
+        "auth_sha256": "6ed7d219f1b7d385d76d6aa0daeb2cfa908e1b5745cab9a87c22de4a879b113f",
+        "bounded_prefix": true,
+        "retrospective": false,
+        "release": "LANL2014 successful auth",
+        "monthly_file": "lanl-auth-dataset-1-01.bz2.prefix",
+        "actual_calendar_dates_disclosed": false,
+        "provenance": {
+          "dataset": "LANL User-Computer Authentication Associations in Time (2014 release)",
+          "source_url": "https://csr.lanl.gov/data/auth/",
+          "mirror_url": "https://lanl.ma.ic.ac.uk/data/auth/",
+          "doi": "10.11578/1160076",
+          "license": "LANL waiver of copyright and related or neighboring rights",
+          "checksums_url": "https://lanl.ma.ic.ac.uk/data/auth/checksums.txt",
+          "source_monthly_file_index": 1,
+          "monthly_slice_description": "Second published 30-day file; actual calendar dates undisclosed",
+          "retrieved_at_utc": "2026-10-21T16:43:40.942516+00:00",
+          "download_url": "https://lanl.ma.ic.ac.uk/data/auth/lanl-auth-dataset-1-01.bz2",
+          "filename": "lanl-auth-dataset-1-01.bz2.prefix",
+          "compressed_bytes": 16777216,
+          "compressed_prefix_sha256": "6ed7d219f1b7d385d76d6aa0daeb2cfa908e1b5745cab9a87c22de4a879b113f",
+          "expected_full_archive_sha256": "3329d782da62084238c4e349754e7feb77768768d6bd05c18c2b7407f5afddc3",
+          "full_archive_sha256_verified": false,
+          "full_bzip2_integrity_verified": false,
+          "server_content_length": 186894953,
+          "limits": {
+            "compressed_bytes": 16777216,
+            "network_deadline_seconds": 300,
+            "per_request_timeout_seconds": 10,
+            "decompressed_bytes": 536870912
+          },
+          "deadline_semantics": "Deadline checked before each read; an outstanding read has a maximum ten-second socket timeout; local parsing is separate",
+          "elapsed_seconds_including_validation": 16.547,
+          "stop_reason": "compressed_byte_cap",
+          "scan": {
+            "source_rows": 4970711,
+            "selected_rows": 4970690,
+            "source_first_second": 2419201,
+            "source_last_second": 2550400,
+            "selected_first_second": 2419201,
+            "selected_last_second": 2550399,
+            "final_timestamp_rows_excluded": 21
+          }
+        }
+      },
+      "scan": {
+        "source_rows": 4970711,
+        "selected_rows": 4970690,
+        "source_first_second": 2419201,
+        "source_last_second": 2550400,
+        "selected_first_second": 2419201,
+        "selected_last_second": 2550399,
+        "final_timestamp_rows_excluded": 21
+      },
+      "partitions": {
+        "warmup": {
+          "events": 2648897,
+          "first_second": 2419201,
+          "last_second": 2484800,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 2648897,
+          "canonical_selected_stream_sha256": "2740406c619fb21fb67dfa11b02ffe31f3bf4b75d2baaf3a0d4bbec4f39271c1"
+        },
+        "validation": {
+          "events": 877098,
+          "first_second": 2484801,
+          "last_second": 2517600,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 877098,
+          "canonical_selected_stream_sha256": "c9fa85679a8e83fbec877ab3199fe0a22cd4d9ed2afb7688f6314623c3fe6a4a"
+        },
+        "test": {
+          "events": 1444695,
+          "first_second": 2517601,
+          "last_second": 2550399,
+          "matched_auth_rows": 0,
+          "known_redteam_unique_tuples": null,
+          "unlabeled_events": 1444695,
+          "canonical_selected_stream_sha256": "6995f6a83fa353eb0d15a3fe8b71310e39e2b589aed994e7ed885dec8f376dfb"
+        }
+      },
+      "partition_cutoffs": {
+        "warmup_end_second": 2484800,
+        "validation_end_second": 2517600
+      },
+      "labels": {
+        "available": false,
+        "detection_metrics_eligible": false,
+        "interpretation": "No attack labels; alert burden only"
+      },
+      "training": {
+        "algorithm": "IsolationForest",
+        "warmup_events_seen": 2648897,
+        "reservoir_events": 30000,
+        "fitted_feature_dimensions": 9,
+        "feature_tensor_sha256": "362928b16ee61bb691c6448bdc473a5f1a46bad1356e02c6ac13fc8f4a45b8fd",
+        "feature_tensor_dtype": "little-endian float64, C order",
+        "model_sha256": "846489097f29ebe0aeed543f317c1a8945a45478c5409de31ae4626699adb59f",
+        "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.joblib",
+        "actual_max_samples": 256,
+        "fitted_tree_count": 100,
+        "weights_frozen_after": "warmup",
+        "elapsed_seconds": 149.703,
+        "tuning": {
+          "tool": "sklearn.model_selection.ParameterGrid",
+          "objective": "Minimize abs(later validation alert fraction-0.01), not detection accuracy",
+          "calibration_end_second": 2501200,
+          "selected_candidate_id": "if_512_0p75",
+          "selected_params": {
+            "max_features": 0.75,
+            "max_samples": 512
+          },
+          "fallback_used": false,
+          "candidates": [
+            {
+              "id": "if_128_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 128
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5676,
+                "validation_alerts": 4423,
+                "validation_events": 444356,
+                "validation_alert_fraction": 0.009953730792427694,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 444356,
+              "selection_events": 432742,
+              "selection_alerts": 3018,
+              "selection_alert_fraction": 0.00697413239297318,
+              "objective_distance_to_budget": 0.00302586760702682,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.if_128_0p75.joblib",
+              "model_sha256": "5288fff93f97b1b9f363115d03e2c40617c71e95c05f868da1d68d1f264880db"
+            },
+            {
+              "id": "if_256_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 256
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.573,
+                "validation_alerts": 4429,
+                "validation_events": 444356,
+                "validation_alert_fraction": 0.009967233479462413,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 444356,
+              "selection_events": 432742,
+              "selection_alerts": 3288,
+              "selection_alert_fraction": 0.007598060738268991,
+              "objective_distance_to_budget": 0.002401939261731009,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.if_256_0p75.joblib",
+              "model_sha256": "66caf8ad4f81c04bf97a8a76566fb72732b496f96ae5b4905d3e9d1ce4f14651"
+            },
+            {
+              "id": "if_512_0p75",
+              "params": {
+                "max_features": 0.75,
+                "max_samples": 512
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5684,
+                "validation_alerts": 4431,
+                "validation_events": 444356,
+                "validation_alert_fraction": 0.009971734375140652,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 444356,
+              "selection_events": 432742,
+              "selection_alerts": 3977,
+              "selection_alert_fraction": 0.009190233441634969,
+              "objective_distance_to_budget": 0.0008097665583650313,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.if_512_0p75.joblib",
+              "model_sha256": "a1fb636d9ca709d7d34aad88d48797492b1d3e6e057101aa6025b1d506487358"
+            },
+            {
+              "id": "if_128_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 128
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5867,
+                "validation_alerts": 4440,
+                "validation_events": 444356,
+                "validation_alert_fraction": 0.009991988405692733,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 444356,
+              "selection_events": 432742,
+              "selection_alerts": 3311,
+              "selection_alert_fraction": 0.007651210189905302,
+              "objective_distance_to_budget": 0.0023487898100946984,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.if_128_1p0.joblib",
+              "model_sha256": "0649ce3755eb70f172f5b34f28cb43184feb29454cb5df388f41ee05e332ae7d"
+            },
+            {
+              "id": "if_256_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 256
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5887,
+                "validation_alerts": 4440,
+                "validation_events": 444356,
+                "validation_alert_fraction": 0.009991988405692733,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 444356,
+              "selection_events": 432742,
+              "selection_alerts": 3206,
+              "selection_alert_fraction": 0.00740857138895693,
+              "objective_distance_to_budget": 0.00259142861104307,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.joblib",
+              "model_sha256": "846489097f29ebe0aeed543f317c1a8945a45478c5409de31ae4626699adb59f"
+            },
+            {
+              "id": "if_512_1p0",
+              "params": {
+                "max_features": 1.0,
+                "max_samples": 512
+              },
+              "calibration_threshold": {
+                "minimum_score": 0.5816,
+                "validation_alerts": 4424,
+                "validation_events": 444356,
+                "validation_alert_fraction": 0.009955981240266813,
+                "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+              },
+              "calibration_events": 444356,
+              "selection_events": 432742,
+              "selection_alerts": 2929,
+              "selection_alert_fraction": 0.006768467123597894,
+              "objective_distance_to_budget": 0.003231532876402106,
+              "eligible": true,
+              "model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.if_512_1p0.joblib",
+              "model_sha256": "eee7ad906f126d220ab991118ab49fcf104e5a1e024cd55cd486caca5dd242fd"
+            }
+          ],
+          "selected_model_sha256": "a1fb636d9ca709d7d34aad88d48797492b1d3e6e057101aa6025b1d506487358",
+          "selected_model_artifact": "data/real-auth-models/lanl2014_month01.isolation-forest.if_512_0p75.joblib",
+          "final_threshold_scope": "all validation; frozen before test"
+        }
+      },
+      "methods": {
+        "isolation_forest": {
+          "threshold": {
+            "minimum_score": 0.5856,
+            "validation_alerts": 8761,
+            "validation_events": 877098,
+            "validation_alert_fraction": 0.009988621567943378,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 28880,
+          "test_alert_fraction": 0.019990378592021154,
+          "unlabeled_alerts": 28880,
+          "alert_fraction_over_unlabeled": 0.019990378592021154,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "isolation_forest_tuned": {
+          "threshold": {
+            "minimum_score": 0.5675,
+            "validation_alerts": 8725,
+            "validation_events": 877098,
+            "validation_alert_fraction": 0.00994757712365095,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 33576,
+          "test_alert_fraction": 0.023240891676097723,
+          "unlabeled_alerts": 33576,
+          "alert_fraction_over_unlabeled": 0.023240891676097723,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "lifetime_user_computer": {
+          "threshold": {
+            "minimum_score": 4.996,
+            "validation_alerts": 8756,
+            "validation_events": 877098,
+            "validation_alert_fraction": 0.00998292095068054,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 19630,
+          "test_alert_fraction": 0.013587643066529613,
+          "unlabeled_alerts": 19630,
+          "alert_fraction_over_unlabeled": 0.013587643066529613,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "hierarchical_static": {
+          "threshold": {
+            "minimum_score": 5.011,
+            "validation_alerts": 8770,
+            "validation_events": 877098,
+            "validation_alert_fraction": 0.009998882679016484,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 24594,
+          "test_alert_fraction": 0.017023662433939345,
+          "unlabeled_alerts": 24594,
+          "alert_fraction_over_unlabeled": 0.017023662433939345,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        },
+        "hierarchical_decay": {
+          "threshold": {
+            "minimum_score": 5.013,
+            "validation_alerts": 8765,
+            "validation_events": 877098,
+            "validation_alert_fraction": 0.009993182061753647,
+            "tie_policy": "alert on all scores >= threshold; no alerts when top tie exceeds budget"
+          },
+          "test_alerts": 23712,
+          "test_alert_fraction": 0.01641315294923842,
+          "unlabeled_alerts": 23712,
+          "alert_fraction_over_unlabeled": 0.01641315294923842,
+          "known_redteam_alerted_auth_rows": null,
+          "known_redteam_recalled_unique_tuples": null,
+          "known_redteam_tuple_recall": null
+        }
+      },
+      "test_strata": {
+        "cold_user": {
+          "events": 434,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 434,
+              "unlabeled_alerts": 434,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "isolation_forest_tuned": {
+              "alerts": 434,
+              "unlabeled_alerts": 434,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "lifetime_user_computer": {
+              "alerts": 0,
+              "unlabeled_alerts": 0,
+              "alert_fraction": 0.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 432,
+              "unlabeled_alerts": 432,
+              "alert_fraction": 0.9953917050691244,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 432,
+              "unlabeled_alerts": 432,
+              "alert_fraction": 0.9953917050691244,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          }
+        },
+        "known_user_new_computer": {
+          "events": 5699,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 5699,
+              "unlabeled_alerts": 5699,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "isolation_forest_tuned": {
+              "alerts": 5699,
+              "unlabeled_alerts": 5699,
+              "alert_fraction": 1.0,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "lifetime_user_computer": {
+              "alerts": 2495,
+              "unlabeled_alerts": 2495,
+              "alert_fraction": 0.4377961045797508,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 5392,
+              "unlabeled_alerts": 5392,
+              "alert_fraction": 0.9461309001579224,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 5384,
+              "unlabeled_alerts": 5384,
+              "alert_fraction": 0.9447271451131778,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          }
+        },
+        "familiar_user_computer": {
+          "events": 1438562,
+          "matched_auth_rows": 0,
+          "methods": {
+            "isolation_forest": {
+              "alerts": 22747,
+              "unlabeled_alerts": 22747,
+              "alert_fraction": 0.015812318134359172,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "isolation_forest_tuned": {
+              "alerts": 27443,
+              "unlabeled_alerts": 27443,
+              "alert_fraction": 0.019076689082569955,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "lifetime_user_computer": {
+              "alerts": 17135,
+              "unlabeled_alerts": 17135,
+              "alert_fraction": 0.011911200212434362,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_static": {
+              "alerts": 18770,
+              "unlabeled_alerts": 18770,
+              "alert_fraction": 0.013047751852196846,
+              "known_redteam_recalled_unique_tuples": null
+            },
+            "hierarchical_decay": {
+              "alerts": 17896,
+              "unlabeled_alerts": 17896,
+              "alert_fraction": 0.01244020070042167,
+              "known_redteam_recalled_unique_tuples": null
+            }
+          }
+        }
+      },
+      "implementation_sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+      "execution_environment": {
+        "python_version": "3.11.2",
+        "platform": "Windows-10-10.0.26300-SP0",
+        "numpy": "2.4.6",
+        "scikit_learn": "1.9.1",
+        "joblib": "1.5.3"
+      },
+      "measured_at_utc": "2026-10-21T16:58:21.038234+00:00"
+    }
+  },
+  "generated_at_utc": "2026-10-21T16:58:21.042471+00:00",
+  "execution_commitment": {
     "module_sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
     "datasets": [
       "lanl2015_retrospective",
@@ -98,5 +1427,65 @@
       "lanl2014_month01"
     ],
     "recorded_at_utc": "2026-10-21T16:50:03.828784+00:00"
+  },
+  "environment": {
+    "python_version": "3.11.2",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.6",
+    "scikit_learn": "1.9.1",
+    "joblib": "1.5.3"
+  },
+  "implementation": {
+    "module": "experiments/real_auth_training.py",
+    "sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa"
+  },
+  "limitations": [
+    "Unsupervised forest learns recurring telemetry, not benign intent. Warmup and adapting history may contain compromise.",
+    "LANL2015 labels cover sparse clustered controlled-exercise events; all unlisted events are unlabeled. No false-positive rate, precision or production accuracy is identifiable.",
+    "2014 monthly slices have no attack labels. Lower alert burden does not establish higher detection quality.",
+    "All releases originate at one historic institution, with anonymization, successful-authentication filtering and possible overlap. Additional months are not independent organizations.",
+    "2015 targeted prefix and month00 were inspected previously; these comparisons are retrospective diagnostics, not untouched confirmation or externally preregistered evidence.",
+    "Contiguous bounded prefixes exclude their incomplete final second and lack full archive checksum/trailer verification; source calendar dates are undisclosed.",
+    "Feature count distributions shift as history grows; fixed learned weights and validation budgets do not guarantee test alert or detection performance.",
+    "All fixed candidates and regressions are reported; no held-out winner is promoted. Forest scores are not probabilities and cannot grant, revoke or bypass IAM policy.",
+    "Saved joblib estimators are executable pickle artifacts. Load only trusted local files after matching their report SHA-256 and software environment; runtime does not load these artifacts."
+  ],
+  "execution_dependency_manifest": {
+    "recorded_at_utc": "2026-10-21T16:51:22.280000+00:00",
+    "verified_at_utc": "2026-10-21T16:59:46.781148+00:00",
+    "collection_semantics": "Captured while the actual run was in progress before any dataset result was saved, then verified unchanged after all datasets completed; not a pre-start dependency commitment.",
+    "files_sha256": {
+      "experiments/real_auth_training.py": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+      "experiments/real_auth_models.py": "220f59832720796c02b2f0a8284ed52442fdee66dd2d4502fdd56d7938372d60",
+      "scripts/evaluate_lanl.py": "2d262dd73e04e00cdc1e6868896128817564d012b6eb8c110b85dd135aaa7181",
+      "scripts/evaluate_lanl2014.py": "6c255a0709bbfc6c4fe4d6ad9637f0351a234b9fec7791e2ec0d7c271bdeb59a",
+      "scripts/train_real_auth.py": "db14ba78386c6d966c320cf787c24ea5f8dace280fc6d3e7b199c8417d6f9792"
+    }
+  },
+  "execution_source_snapshot": {
+    "path": "data/real-auth-models/real_auth_training.executed.py",
+    "sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+    "storage": "Ignored local exact source snapshot; not a tracked distributable or a runtime import"
+  },
+  "post_measurement_compatibility_revision": {
+    "module": "experiments/real_auth_training.py",
+    "sha256": "eda7bb6706ce03af32bb6a8e74423da3f2851da340fc9f7405d3427a98aaf4ab",
+    "recorded_at_utc": "2026-10-21T17:04:41.582043+00:00",
+    "note": "Empty calibration or selection halves are explicitly ineligible with documented fixed-model fallback; wholly empty validation fails clearly. These branches were outside every observed dense study window. This is a later compatibility fix, not the implementation that produced measured results.",
+    "actual_execution_sha256": "9b55f8987e5701416a0453cc7d54718fab47b916896dfbf2051df9568b6ed2fa",
+    "observed_validation_halves_nonempty": true,
+    "real_data_retrained": false,
+    "focused_protocol_tests_passed": 19,
+    "dataset_payload_sha256_before": {
+      "lanl2015_retrospective": "d266053d7794ea1b5bf21126ea5e64a3843abf9b67b482c7375e62fbb7a18b0b",
+      "lanl2014_month00": "062d9817b7d5f4eafe895af1278a4da566edddb107289fe1fc7f361d1eeba6b4",
+      "lanl2014_month01": "52c5e95a7d893f2bf7f71e92c823f887b95e7307edd8cf83ea2a255f33a90085"
+    },
+    "dataset_payload_sha256_after": {
+      "lanl2015_retrospective": "d266053d7794ea1b5bf21126ea5e64a3843abf9b67b482c7375e62fbb7a18b0b",
+      "lanl2014_month00": "062d9817b7d5f4eafe895af1278a4da566edddb107289fe1fc7f361d1eeba6b4",
+      "lanl2014_month01": "52c5e95a7d893f2bf7f71e92c823f887b95e7307edd8cf83ea2a255f33a90085"
+    },
+    "all_measured_payloads_unchanged": true
   }
 }

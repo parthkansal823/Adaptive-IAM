@@ -44,6 +44,6 @@ class RegistrySigner:
         return self.call("/registry")
 
     def submit(self, kind: str, arguments):
-        if kind not in {"audit", "grant", "revoke"}:
-            raise RuntimeError("Signer can only checkpoint, grant or revoke the fixed registry")
+        if kind not in {"audit", "audit_batch", "grant", "revoke"}:
+            raise RuntimeError("Signer can only checkpoint events/batches, grant or revoke the fixed registry")
         return self.call("/transaction", {"kind": kind, "arguments": arguments})

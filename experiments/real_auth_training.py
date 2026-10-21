@@ -165,17 +165,25 @@ def candidate_configs():
 
 def choose_candidate(candidate_histograms: dict) -> tuple[str, list[dict], bool]:
     """Choose using only two validation halves; exercise labels are unavailable here."""
+    if not any(sum(hist["calibration"].values()) + sum(hist["selection"].values())
+               for hist in candidate_histograms.values()):
+        raise ValueError("Validation window has no selected events")
     candidates = []
     for config in candidate_configs():
         hist = candidate_histograms[config["id"]]
-        threshold = budget_threshold(hist["calibration"], .01)
+        calibration_events = sum(hist["calibration"].values())
+        threshold = budget_threshold(hist["calibration"], .01) if calibration_events else {
+            "minimum_score": None, "validation_alerts": 0, "validation_events": 0,
+            "validation_alert_fraction": None,
+            "tie_policy": "No calibration events; candidate ineligible, no threshold estimated",
+        }
         selection_events = sum(hist["selection"].values())
         minimum = threshold["minimum_score"]
         alerts = sum(count for score, count in hist["selection"].items() if minimum is not None and score >= minimum)
         fraction = alerts / selection_events if selection_events else None
         eligible = bool(selection_events and len(hist["calibration"]) >= 2 and minimum is not None)
         candidates.append({**config, "calibration_threshold": threshold,
-                           "calibration_events": sum(hist["calibration"].values()),
+                           "calibration_events": calibration_events,
                            "selection_events": selection_events, "selection_alerts": alerts,
                            "selection_alert_fraction": fraction,
                            "objective_distance_to_budget": abs(fraction - .01) if eligible else None,

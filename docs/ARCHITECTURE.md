@@ -32,9 +32,13 @@ Review selection is deterministic by default. Optional Ollama suggestions are co
 
 Timed grants are checked at access time. Expiry enforcement must not rely only on a UI countdown or a background cleanup process.
 
+Real-log research follows a separate offline path: bounded public acquisition, past-only feature history, warmup-only estimator fitting, chronological validation search, later test and frozen aggregate publication. The API displays those aggregates without loading their fitted artifacts. [The training guide](REAL_AUTH_TRAINING.md) records every candidate and regression. Trained research estimators do not participate in live authorization.
+
 Registered websites use Authorization Code with PKCE. The provider issues RS256 identity tokens and separate opaque, client-bound application access tokens. The relying-party server verifies identity and checks the app's registered resource allowlist plus the subject's live grant before protected content. Console sessions and app tokens have distinct authority. [INTEGRATION.md](INTEGRATION.md) explains the complete flow.
 
 Audit blocks use canonical event serialization and previous hashes. Verification detects retained chain mutation. An administrator able to rewrite the entire database can reconstruct a consistent local chain.
+
+[Audit inclusion proofs](AUDIT_PROOFS.md) supplement that chain with append-only SQLite batch manifests and RFC 9162-style domain-separated Merkle trees over sequence/hash leaves. A security reviewer seals up to 256 contiguous events from one verified snapshot, exports hash-only inclusion bundles, and can explicitly anchor/check the root against the optional EVM registry. Live checks bind roots to the already anchored per-event prefix; portable verification needs an independently trusted expected root. The original event/grant checks remain authoritative. This adds an audit proof index, rather than pruning history or establishing independent administrator trust.
 
 The optional Web3 adapter anchors event hashes and timed, hashed identity/resource grants in `AccessGrantRegistry.sol` on Ganache chain 31337. A retryable SQLite outbox distinguishes pending transactions from confirmed receipts. A grant is mirrored only after its creation event has been anchored and the actual human owner/quorum still validates. Protected console access and website permission responses require a live contract grant alongside the local grant when Web3 is configured. Unavailable RPC, incompatible registry, checkpoint mismatch, expiry and revocation deny access. Owner/security-reviewer revocation removes local authority immediately, with chain synchronization retried separately.
 

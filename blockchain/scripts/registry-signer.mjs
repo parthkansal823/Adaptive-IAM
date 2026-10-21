@@ -4,6 +4,8 @@ import {timingSafeEqual} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
 import {Contract, ContractFactory, NonceManager, Wallet, keccak256, toUtf8Bytes} from 'ethers';
 import {createQbftProvider, requireFreshQbftQuorum} from './qbft-provider.mjs';
+import {validateOperation} from './signer-operations.mjs';
+export {validateOperation} from './signer-operations.mjs';
 
 const provider = createQbftProvider();
 await requireFreshQbftQuorum(provider);
@@ -27,15 +29,6 @@ if (metadata) {
   await fs.writeFile(file, JSON.stringify(metadata, null, 2), {mode: 0o600});
 }
 if ((await registry.writer()).toLowerCase() !== wallet.address.toLowerCase() || await registry.REGISTRY_VERSION() !== keccak256(toUtf8Bytes('AdaptiveIAM.AccessGrantRegistry.v1'))) throw new Error('Unexpected registry identity');
-const hash = value => typeof value === 'string' && /^0x[a-fA-F0-9]{64}$/.test(value) && value !== '0x' + '00'.repeat(32);
-export function validateOperation(packet) {
-  if (!packet || typeof packet !== 'object' || Array.isArray(packet) || Object.keys(packet).sort().join(',') !== 'arguments,kind' || !Array.isArray(packet.arguments)) throw new Error('Unsupported operation');
-  const args = packet.arguments;
-  if (packet.kind === 'audit' && args.length === 2 && hash(args[0]) && typeof args[1] === 'string' && /^0x[a-fA-F0-9]{64}$/.test(args[1])) return 'anchorAudit';
-  if (packet.kind === 'grant' && args.length === 4 && args.slice(0, 3).every(hash) && Number.isSafeInteger(args[3]) && args[3] > Math.floor(Date.now() / 1000) && args[3] <= Math.floor(Date.now() / 1000) + 72 * 3600) return 'recordGrant';
-  if (packet.kind === 'revoke' && args.length === 1 && hash(args[0])) return 'revokeGrant';
-  throw new Error('Invalid fixed registry operation');
-}
 let queue = Promise.resolve();
 const server = http.createServer(async (req, res) => {
   const send = (status, payload) => {res.writeHead(status, {'Content-Type': 'application/json', 'Cache-Control': 'no-store'}); res.end(JSON.stringify(payload));};

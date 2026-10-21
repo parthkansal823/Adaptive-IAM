@@ -17,6 +17,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .models import AssessmentInput, LoginInput, RequestInput, VerifyInput, VoteInput
 from .blockchain import BlockchainMirror, install_blockchain
+from .audit_proofs import install_audit_proofs
 from .identity import IdentitySecurity, install_identity
 from .developer import DeveloperPortal, install_developer
 from .lab import install_lab
@@ -391,6 +392,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
     install_developer(api, authenticated)
     install_lab(api, authenticated)
     install_blockchain(api, authenticated)
+    install_audit_proofs(api, authenticated)
     return api
 
 
