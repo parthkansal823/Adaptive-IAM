@@ -385,6 +385,32 @@ export interface RealAuthModelsStudy {
   [key: string]: unknown
 }
 
+type RealAuthDataset = RealAuthModelsStudy['datasets'][string]
+export interface RealAuthTrainingStudy {
+  schema_version: 'real-auth-training-v1'
+  synthetic: false
+  status: 'measured'
+  protocol: { features: string[]; validation_alert_budget: number; [key: string]: unknown }
+  protocol_sha256: string
+  datasets: Record<string, Omit<RealAuthDataset, 'source' | 'methods' | 'test_strata'> & {
+    source: { release: string; auth_sha256: string; source_url: string; retrospective: boolean; bounded_prefix: boolean }
+    methods: Record<'lifetime_user_computer' | 'hierarchical_static' | 'hierarchical_decay' | 'isolation_forest' | 'isolation_forest_tuned', RealAuthDataset['methods']['lifetime_user_computer']>
+    training: {
+      algorithm: string; warmup_events_seen: number; reservoir_events: number
+      fitted_feature_dimensions: number; fitted_tree_count: number; elapsed_seconds: number
+      model_sha256: string; feature_tensor_sha256: string
+      tuning: {
+        tool: string; objective: string; selected_candidate_id: string
+        selected_params: { max_samples: number; max_features: number }; fallback_used: boolean
+        selected_model_sha256: string
+        candidates: { id: string; params: { max_samples: number; max_features: number }; selection_events: number; selection_alert_fraction: number | null; eligible: boolean; model_sha256: string }[]
+      }
+    }
+  }>
+  limitations: string[]
+  [key: string]: unknown
+}
+
 export class ApiError extends Error {
   status: number
   code?: string

@@ -2221,6 +2221,10 @@ summary::-webkit-details-marker {
   padding: 15px 0 0;
 }
 
+.audit-proofs-panel .protocol-extra code {
+  overflow-wrap: anywhere;
+}
+
 .protocol-extra summary {
   font-size: 14px;
   color: var(--blue);

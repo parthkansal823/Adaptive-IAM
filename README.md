@@ -53,7 +53,7 @@ If this workspace's trusted portable runtime is present but Node/npm are absent 
 & ./.cache/runtime/node-v24.22.0-win-x64/node.exe scripts/dev.mjs
 ```
 
-Open [the console](http://127.0.0.1:5173/) and use **Experiments → Real authentication models → Trained Isolation Forest** for the training study. **Audit log → Audit inclusion proofs** is available to security reviewers. In demo mode, the listed Kavya Sen account has that role. The separate Orbit website requires the optional website profile above. Restart the development launcher after backend code changes.
+Open [the console](http://127.0.0.1:5173/) and use **Experiments → Research model family → Trained Isolation Forest** for the training study. **Audit ledger → Audit inclusion proofs** is available to security reviewers. In demo mode, the listed Kavya Sen account has that role. The separate Orbit website requires the optional website profile above. Restart the development launcher after backend code changes.
 
 For separate terminals or backend hot reload, use:
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api'
 import type { RealAuthModelsStudy } from './api'
 import { Badge, Empty, Icon, PanelTitle, percent } from './components'
+import { TrainedAuthModelsView } from './TrainedAuthModelsView'
 
 const modelNames = { lifetime_user_computer: 'Lifetime frequency control', hierarchical_static: 'Smoothed static', hierarchical_decay: 'Smoothed with decay' }
 const strataNames = { cold_user: 'Cold user', known_user_new_computer: 'Known user / new computer', familiar_user_computer: 'Familiar user / computer' }
@@ -19,6 +20,11 @@ function sourceLink(source: RealAuthModelsStudy['datasets'][string]['source']) {
 }
 
 export function RealAuthModelsView() {
+  const [family, setFamily] = useState('count')
+  return <><div className="panel"><label className="field"><span>Research model family</span><select value={family} onChange={event => setFamily(event.target.value)}><option value="count">Count models</option><option value="trained">Trained Isolation Forest</option></select></label></div>{family === 'trained' ? <TrainedAuthModelsView /> : <CountAuthModelsView />}</>
+}
+
+function CountAuthModelsView() {
   const [report, setReport] = useState<RealAuthModelsStudy | null>(null)
   const [selected, setSelected] = useState('lanl2015_retrospective')
   const [attempt, setAttempt] = useState(0)

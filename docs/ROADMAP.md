@@ -12,6 +12,10 @@ The [LANL real-data milestone](LANL_STUDY.md) adds bounded public enterprise-log
 
 The [second real release](LANL2014_STUDY.md) and [backoff/decay comparison](REAL_AUTH_MODELS.md) are also measured. A common-observable lifetime control, fixed score quantization, shared cold-start strata and immutable protocol commitments distinguish retrospective exercise recall from unlabeled workload evidence. The model family removes forced cold-user zero scores but exposes concentrated cold-user alerts and greater burden on the second release. All results are retained in the console, reports and scientific exports; no runtime model is promoted.
 
+The [trained-model milestone](REAL_AUTH_TRAINING.md) fits and hashes 18 actual Isolation Forest estimators, performs a six-configuration validation search for each of three real-log slices, and publishes all five comparable methods. Its objective is validation budget stability; observed monthly workload regressions prevent a deployment recommendation. Aggregate results, parameters, source identities and scientific figures are available without loading model weights in the API.
+
+The [audit-proof milestone](AUDIT_PROOFS.md) adds bounded append-only Merkle batches, hash-only proof export, strict offline verification and optional live EVM confirmation through both direct and isolated signers. Reviewer controls distinguish local commitments from the last verified chain response. Legacy event anchoring and grant authority remain in force; this is neither automatic chain migration nor a gas-saving result.
+
 ## Evidence requiring independent collection
 
 Real organizational outcomes and trusted telemetry; representative rare takeover labels; at least two independent human language annotators and separate adjudication; physical-device passkey usability; independently configured BERT measurements; subgroup/fairness and privacy/retention studies. Human access votes must never substitute for attack truth. Improve deployment models only from prespecified validation, then disclose untouched test performance.

@@ -7,6 +7,9 @@ controls. It does not create benign labels from missing attack annotations,
 claim production accuracy or replace the running IAM policy.
 
 The aggregate artifact is [real-auth-training.json](../experiments/real-auth-training.json).
+The measured comparison is also available as an exportable
+[SVG figure](../experiments/figures/real-auth-training.svg) and
+[PNG figure](../experiments/figures/real-auth-training.png).
 Actual fitted weights stay in ignored `data/real-auth-models/`. The console can
 display/export aggregate evidence without loading those executable artifacts.
 See [the earlier count-model study](REAL_AUTH_MODELS.md) for the simpler models.

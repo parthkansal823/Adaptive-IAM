@@ -29,6 +29,9 @@ let holdResource = false, resourceChecks = 0, inspectionLifetime = null
 let uncertaintyFail = false, uncertaintyReads = 0
 let lanlFail = false, lanlEligible = false, lanlAllLabeled = false, lanlReads = 0
 let modelStudyFail = false, modelStudyReads = 0
+let trainingStudyFail = false, trainingStudyReads = 0
+let auditBatchReads = 0, auditBatchSeals = 0, auditAnchorChecks = 0, auditAnchorFail = false
+let auditSealed = false, holdAuditAnchor = false
 const aggregate = mean => ({ mean, sample_std: 0, minimum: mean, maximum: mean })
 const studyPolicy = (detection, friction, coverage) => ({ suspicious_detection_rate: aggregate(detection), legitimate_friction_rate: aggregate(friction), suspicious_direct_allow_rate: aggregate(1 - detection), ...(coverage === undefined ? {} : { coverage: aggregate(coverage), suspicious_coverage: aggregate(coverage - .05), both_labels_rate: aggregate(.2), mean_set_size: aggregate(1.2) }) })
 const uncertaintyStudy = { schema_version: 'uncertainty-study-v1', synthetic: true, alpha: .1, seeds: [0, 1, 2, 3, 4], protocol: { source: 'Isolated synthetic browser fixture' }, limitations: ['Synthetic fixture values exercise the interface; they are not study measurements.'], summary: { iid: { baseline: studyPolicy(.12, .05), marginal_gate: studyPolicy(.9, .1, .91), class_conditional_gate: studyPolicy(.96, .2, .95), always_challenge: studyPolicy(1, 1) }, telemetry_masking: { baseline: studyPolicy(.04, .06), marginal_gate: studyPolicy(.6, .12, .74), class_conditional_gate: studyPolicy(.8, .25, .85), always_challenge: studyPolicy(1, 1) } } }
@@ -62,6 +65,18 @@ const modelDataset = labelsAvailable => {
   }
 }
 const modelStudy = { schema_version: 'real-auth-model-study-v1', synthetic: false, protocol: { validation_alert_budget: .02, source: 'Isolated interface fixture; all methods fixed before interface tests.' }, protocol_sha256: 'c'.repeat(64), datasets: { lanl2015_retrospective: modelDataset(true), lanl2014_unlabeled: modelDataset(false) }, limitations: ['Fixture metrics verify interface behavior only, never research performance.'] }
+// Artificial interface values only. No downloaded rows, fitted weights, or study results are used here.
+const trainingDataset = labelsAvailable => {
+  const data = modelDataset(labelsAvailable)
+  data.source.release = 'Artificial browser fixture source'
+  data.methods.isolation_forest = structuredClone(data.methods.lifetime_user_computer)
+  data.methods.isolation_forest_tuned = structuredClone(data.methods.hierarchical_static)
+  data.training = { algorithm: 'IsolationForest', warmup_events_seen: 200, reservoir_events: 40, fitted_feature_dimensions: 9, feature_tensor_sha256: 'd'.repeat(64), model_sha256: 'e'.repeat(64), fitted_tree_count: 100, actual_max_samples: 128, weights_frozen_after: 'warmup', elapsed_seconds: 1, tuning: { tool: 'sklearn.model_selection.ParameterGrid', objective: 'Fixture validation budget stability; not detection accuracy', selected_candidate_id: 'if_128_0p75', selected_params: { max_features: .75, max_samples: 128 }, fallback_used: false, selected_model_sha256: 'f'.repeat(64), candidates: [128, 256, 512].flatMap(max_samples => [.75, 1].map(max_features => ({ id: `if_${max_samples}_${max_features}`, params: { max_samples, max_features }, eligible: true, calibration_events: 50, selection_events: 50, selection_alerts: 1, selection_alert_fraction: .02, objective_distance_to_budget: .01, calibration_threshold: { minimum_score: 1, validation_alert_fraction: .02 }, model_sha256: 'e'.repeat(64) }))) } }
+  return data
+}
+const trainingStudy = { schema_version: 'real-auth-training-v1', synthetic: false, status: 'measured', protocol_sha256: '9'.repeat(64), protocol: { validation_alert_budget: .01, features: Array.from({ length: 9 }, (_, index) => `fixture_feature_${index}`), reservoir_capacity: 40, estimator: { n_estimators: 100, max_samples: 256, max_features: 1 }, tuning: { objective: 'Fixture validation budget stability; not detection accuracy' } }, datasets: { lanl2015_retrospective: trainingDataset(true), lanl2014_month00: trainingDataset(false), lanl2014_month01: trainingDataset(false) }, limitations: ['Artificial browser fixture only; these values are not measured research evidence.'] }
+const auditBatch = { id: 1, start_sequence: 1, end_sequence: 3, event_count: 3, root: '1'.repeat(64), previous_root: '0'.repeat(64), audit_end_hash: '2'.repeat(64) }
+const auditProof = { schema_version: 'audit-inclusion-v1', algorithm: 'sha256-rfc9162-domain-separated-v1', batch: auditBatch, leaf: { sequence: 1, audit_event_hash: '3'.repeat(64) }, siblings: [{ side: 'right', hash: '4'.repeat(64) }, { side: 'right', hash: '5'.repeat(64) }], trust: { root_origin: 'local_sqlite', external_anchor_checked: false } }
 const fixtureRequest = (id, overrides = {}) => ({ id, requester_id: 'b', requester_name: users[1].name, resource_id: 'vault', resource_name: resources[0].name, justification: 'Review the synthetic fixture records for the research task.', duration_hours: 1, status: 'pending', created_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', risk, nlp: { label: 'legitimate', confidence: .9, explanation: 'Synthetic fixture' }, reviewers: [{ id: 'a', name: users[0].name, weight: 1.5, is_owner: true }], votes: [], consensus: { approval_weight: 0, total_weight: 1.5, cast_weight: 0, quorum_required: 1, quorum_reached: false }, reviewer_selection: { reason: 'Fixture reviewer' }, can_vote: true, ...overrides })
 const fixtureGrant = (id, overrides = {}) => ({ id, request_id: 'approved-fixture', user_id: 'a', user_name: users[0].name, resource_id: 'vault', resource_name: resources[0].name, scope: 'read', created_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', status: 'active', can_revoke: true, ...overrides })
 let held = null
@@ -87,6 +102,27 @@ const server = createServer(async (req, res) => {
     if (path === '/api/research/uncertainty') { uncertaintyReads++; return uncertaintyFail ? send(res, { detail: 'Fixture study unavailable' }, 503) : send(res, uncertaintyStudy) }
     if (path === '/api/research/lanl') { lanlReads++; return lanlFail ? send(res, { detail: 'Fixture real-data study unavailable' }, 503) : send(res, lanlStudy()) }
     if (path === '/api/research/real-auth-models') { modelStudyReads++; return modelStudyFail ? send(res, { detail: 'Fixture model study unavailable' }, 503) : send(res, modelStudy) }
+    if (path === '/api/research/real-auth-training') { trainingStudyReads++; return trainingStudyFail ? send(res, { detail: 'Fixture training study unavailable' }, 503) : send(res, trainingStudy) }
+    if (path === '/api/audit/batches') {
+      auditBatchReads++
+      return send(res, { items: auditSealed ? [auditBatch] : [], checked_events: auditSealed ? 4 : 3, sealed_end: auditSealed ? 3 : 0, unsealed_events: auditSealed ? 1 : 3, batch_count: auditSealed ? 1 : 0, batch_head: auditSealed ? auditBatch.root : '0'.repeat(64), anchor_checked: false, root_origin: 'local_sqlite' })
+    }
+    if (path === '/api/audit/batches/seal') {
+      assert.equal(req.method, 'POST')
+      let body = ''; for await (const chunk of req) body += chunk
+      assert.deepEqual(JSON.parse(body), { max_events: 16 })
+      auditBatchSeals++; auditSealed = true
+      return send(res, { batch: auditBatch, anchor_checked: false, root_origin: 'local_sqlite' })
+    }
+    if (path === '/api/audit/batches/1/anchor') {
+      assert.equal(req.method, 'POST')
+      let body = ''; for await (const chunk of req) body += chunk
+      assert.deepEqual(JSON.parse(body), {})
+      auditAnchorChecks++
+      if (holdAuditAnchor) { held = { path, res }; return }
+      return auditAnchorFail ? send(res, { detail: 'Fixture live RPC unavailable' }, 503) : send(res, { batch: auditBatch, status: 'anchored', anchor_checked: true, chain_id: 31337 })
+    }
+    if (path === '/api/audit/proofs/1') return send(res, auditProof)
     if (path === '/api/auth/me') return send(res, { user: identity, risk, session })
     if (path === '/api/overview') return send(res, { ...summary, stats: { ...summary.stats, active_grants: accessGrants.filter(grant => grant.status === 'active').length, pending_requests: accessRequests.filter(request => request.status === 'pending').length, review_queue: accessRequests.filter(request => request.can_vote).length }, recent_requests: accessRequests.slice(0, 5) })
     if (path === '/api/requests') return send(res, { items: accessRequests })
@@ -482,7 +518,91 @@ try {
     }
     console.log('PASS fixed models retry, switch real-source eligibility, expose cold-start diagnostics, export all datasets and fit both mobile themes')
   }
-  console.log('Frontend regression checks: 16 passed (isolated API fixtures, no real account mutations).')
+  {
+    trainingStudyFail = true
+    const readsBeforeOpen = trainingStudyReads
+    const p = await page('/research')
+    await p.wait("!!document.querySelector('.real-auth-models select')", 'Model family selector did not load')
+    assert.equal(trainingStudyReads, readsBeforeOpen)
+    await p.field('Research model family', 'trained')
+    await p.wait("document.querySelector('.real-auth-training')?.textContent.includes('Fixture training study unavailable')", 'Training study did not show its own retry state')
+    const readsBeforeRetry = trainingStudyReads
+    trainingStudyFail = false
+    await p.button('Retry training study')
+    await p.wait("document.querySelectorAll('.real-auth-training-methods tbody tr').length === 5", 'Training retry did not recover five held-out methods')
+    assert.equal(trainingStudyReads, readsBeforeRetry + 1)
+    const recalled = await p.evaluate("Array.from(document.querySelectorAll('.real-auth-training-methods tbody tr td:last-child')).map(cell => cell.textContent)")
+    assert(recalled.some(cell => cell.includes('50.0%')) && recalled.some(cell => cell.includes('75.0%')))
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-training').textContent.includes('128') && document.querySelector('.real-auth-training').textContent.includes('0.75')"), true)
+    assert.equal(await p.evaluate("document.querySelector('.real-auth-training').textContent.includes('40 reservoir rows from 200 warmup events')"), true)
+    await p.evaluate("document.querySelector('.real-auth-training details summary').click()")
+    assert.equal(await p.evaluate("document.querySelectorAll('.training-candidates tbody tr').length"), 6)
+    const readsBeforeSelection = trainingStudyReads
+    await p.field('Training study dataset', 'lanl2014_month00')
+    await p.wait("Array.from(document.querySelectorAll('.real-auth-training-methods tbody tr td:last-child')).every(cell => cell.textContent.includes('Not estimable'))", 'Unlabeled training source displayed detection values')
+    await p.field('Training study dataset', 'lanl2014_month01')
+    assert.equal(trainingStudyReads, readsBeforeSelection)
+    assert.equal(await p.evaluate("document.querySelectorAll('.real-auth-training-methods tbody tr').length"), 5)
+    await p.evaluate("window.__trainingCreateUrl = URL.createObjectURL; URL.createObjectURL = blob => { window.__trainingExport = blob; return window.__trainingCreateUrl(blob) }")
+    await p.button('Export training study')
+    assert.deepEqual(await p.evaluate("window.__trainingExport.text().then(JSON.parse)"), trainingStudy)
+    await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    for (const theme of ['light', 'dark']) {
+      if (await p.evaluate('document.documentElement.dataset.theme') !== theme) await p.click('.theme-button')
+      await p.wait(`document.documentElement.dataset.theme === '${theme}'`, 'Training theme did not change')
+      assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
+    }
+    console.log('PASS trained model family loads lazily, retries, switches three source slices, keeps unlabeled detection undefined, exports exact study and fits both mobile themes')
+  }
+  {
+    auditSealed = false; auditAnchorFail = false
+    const readsBeforeOpen = auditBatchReads
+    const p = await page('/audit')
+    assert.equal(auditBatchReads, readsBeforeOpen)
+    await p.evaluate("Array.from(document.querySelectorAll('summary')).find(summary => summary.textContent.trim() === 'Audit inclusion proofs').click()")
+    await p.wait("document.querySelector('.audit-proofs-panel')?.textContent.includes('No audit batches sealed')", 'Lazy audit proof listing did not load')
+    assert.equal(auditBatchReads, readsBeforeOpen + 1)
+    await p.field('Maximum events per batch', '16')
+    await p.button('Seal audit batch')
+    await p.wait("document.querySelector('.audit-proofs-panel [role=status]')?.textContent.includes('sealed locally') && !!document.querySelector('.audit-proofs-panel table')", 'Sealed batch was not confirmed and refreshed')
+    assert.equal(auditBatchSeals, 1)
+    assert.equal(auditBatchReads, readsBeforeOpen + 2)
+    assert.equal(await p.evaluate("document.querySelector('.audit-proofs-panel').textContent.includes('External anchoring has not been checked')"), true)
+    await p.button('Check / anchor batch 1')
+    await p.wait("document.querySelector('.audit-proofs-panel [role=status]')?.textContent.includes('Live anchor checked for batch 1')", 'Confirmed live root did not report its checked state')
+    auditAnchorFail = true
+    await p.button('Check / anchor batch 1')
+    await p.wait("document.querySelector('.audit-proofs-panel [role=alert]')?.textContent.includes('Fixture live RPC unavailable')", 'Live RPC failure did not remain actionable')
+    assert.equal(await p.evaluate("document.querySelector('.audit-proofs-panel').textContent.includes('Live anchor checked for batch 1')"), false)
+    assert.equal(auditAnchorChecks, 2)
+    await p.evaluate("window.__proofCreateUrl = URL.createObjectURL; URL.createObjectURL = blob => { window.__proofExport = blob; return window.__proofCreateUrl(blob) }")
+    await p.field('Audit event sequence', '1')
+    await p.button('Export inclusion proof')
+    await p.wait("document.querySelector('.audit-proofs-panel [role=status]')?.textContent.includes('Hash-only proof for event 1 exported')", 'Hash-only proof export did not finish')
+    assert.deepEqual(await p.evaluate("window.__proofExport.text().then(JSON.parse)"), auditProof)
+    assert.equal(auditProof.trust.external_anchor_checked, false)
+    await p.evaluate("document.querySelector('.audit-proofs-panel details summary').click()")
+    await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    for (const theme of ['light', 'dark']) {
+      if (await p.evaluate('document.documentElement.dataset.theme') !== theme) await p.click('.theme-button')
+      await p.wait(`document.documentElement.dataset.theme === '${theme}'`, 'Proof panel theme did not change')
+      assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
+    }
+    holdAuditAnchor = true; auditAnchorFail = false
+    await p.button('Check / anchor batch 1')
+    await waitHeld('/api/audit/batches/1/anchor')
+    users[1].role = 'engineer'
+    await p.signInBob()
+    send(held.res, { batch: auditBatch, status: 'anchored', anchor_checked: true, chain_id: 31337 }); held = null
+    holdAuditAnchor = false
+    await sleep(150)
+    assert.equal(await p.evaluate("!!document.querySelector('.audit-proofs-panel')"), false)
+    assert.equal(await p.evaluate("Array.from(document.querySelectorAll('summary')).some(summary => summary.textContent.trim() === 'Audit inclusion proofs')"), false)
+    assert.equal(await p.evaluate("document.body.innerText.includes('Live anchor checked for batch 1')"), false)
+    users[1].role = 'security_reviewer'
+    console.log('PASS audit proofs load lazily, seal bounded ranges, distinguish local and live trust, clear stale success on RPC failure, export exact hash-only evidence, fit mobile themes and discard a prior identity response')
+  }
+  console.log('Frontend regression checks: 18 passed (isolated API fixtures, no real account mutations).')
 } finally {
   if (held) held.res.destroy()
   for (const p of pages) p.socket.close()

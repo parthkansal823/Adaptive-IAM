@@ -98,6 +98,16 @@ The user/computer comparison fixes three models before computing their results: 
 
 The 2014 LANL user/computer release [14] supplies a fixed 16 MiB compressed prefix with successful events and no attack labels, supporting burden and cold-start analysis only. The already-inspected 2015 prefix is a retrospective diagnostic, preserving exact exercise tuples and reporting all fixed models regardless of outcomes. Both datasets originate from LANL, with undisclosed collection dates; different releases do not establish organizational or temporal independence. The runtime contextual LR/RF model is unchanged because these log fields and sparse labels do not validate its feature schema. ([Frozen protocol and results](../REAL_AUTH_MODELS.md), [Additional acquisition](../LANL2014_STUDY.md))
 
+### 4.9 Learned real-log models and chronological parameter search
+
+The training extension fits Isolation Forests [16] on three bounded real-log slices, with a seeded uniform reservoir of at most 30,000 warmup feature vectors per slice. Nine strictly past-second features describe normalized user/global, pair/user and computer/global frequency, observed event rate, user destination diversity, cold-user/pair indicators and capped recencies. Relative features replace raw cumulative counters before any results are computed, reducing a trivial elapsed-history proxy without assuming stationarity. All candidate estimators use 100 trees, seed 20261021 and identical reservoirs/features. The six-configuration grid crosses `max_samples={128,256,512}` with `max_features={0.75,1.0}`; the fixed control uses 256 and 1.0.
+
+Warmup/validation/test retain the 50/25/25 source-time split and complete timestamp groups. Validation's first half selects a conservative 1% score threshold per candidate; its later half selects the smallest absolute alert-budget deviation, with unsupported/disabled candidates excluded and deterministic ties. The selected threshold is then recalibrated on all validation and frozen before test. This objective is operational budget stability, not attack detection accuracy. No labels enter fitting or selection. Test scores are floored to the fixed 0.0001 resolution. Every fitted artifact, reservoir tensor, selected stream partition and executed source has a recorded hash. The new later monthly prefix supplies 4,970,690 usable events from a nonoverlapping relative-time interval of the same 2014 release. ([Complete training/model card](../REAL_AUTH_TRAINING.md), [Additional slice](../LANL_MONTH01.md))
+
+### 4.10 Supplemental audit inclusion evidence
+
+The storage extension commits contiguous verified audit prefixes of at most 256 events to append-only SQLite batch manifests. It applies RFC 9162 tree construction [17] to the custom leaf input `uint64_be(sequence) || audit_event_hash`, with distinct leaf/internal hash domains and unbalanced tree shape; it does not implement Certificate Transparency's TLS protocol. An authenticated security reviewer can export a hash-only inclusion bundle and explicitly anchor/check its root in the optional local EVM registry. The contract requires contiguous batch ranges, the previous root and an already anchored legacy audit end hash. Offline verification separates inclusion from independently trusted root matching. Existing grant/quorum enforcement and per-event anchors remain in place. This is a proof index, without a transaction-cost or decentralized-trust claim. ([Construction and threat model](../AUDIT_PROOFS.md))
+
 ## 5. Results
 
 ### 5.1 Classification and probability error
@@ -231,6 +241,28 @@ The common lifetime model assigns zero score to all 126 cold-user test events in
 
 Figure 3. Fixed user/computer novelty models on two real releases from the same institution. Exercise counts describe ten correlated retrospective tuples. Alert burden on unlabeled events is not false-positive rate.
 
+### 5.11 Actual learned models improve one diagnostic and regress on later workload
+
+All 14,275,164 usable events are processed, including 3,874,417 held-out test events. Eighteen actual 100-tree estimators are fitted: six configurations per slice, sharing that slice's 30,000-vector warmup reservoir. The results below separate known exercise recall from alert workload:
+
+| Slice | Validation-selected parameters `(samples, feature fraction)` | Fixed IF test alerts | Selected IF test alerts | Known exercise recall, fixed / selected |
+| --- | --- | ---: | ---: | --- |
+| 2015 retrospective | `(128, 0.75)` | 3,539 / 886,224 | 3,514 / 886,224 | 6/10 / 7/10 |
+| 2014 first sample | `(128, 0.75)` | 26,948 / 1,543,498 (1.7459%) | 30,574 / 1,543,498 (1.9808%) | Unavailable |
+| 2014 later sample | `(512, 0.75)` | 28,880 / 1,444,695 (1.9990%) | 33,576 / 1,444,695 (2.3241%) | Unavailable |
+
+On the retrospective 2015 sample, selected IF flags seven listed tuples and 3,507/886,214 unlabeled events (0.3957%), versus fixed IF's six tuples and 3,533 unlabeled alerts (0.3987%). The common lifetime control flags six tuples with 0.9492% unlabeled burden; decay flags seven with 0.6397%. Raw observables are shared, but learned features and score families differ, so this does not isolate the causal contribution of the forest algorithm. Neither the selected forest nor these controls supersede the earlier source/destination edge baseline using additional source-computer information.
+
+The selected configurations adhere more closely to the target on later validation, yet increase test alerts on both unlabeled monthly samples. Thus validation budget stability does not guarantee future budget adherence or better detection. Both regressions remain published, without changing parameters after test inspection. Training plus feature parsing, search and test takes 201.547 / 145.532 / 149.703 seconds in the recorded host environment; these are end-to-end single-run durations, not isolated fitting latency or deployment throughput. A post-measurement sparse-validation fallback fix is distinguished from the executed source snapshot and leaves all measured payloads unchanged. ([All candidates and artifacts](../../experiments/real-auth-training.json), [Detailed results and limitations](../REAL_AUTH_TRAINING.md))
+
+![Real-data training comparison](../../experiments/figures/real-auth-training.png)
+
+Figure 4. Warmup-trained estimators and chronological validation selection on real logs. Workload panels use individual scales; unlabeled alerts are not false positives. The selected model optimizes a validation workload objective.
+
+### 5.12 Audit proof security checks
+
+The isolated EVM/API runner passes the existing eleven checkpoint/grant cases and twenty audit-proof cases, including two live HTTP-to-EVM flows. Those flows seal a ragged three-event prefix, require prior event synchronization, anchor and reread the root, compare Python and Solidity inclusion verification, and reject modified history or unavailable RPC. Separate contract tests cover balanced, ragged and singleton trees plus extra, missing, reordered and incorrect paths; signer tests retain a fixed operation allowlist. These are functional failure-state checks on local test systems. They establish neither independent validator administration nor a gas-saving, throughput or production assurance result. ([Verifier](../../blockchain/scripts/verify-api.mjs), [Audit checks](../../backend/tests/test_audit_proofs.py), [Contract checks](../../blockchain/tests/audit-batches.test.mjs))
+
 ## 6. Validity, limitations and reproducibility
 
 Synthetic generation can favor models that resemble its construction. The five complete fits vary training and samples but still share one generator; they do not establish cross-organization validity. Bootstrap intervals remain conditional on one trained model and have no multiplicity correction. Validation is reused for several selection decisions, introducing selection variance even while test data is excluded. Sample standard deviations and reliability bins do not substitute for population confidence intervals or nested cross-validation. No fairness conclusion follows from device/location diagnostic groups. ([Conditional limitations](../../experiments/robustness.json), [Candidate limitations](../../experiments/candidate-study.json), [Retraining limits](../../experiments/risk-protocol.json))
@@ -307,3 +339,7 @@ The bibliography contains the verified sources used in the narrative. No unsuppo
 [14] A. D. Kent, *User-Computer Authentication Associations in Time*, Los Alamos National Laboratory, 2014. [DOI](https://doi.org/10.11578/1160076), [creator description](https://csr.lanl.gov/data/auth/), accessed 21 October 2026.
 
 [15] N. Heard and P. Rubin-Delanchy, *Network-wide anomaly detection via the Dirichlet process*, IEEE ISI, 2016. [DOI](https://doi.org/10.1109/ISI.2016.7745478), [institutional record](https://spiral.imperial.ac.uk/entities/publication/c3bd8619-ba50-4599-a448-422c8a35e746), [author manuscript](https://people.maths.bris.ac.uk/~pr12244/dirichlet.pdf).
+
+[16] Scikit-learn developers, *IsolationForest* and *ParameterGrid*, version 1.9.1 documentation, accessed 21 October 2026. [Estimator](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html), [Deterministic parameter grid](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.ParameterGrid.html).
+
+[17] B. Laurie, E. Messeri and R. Stradling, *Certificate Transparency Version 2.0*, RFC 9162, Experimental, 2021, section 2.1. [Primary specification](https://www.rfc-editor.org/rfc/rfc9162.html#section-2.1).

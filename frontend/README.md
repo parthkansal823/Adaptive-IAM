@@ -12,6 +12,14 @@ npm run dev
 
 Open `http://127.0.0.1:5173`. Start the backend on `http://127.0.0.1:8000`; Vite proxies `/api` there. Use `npm run build` to typecheck and create `dist/`.
 
+From the repository root on this Windows workspace, the trusted portable runtime can start both services without global PATH changes:
+
+```powershell
+& ".\.cache\runtime\node-v24.22.0-win-x64\node.exe" scripts/dev.mjs
+```
+
+In **Experiments**, choose **Research model family → Trained Isolation Forest**, then select any of the three measured real-log slices. The training view shows fitted reservoir size, selected parameters, all five controls, validation candidates, source/model hashes and a full JSON export. **Audit ledger → Audit inclusion proofs** provides local sealing, proof export and optional live chain checks to authenticated security reviewers. In demo mode, Kavya Sen has this role; the documented seeded password is `Demo@123!`.
+
 ## Interface
 
 - **Overview:** live session risk, adaptive policy, scoped metrics, event history, and requests.
@@ -19,7 +27,7 @@ Open `http://127.0.0.1:5173`. Start the backend on `http://127.0.0.1:8000`; Vite
 - **Attack lab:** 12 bounded authentication/language/authorization scenarios. Each run records actual model output and owned policy observations without creating requests, votes, or grants; the latest 20 runs remain inspectable.
 - **Risk lab:** nine editable scenarios covering familiar sign-in, new device, travel, suspicious activity, new location, rapid retries, VPN, after-hours, and a new account. Every scenario uses actual model probabilities; tier boundaries come from `/api/bootstrap`.
 - **Access requests:** searchable request/grant lists with identity and status filters, justification analysis, selected reviewers, weighted voting, grant expiry, eligible owner/security-reviewer revocation, and real protected-resource checks.
-- **Audit ledger:** event payloads, hash-chain verification, actual blockchain status, and security-reviewer synchronization of hashes and timed grants.
+- **Audit ledger:** event payloads, hash-chain verification, actual blockchain status, security-reviewer synchronization of hashes/timed grants, and lazily loaded audit batch sealing, hash-only inclusion proof export and explicit live batch confirmation.
 - **Experiments:** measured synthetic metrics, a separate LANL exercise study, and three fixed user–computer models compared through a real-data dataset selector. The model study reports cold-start diagnostics, validation/test alert burden, source hashes, eligible exercise recall, limitations and full JSON exports. Both real sources come from historic LANL logs; the 2014 source has no attack labels. Uncertainty experiments remain separate. These offline reports change no live access policy.
 - **Developer portal:** organizations and administrator/developer/member roles, a three-step application wizard, exact callback diagnostics, resource mappings, one-time client secrets, rotation, app disable, and provider endpoints. Sensitive mutations require recent verification with an enrolled factor.
 - **`/connect?request_id=...`:** app authorization packet, adaptive identity sign-in, and explicit consent before returning to the registered callback.
@@ -42,4 +50,4 @@ Request and grant displays wake at the next server-provided expiry and when the 
 
 Build the frontend, then run `node tests/console-regression.mjs` from this directory. The dependency-free check uses installed Edge, Chrome, or Chromium in headless mode. Set `IAM_TEST_BROWSER` or `CHROME_BIN` to its full executable path when automatic detection cannot find it; a missing browser or production bundle produces an actionable failure. These optional checks are separate from the default build and require no running backend.
 
-The 16 isolated local API fixture cases verify delayed logout, audit, and security-revocation responses during identity switching; scenario-catalog retry; callback limits/duplicates; resource-result isolation; request/grant expiry, search and filters; protected-snapshot removal and explicit recheck; overview expiry; uncertainty-study retry/condition metrics; real-data study recovery, sparse-label recall, disabled rules and zero denominators; and fixed-model retry, dataset selection, absent-label eligibility, cold-start diagnostics, source hashes and complete export. Narrow registration, access and research views are checked for overflow, including both themes for access and the studies. Browser profiles use a separate temporary directory and are removed after the run. No real accounts, credentials, or grants are used; fixture metrics do not establish research performance.
+The 18 isolated local API fixture cases verify delayed logout, audit, and security-revocation responses during identity switching; scenario-catalog retry; callback limits/duplicates; resource-result isolation; request/grant expiry, search and filters; protected-snapshot removal and explicit recheck; overview expiry; uncertainty-study retry/condition metrics; real-data study recovery, sparse-label recall, disabled rules and zero denominators; fixed-model retry, dataset selection, absent-label eligibility, cold-start diagnostics, source hashes and complete export; trained-model lazy loading, retry, three dataset slices, validation candidates, fit counts and exact export; and audit-proof lazy loading, bounded sealing, live anchor success/RPC failure, hash-only export and response isolation after switching to an ordinary user. Narrow registration, access, research and proof views are checked for overflow, including both themes for access, the studies and the proof verifier instructions. Browser profiles use a separate temporary directory and are removed after the run. No real accounts, credentials, or grants are used; fixture metrics do not establish research performance.
