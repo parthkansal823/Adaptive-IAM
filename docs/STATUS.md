@@ -1,6 +1,6 @@
 # Project status
 
-23 October 2026. Research prototype; all 31 original assets remain checksum-verified under `research/`. Measured reports disclose sampling, regressions and evidence limits.
+24 October 2026. Research prototype; all 31 original assets remain checksum-verified under `research/`. Measured reports disclose sampling, regressions and evidence limits.
 
 Implemented: Python API; React dark/light console; passkeys, TOTP/recovery; observed-context session checks; OAuth/OIDC + PKCE; Node/Python SDKs; organization onboarding/rotation; attack diagnostics; owner/quorum review and timed grants. Orbit SaaS uses sample records and live IAM permissions. [Website guide](SAAS_WEBSITE.md).
 
@@ -14,7 +14,9 @@ The [actual training study](REAL_AUTH_TRAINING.md), measured 21 October, process
 
 [Audit inclusion proofs](AUDIT_PROOFS.md) add append-only bounded Merkle batches, hash-only export, strict offline verification and optional live EVM confirmation. Reviewer-only console controls separate local commitments from the last external check. Per-event anchoring remains; no gas-saving or novel cryptography claim is made. Ganache dependency findings and the independently packaged QBFT signer's audit boundary are documented in [Security](SECURITY.md).
 
-Previous complete verifier passed: 152 backend cases (eight opt-in skips), 96 script cases (one Windows privilege skip), 63 research, 12 Python SDK, 49 Node integration, 17 contract/RPC, 31 isolated live-chain API and 18 browser fixtures. Typecheck/build, source checks and all asset checksums passed. Updated API/chain images built and packaged reports/signer operations were checked. Linux/Python 3.13 backup: 28 passed, two Windows-only skips. Website session restart/revocation and Besu consensus retain their earlier dated evidence; no retained chain was reset.
+The [24 October review](CODE_REVIEW.md) fixes session/OAuth races, stale demo-factor challenges, advisory abstention, SDK token lifetimes, Python website response checks, console async/expiry behavior and retained QBFT/registry recovery. RBA histories/splits now preserve timestamp groups under `rba-evaluation-v2`; earlier scores remain historical and no corrected scores are claimed. Future LANL scan totals exclude the incomplete final group consistently. All verifier modes now enforce original-asset integrity.
+
+Complete verification and final affected-area reruns passed: 159 backend cases (eight opt-in skips), 119 script cases (one Windows privilege skip), 63 research, 18 Python SDK, 50 Node integration, 25 contract/RPC, 31 isolated live-chain API and 30 browser fixtures. Typecheck/build, 246-file source inspection, JavaScript/PowerShell syntax, diff checks and all 31 asset checksums passed. QBFT Compose forwards private-mode configuration correctly. No fresh Docker builds or Besu outage measurements were made; earlier dated evidence remains separate and no retained chain was reset.
 
 23 October frontend extension: Experiments now starts with five study shortcuts and supports [direct trained-model links](http://127.0.0.1:5173/research?model=trained#models), model-family history and keyboard section navigation. Async reports keep linked sections positioned until user interaction. Changing family targets the model section and preserves unrelated query parameters. Fresh typecheck/build and all 19 browser cases passed, including stale-section selection, Back/Forward, direct links and both mobile themes; source/diff checks passed. Overview now distinguishes observed data from synthetic evidence.
 

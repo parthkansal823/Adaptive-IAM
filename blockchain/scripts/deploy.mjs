@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Contract, ContractFactory, JsonRpcProvider} from 'ethers';
 import {compile, root} from './compile.mjs';
+import {readRetainedDeployment, requireUnusedRegistryWriter} from './registry-state.mjs';
 
 const rpc = process.env.IAM_WEB3_RPC_URL ?? 'http://127.0.0.1:8545';
 const parsed = new URL(rpc);
@@ -14,15 +15,15 @@ const artifact = compile();
 const output = process.env.IAM_WEB3_DEPLOYMENT_FILE ?? path.resolve(root, '../backend/data/deployment.json');
 fs.mkdirSync(path.dirname(output), {recursive: true});
 let deployed;
-if (fs.existsSync(output)) {
-  const previous = JSON.parse(fs.readFileSync(output, 'utf8'));
-  if (previous.chain_id === 31337 && await provider.getCode(previous.contract_address) !== '0x') {
-    deployed = new Contract(previous.contract_address, artifact.abi, provider);
-    if (await deployed.writer() !== await (await provider.getSigner(0)).getAddress()) throw new Error('Existing deployment has an unexpected writer');
-  }
+const previous = await readRetainedDeployment(output);
+if (previous) {
+  if (await provider.getCode(previous.contract_address) === '0x') throw new Error('Retained deployment does not match this chain; refuse redeployment');
+  deployed = new Contract(previous.contract_address, artifact.abi, provider);
+  if (await deployed.writer() !== await (await provider.getSigner(0)).getAddress()) throw new Error('Existing deployment has an unexpected writer');
 }
 if (!deployed) {
   const writer = await provider.getSigner(0); // Local unlocked account; no embedded private key.
+  await requireUnusedRegistryWriter(provider, await writer.getAddress());
   deployed = await new ContractFactory(artifact.abi, artifact.bytecode, writer).deploy();
   await deployed.waitForDeployment();
 }

@@ -61,7 +61,7 @@ test('OIDC signature, issuer/audience/nonce and userinfo subject are checked bef
 
 test('token verification latency never extends the access token lifetime', async () => {
   const started = Date.now()
-  const token = await signed()
+  const token = await signed({ iat: Math.floor(started / 1000), exp: Math.floor(started / 1000) + 600 })
   for (const delay of [5000, 60000]) {
     let now = started
     const upstream = provider(token, { token: { expires_in: 60 } })

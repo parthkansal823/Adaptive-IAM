@@ -15,7 +15,7 @@ If Windows application control blocks a native dependency, use the Linux Docker 
 | API | `.\scripts\dev.ps1 -Service backend` |
 | UI | `.\scripts\dev.ps1 -Service frontend` |
 | Full checks | `.\scripts\verify.ps1` |
-| Research checksums too | `.\scripts\verify.ps1 -Research` |
+| Standalone research checksums | `python scripts/verify_research.py` |
 | Changed-file checks | `.\scripts\verify.ps1 -Changed` |
 | Reproduce evaluation | `.venv\Scripts\python.exe experiments/evaluate.py` |
 | Small project map | `python scripts/context.py` |
@@ -30,7 +30,7 @@ If Windows application control blocks a native dependency, use the Linux Docker 
 
 `npm run doctor` uses the repository's virtual environment when present, checks Python/Node and direct dependency versions, and reports missing tools without installing anything or reading runtime credentials. A Python version differing from CI is reported explicitly. `npm run check` uses the same interpreter selection and forwards verification arguments, for example `npm run check -- --changed`. Optional browser fixture regressions and browser prerequisites are documented in [frontend/README.md](../frontend/README.md#browser-regression-checks).
 
-The portable runner is `python scripts/verify.py`, using your active interpreter. It runs Python state-transition/security tests, available experiment adapter tests, Node/Python OIDC relying-party tests, and the frontend typecheck/build. It never installs dependencies. Research evaluation is explicit because it trains models and rewrites measured artifacts. Website setup is in [INTEGRATION.md](INTEGRATION.md).
+The portable runner is `python scripts/verify.py`, using your active interpreter. It always checks source syntax/secrets and preserved research-asset integrity, including changed-file runs, then runs relevant Python state-transition/security tests, experiment adapter tests, Node/Python OIDC relying-party tests, contract/RPC tests and the frontend typecheck/build. It never installs dependencies. Research evaluation is explicit because it trains models and rewrites measured artifacts. The PowerShell `-Research` switch remains compatible but repeats the already mandatory integrity check. Website setup is in [INTEGRATION.md](INTEGRATION.md).
 
 Direct Python verification and Git hooks discover Node/npm on PATH, then a complete trusted official distribution extracted under `.cache/runtime/node-v<VERSION>-<PLATFORM>-<ARCH>` (for example `node-v24.22.0-win-x64`). They run npm through the resolved Node executable and add its directory only to child-process PATH. This supports editor Git processes that lack Node in their inherited PATH without changing global settings or bypassing checks. No runtime is downloaded automatically. Diagnose with `.venv/Scripts/python.exe scripts/doctor.py`; run `.venv/Scripts/python.exe scripts/verify.py --browser --live-web3` when npm itself is unavailable in your terminal. On Unix, use `.venv/bin/python`.
 

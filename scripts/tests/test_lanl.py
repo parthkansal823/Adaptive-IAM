@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from scripts.evaluate_lanl import (
     Event, Novelty, auth_event, bounded_bytes, budget_threshold, evaluate,
-    event_groups, fetch, gzip_lines, read_redteam,
+    event_groups, fetch, gzip_lines, read_redteam, scan_auth,
 )
 
 
@@ -70,6 +70,27 @@ class LanlProtocolTests(unittest.TestCase):
             auth, _ = self.fixture(directory, [row(1), row(2), row(2)])
             self.assertEqual([second for second, _ in event_groups(auth, prefix=True)], [1])
             self.assertEqual([second for second, _ in event_groups(auth)], [1, 2])
+
+    def test_prefix_scan_selection_matches_evaluated_complete_groups(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [row(i) for i in range(1, 101)] + [row(100), row(100, user="C1$@DOM1")]
+            auth, labels = self.fixture(directory, rows)
+            scan = scan_auth(auth, prefix=True)
+            self.assertEqual(scan["source_rows"], 102)
+            self.assertEqual(scan["selected_rows"], 99)
+            self.assertEqual(scan["selected_last_second"], 99)
+            self.assertEqual(scan["final_timestamp_rows_excluded"], 3)
+            self.assertEqual(scan["final_timestamp_selected_rows_excluded"], 2)
+            report = evaluate(auth, labels, prefix=True)
+            self.assertEqual(sum(part["events"] for part in report["partitions"].values()), scan["selected_rows"])
+
+    def test_prefix_with_only_one_timestamp_has_no_selected_groups(self):
+        with tempfile.TemporaryDirectory() as directory:
+            auth, _ = self.fixture(directory, [row(1), row(1)])
+            scan = scan_auth(auth, prefix=True)
+            self.assertEqual(scan["selected_rows"], 0)
+            self.assertIsNone(scan["selected_first_second"])
+            self.assertIsNone(scan["selected_last_second"])
 
     def test_sparse_labels_match_exact_four_tuple_and_duplicates_are_explicit(self):
         with tempfile.TemporaryDirectory() as directory:

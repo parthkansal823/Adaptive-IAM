@@ -85,6 +85,12 @@ let catalogReads = 0
 let callbackChecks = 0
 let appRegistrations = 0
 let loginCounter = 0
+let catalogFailureBody = { detail: 'Fixture catalog unavailable' }
+let sessionExpiry = null, oauthLifetime = null
+let loginMfa = false, holdVerify = false, verificationCalls = 0, holdCallback = false
+let holdRisk = false
+let holdConsent = false, sessionEnrollmentRequired = false
+let multipleOrganizations = false, removedOrganization = null
 const send = (res, body, status = 200) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
 const server = createServer(async (req, res) => {
   try {
@@ -96,7 +102,7 @@ const server = createServer(async (req, res) => {
       return
     }
     const identity = users.find(user => req.headers.authorization?.includes(`token-${user.id}`)) || users[0]
-    const session = { expires_at: '2099-01-01T00:00:00Z', step_up_required: false, enrollment_required: false }
+    const session = { expires_at: sessionExpiry || '2099-01-01T00:00:00Z', step_up_required: false, enrollment_required: sessionEnrollmentRequired }
     if (path === '/api/bootstrap') return send(res, { demo_mode: true, users, resources, risk_thresholds: { low: .3, high: .7 }, reviewer_weights: {}, capabilities: {} })
     if (path === '/api/evaluation') return send(res, { dataset: {}, baseline: {}, improved: {} })
     if (path === '/api/research/uncertainty') { uncertaintyReads++; return uncertaintyFail ? send(res, { detail: 'Fixture study unavailable' }, 503) : send(res, uncertaintyStudy) }
@@ -124,6 +130,10 @@ const server = createServer(async (req, res) => {
     }
     if (path === '/api/audit/proofs/1') return send(res, auditProof)
     if (path === '/api/auth/me') return send(res, { user: identity, risk, session })
+    if (path === '/api/risk/assess') {
+      if (holdRisk) { held = { path, res }; return }
+      return send(res, risk)
+    }
     if (path === '/api/overview') return send(res, { ...summary, stats: { ...summary.stats, active_grants: accessGrants.filter(grant => grant.status === 'active').length, pending_requests: accessRequests.filter(request => request.status === 'pending').length, review_queue: accessRequests.filter(request => request.can_vote).length }, recent_requests: accessRequests.slice(0, 5) })
     if (path === '/api/requests') return send(res, { items: accessRequests })
     if (path === '/api/grants') return send(res, { items: accessGrants })
@@ -137,7 +147,21 @@ const server = createServer(async (req, res) => {
     if (path === '/api/auth/login') {
       let body = ''; for await (const chunk of req) body += chunk
       const user = users.find(user => user.id === JSON.parse(body).user_id)
+      if (loginMfa) return send(res, { status: 'mfa_required', risk, challenge_id: 'fixture-challenge', methods: ['totp', 'recovery'] })
       return send(res, { status: 'authenticated', token: `token-${user.id}-${++loginCounter}`, user, risk })
+    }
+    if (path === '/api/auth/verify') {
+      verificationCalls++
+      if (holdVerify) { held = { path, res }; return }
+      return send(res, { detail: 'Unexpected verification request' }, 400)
+    }
+    if (path.startsWith('/api/oauth/authorization/')) {
+      const requestId = decodeURIComponent(path.slice('/api/oauth/authorization/'.length))
+      return send(res, { request_id: requestId, app: { name: `Consent ${requestId}` }, scopes: ['openid'], resources: [], expires_at: oauthLifetime ? new Date(Date.now() + oauthLifetime).toISOString() : '2099-01-01T00:00:00Z' })
+    }
+    if (path === '/api/oauth/consent') {
+      if (holdConsent) { held = { path, res }; return }
+      return send(res, { detail: 'Unexpected consent mutation' }, 400)
     }
     if (path === '/api/auth/logout' || path === '/api/audit/verify' || path === '/api/auth/sessions/current/revoke') { held = { path, res }; return }
     if (path === '/api/auth/security') return send(res, { passkeys_available: false, totp_enabled: false, passkeys: [], recovery_codes_remaining: 0, fresh_verification: false, enrollment_ready: true, step_up_required: false, session, rp_id: 'localhost', origin, demo_mode: true })
@@ -145,13 +169,24 @@ const server = createServer(async (req, res) => {
     if (path === '/api/blockchain/status') return send(res, { enabled: false, ready: false, limitation: 'Fixture' })
     if (path === '/api/lab/catalog') {
       catalogReads++
-      if (catalogFail) return send(res, { detail: 'Fixture catalog unavailable' }, 503)
+      if (catalogFail) return send(res, catalogFailureBody, 503)
       return send(res, { items: [{ id: 'fixture', name: 'Fixture scenario', description: 'Synthetic browser fixture', category: 'Research' }], notice: 'Fixture only' })
     }
-    if (path === '/api/developer/workspace') return send(res, { organizations: [{ id: 'org', name: 'Fixture org', role: 'admin', can_manage: true, members: [], resource_ids: [] }], apps: [], available_users: [], capabilities: { can_create_organization: true, recent_verification_required: true } })
+    if (path === '/api/developer/workspace') {
+      const organization = { id: 'org', name: 'Fixture org', role: 'admin', can_manage: true, members: multipleOrganizations ? [{ user_id: 'b', name: users[1].name, role: 'member' }] : [], resource_ids: [] }
+      return send(res, { organizations: multipleOrganizations ? [organization, { ...organization, id: 'org-second', name: 'Second org' }] : [organization], apps: [], available_users: [], capabilities: { can_create_organization: true, recent_verification_required: true } })
+    }
+    if (/^\/api\/developer\/organizations\/[^/]+\/members\/b$/.test(path) && req.method === 'DELETE') {
+      removedOrganization = path.split('/')[4]
+      return send(res, { status: 'removed' })
+    }
     if (path === '/api/apps' && req.method === 'GET') return send(res, { items: [], issuer: 'http://localhost', authorization_endpoint: 'http://localhost/authorize' })
     if (path === '/api/apps') { appRegistrations++; return send(res, { detail: 'Unexpected final registration' }, 400) }
-    if (path === '/api/developer/callback-check') { callbackChecks++; return send(res, { valid: true, registered: null, origin: 'https://fixture.example', development_only: false, checks: [] }) }
+    if (path === '/api/developer/callback-check') {
+      callbackChecks++
+      if (holdCallback) { held = { path, res }; return }
+      return send(res, { valid: true, registered: null, origin: 'https://fixture.example', development_only: false, checks: [] })
+    }
     send(res, { detail: `Missing browser fixture: ${path}` }, 404)
   } catch (error) { console.error(error); send(res, { detail: 'Fixture error' }, 500) }
 })
@@ -667,7 +702,183 @@ try {
     }
     console.log('PASS research shortcuts are keyboard accessible and shareable, trained URLs load lazily, family selection preserves query/hash, history and defaults stay synchronized, section links scroll and both mobile themes fit')
   }
-  console.log('Frontend regression checks: 19 passed (isolated API fixtures, no real account mutations).')
+  {
+    for (const [body, expected] of [[null, 'Refresh the workspace and retry.'], [{ detail: [null, 'invalid', { msg: 'Fixture invalid input' }] }, 'Invalid input. Invalid input. Fixture invalid input']]) {
+      catalogFail = true; catalogFailureBody = body
+      const p = await page('/attack')
+      await p.wait(`document.body.innerText.includes(${JSON.stringify(expected)})`, 'Malformed API error was not shown safely')
+      assert.equal(await p.evaluate("document.body.innerText.includes('Cannot read properties')"), false)
+      catalogFail = false
+      await p.button('Refresh scenarios')
+      await p.wait("document.querySelector('.attack-case-panel select')?.value === 'fixture' && !document.querySelector('.attack-case-panel select').disabled", 'Retry after malformed error did not recover')
+    }
+    catalogFailureBody = { detail: 'Fixture catalog unavailable' }
+    console.log('PASS null and malformed validation error bodies keep actionable errors and working retries')
+  }
+  {
+    const p = await page('/overview')
+    loginMfa = true; holdVerify = true
+    await p.click('.user-button')
+    await p.wait("!!document.querySelector('.auth-dialog select')", 'Sign-in identity selector missing')
+    await p.click('.auth-dialog button[type="submit"]')
+    await p.wait("document.querySelector('#auth-heading')?.textContent === 'Verify your sign-in'", 'MFA challenge missing')
+    await p.field('Six-digit verification code', '123456')
+    const before = verificationCalls
+    await p.evaluate("(() => { const form = document.querySelector('.auth-dialog form'); form.requestSubmit(); form.requestSubmit() })()")
+    await waitHeld('/api/auth/verify')
+    await p.wait("document.querySelector('.auth-dialog').getAttribute('aria-busy') === 'true'", 'Pending verification state missing')
+    assert.equal(await p.evaluate("Array.from(document.querySelectorAll('.auth-dialog input, .auth-dialog select')).every(field => field.disabled)"), true)
+    assert.equal(await p.evaluate("document.querySelector('.auth-back').disabled"), true)
+    assert.equal(verificationCalls - before, 1)
+    send(held.res, { status: 'authenticated', token: `token-a-${++loginCounter}`, user: users[0], risk }); held = null
+    loginMfa = false; holdVerify = false
+    await p.wait("!document.querySelector('.auth-dialog')", 'Completed verification did not close sign-in')
+    console.log('PASS duplicate factor submissions are guarded synchronously and pending sign-in controls stay locked')
+  }
+  {
+    accessRequests = [fixtureRequest('session-expiry-request')]
+    sessionExpiry = new Date(Date.now() + 3500).toISOString()
+    const p = await page('/access')
+    sessionExpiry = null
+    await p.wait("!!document.querySelector('.request-card')", 'Protected request did not load before session expiry')
+    await p.wait("!document.querySelector('.user-button')", 'Session did not expire without polling')
+    assert.equal(await p.evaluate("sessionStorage.getItem('adaptive-iam-session')"), null)
+    assert.equal(await p.evaluate("!!document.querySelector('.request-card')"), false)
+    assert.equal(await p.evaluate("document.body.innerText.includes('Your session expired.')"), true)
+    accessRequests = []
+    console.log('PASS the server session deadline clears the local identity, bearer token and protected state without polling')
+  }
+  {
+    const p = await page('/connect?request_id=first')
+    await p.wait("document.querySelector('.consent-panel h2')?.textContent === 'Consent first requests access'", 'First consent packet missing')
+    oauthLifetime = 1600
+    await p.evaluate("history.pushState({}, '', '/connect?request_id=second'); dispatchEvent(new PopStateEvent('popstate'))")
+    await p.wait("document.querySelector('.consent-panel h2')?.textContent === 'Consent second requests access'", 'Consent did not follow the current request URL')
+    oauthLifetime = null
+    assert.equal(await p.evaluate("document.body.innerText.includes('Consent first requests access')"), false)
+    await p.wait("document.body.innerText.includes('This authorization request expired.')", 'Consent expiry missing')
+    assert.equal(await p.evaluate("Array.from(document.querySelectorAll('.consent-actions button')).every(button => button.disabled)"), true)
+    await p.evaluate('history.back()')
+    await p.wait("document.querySelector('.consent-panel h2')?.textContent === 'Consent first requests access'", 'Back did not restore the first consent packet')
+    assert.equal(await p.evaluate("Array.from(document.querySelectorAll('.consent-actions button')).every(button => !button.disabled)"), true)
+    console.log('PASS consent follows URL history, clears the previous packet and expires its controls')
+  }
+  {
+    const p = await page('/apps')
+    await p.wait("document.body.innerText.includes('No applications registered yet.')", 'Developer workspace missing')
+    await p.button('Register application')
+    await p.field('Application name', 'Delayed callback fixture')
+    await p.button('Continue to callbacks')
+    holdCallback = true
+    await p.button('Check callbacks and continue')
+    await waitHeld('/api/developer/callback-check')
+    await p.evaluate("(() => { const field = document.querySelector('.wizard-fields textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(field, 'https://edited.example/callback'); field.dispatchEvent(new Event('input', { bubbles: true })) })()")
+    send(held.res, { valid: true, registered: null, origin: 'http://127.0.0.1:3001', development_only: true, checks: [] }); held = null; holdCallback = false
+    await p.wait("Array.from(document.querySelectorAll('.app-registration-panel button')).some(button => button.textContent.trim() === 'Check callbacks and continue' && !button.disabled)", 'Callback check did not finish')
+    assert.equal(await p.evaluate("!!document.querySelector('.wizard-summary') || !!document.querySelector('.callback-check-result')"), false)
+    await p.button('Check callbacks and continue')
+    await p.wait("document.querySelector('.wizard-summary')?.textContent.includes('https://edited.example/callback')", 'The edited callback did not require its own check')
+    console.log('PASS editing callback URLs during validation discards the old result and requires a current check')
+  }
+  {
+    const p = await page('/apps')
+    await p.wait("document.body.innerText.includes('No applications registered yet.')", 'Developer workspace missing')
+    await p.button('Connection tools')
+    for (const status of [200, 503]) {
+      holdCallback = true
+      await p.button('Check callback')
+      await waitHeld('/api/developer/callback-check')
+      await p.evaluate(`(() => { const field = document.querySelector('.callback-diagnostics input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, 'https://changed-${status}.example/callback'); field.dispatchEvent(new Event('input', { bubbles: true })) })()`)
+      send(held.res, status === 200 ? { valid: true, registered: null, origin: 'http://127.0.0.1:3001', development_only: true, checks: [] } : { detail: 'Stale callback failure' }, status); held = null; holdCallback = false
+      await p.wait("Array.from(document.querySelectorAll('button')).some(button => button.textContent.trim() === 'Check callback' && !button.disabled)", 'Delayed diagnostic did not finish')
+      assert.equal(await p.evaluate("!!document.querySelector('.diagnostic-results') || document.body.innerText.includes('Stale callback failure')"), false)
+    }
+    await p.button('Check callback')
+    await p.wait("!!document.querySelector('.diagnostic-results')", 'Current callback diagnostic did not display')
+    console.log('PASS edited callback diagnostics discard stale success and errors while current checks recover')
+  }
+  {
+    const p = await page('/risk')
+    holdRisk = true
+    await p.button('Run assessment')
+    await waitHeld('/api/risk/assess')
+    await p.button('Suspicious activity')
+    send(held.res, risk); held = null; holdRisk = false
+    await p.wait("Array.from(document.querySelectorAll('button')).some(button => button.textContent.trim() === 'Run assessment' && !button.disabled)", 'Risk assessment did not finish')
+    assert.equal(await p.evaluate("document.querySelector('.assessment-panel .inline-note')?.textContent.includes('Showing the last assessment')"), true)
+    assert.deepEqual(await p.evaluate("Array.from(document.querySelectorAll('.component-values strong')).map(item => item.textContent)"), ['Unavailable', 'Unavailable', '10.0%'])
+    await p.button('Run assessment')
+    await p.wait("!document.querySelector('.assessment-panel .inline-note')", 'Current risk context did not become confirmed')
+    await p.signInBob()
+    assert.equal(await p.evaluate("document.querySelector('.assessment-panel .inline-note')?.textContent.includes('Showing the last assessment')"), true)
+    console.log('PASS edited risk inputs keep the old-result warning, missing probabilities stay unavailable and identity changes reset assessment confirmation')
+  }
+  {
+    const p = await page('/connect?request_id=delayed-identity')
+    await p.wait("!!document.querySelector('.consent-actions')", 'Consent packet missing')
+    holdConsent = true
+    await p.button('Allow and continue')
+    await waitHeld('/api/oauth/consent')
+    const token = await p.signInBob()
+    send(held.res, { redirect_to: `${origin}/previous-identity-callback` }); held = null; holdConsent = false
+    await sleep(250)
+    assert.equal(await p.evaluate('location.pathname'), '/connect')
+    assert.equal(await p.evaluate("sessionStorage.getItem('adaptive-iam-session')"), token)
+    await p.wait("document.querySelector('.consent-panel > p')?.textContent.includes('Bob Fixture')", 'Replacement identity consent did not load')
+    console.log('PASS delayed consent cannot redirect a replacement signed-in identity')
+  }
+  {
+    sessionEnrollmentRequired = true
+    const p = await page('/overview')
+    await p.wait("location.pathname === '/security'", 'Enrollment-only session did not open setup')
+    // A gated identity lookup can immediately return the route to Security.
+    // Capture the actual Overview render atomically rather than racing that redirect.
+    await p.evaluate("(() => { window.fixtureEnrollmentOverview = null; const observer = new MutationObserver(() => { const panel = document.querySelector('.overview-session'); if (panel) { window.fixtureEnrollmentOverview = { title: panel.querySelector('h2').textContent, status: panel.querySelector('.badge').textContent, active: !!panel.querySelector('.badge-active') }; observer.disconnect() } }); observer.observe(document.querySelector('main'), { childList: true, subtree: true }) })()")
+    await p.button('Overview')
+    await p.wait('!!window.fixtureEnrollmentOverview', 'Returning to Overview did not render its session state')
+    assert.deepEqual(await p.evaluate('window.fixtureEnrollmentOverview'), { title: 'Finish sign-in setup', status: 'Enrollment required', active: false })
+    sessionEnrollmentRequired = false
+    console.log('PASS enrollment-only sessions remain labeled incomplete when returning to Overview')
+  }
+  {
+    const p = await page('/overview')
+    await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    const key = async (name, code) => {
+      await p.command('Input.dispatchKeyEvent', { type: 'keyDown', key: name, code: name, windowsVirtualKeyCode: code, ...(name === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {}) })
+      await p.command('Input.dispatchKeyEvent', { type: 'keyUp', key: name, code: name, windowsVirtualKeyCode: code })
+    }
+    await p.click('[aria-label="Open navigation"]')
+    await p.wait("document.activeElement.classList.contains('mobile-menu-close')", 'Mobile navigation did not focus its close control')
+    await p.evaluate("document.querySelector('.theme-button').focus()")
+    await key('Tab', 9)
+    assert.equal(await p.evaluate("document.activeElement.classList.contains('mobile-menu-close')"), true)
+    await p.evaluate("document.querySelector('.nav-item.active').focus()")
+    await key('Enter', 13)
+    await p.wait("!document.querySelector('.sidebar.is-open') && document.activeElement.getAttribute('aria-label') === 'Open navigation'", 'Selecting the current page did not restore mobile menu focus')
+    await p.click('[aria-label="Open navigation"]')
+    await p.evaluate("Array.from(document.querySelectorAll('.nav-item')).find(button => button.textContent.trim() === 'Access requests').focus()")
+    await key('Enter', 13)
+    await p.wait("location.pathname === '/access' && document.activeElement.id === 'main-content'", 'Selecting a different page did not focus the workspace')
+    assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
+    console.log('PASS mobile navigation contains keyboard focus, restores its trigger for the current page and focuses a new destination')
+  }
+  {
+    multipleOrganizations = true; removedOrganization = null
+    const p = await page('/apps')
+    await p.wait("document.body.innerText.includes('No applications registered yet.')", 'Developer workspace missing')
+    await p.button('Organizations')
+    await p.button('Remove member')
+    await p.wait("!!document.querySelector('.destructive-confirmation')", 'Member removal confirmation missing')
+    await p.button('Register')
+    await p.field('Organization that owns this app', 'org-second')
+    assert.equal(await p.evaluate("document.querySelector('.destructive-confirmation h3').textContent"), 'Remove Bob Fixture from Fixture org?')
+    await p.button('Confirm removal')
+    await p.wait("document.body.innerText.includes('Member removed and their organization app tokens revoked.')", 'Member removal was not confirmed')
+    assert.equal(removedOrganization, 'org')
+    multipleOrganizations = false
+    console.log('PASS member-removal confirmation retains its original organization across registration-tab selection changes')
+  }
+  console.log('Frontend regression checks: 30 passed (isolated API fixtures, no real account mutations).')
 } finally {
   if (held) held.res.destroy()
   for (const p of pages) p.socket.close()

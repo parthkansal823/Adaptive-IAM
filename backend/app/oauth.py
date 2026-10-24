@@ -447,22 +447,29 @@ def install_oauth(api, authenticated, data_dir: Path):
     @api.get("/oauth/permissions/{resource_id}")
     def permissions(resource_id: str, request: Request, token=Depends(app_token)):
         store = provider().store
+        rejection = None
         with store.connection(write=True) as db:
-            # The dependency may have completed before a disable, rotation,
-            # revocation or mapping change. Reload authority with the grant check.
-            token = checked_app_token(request, db)
-            if "iam:permissions" not in set(json.loads(token["scopes"])):
-                raise HTTPException(403, "iam:permissions scope is required")
-            if resource_id not in json.loads(token["resource_ids"]):
-                raise HTTPException(403, "Resource is not mapped to this OAuth application")
-            if token['organization_id'] and resource_id not in api.state.developer.resource_ids(db, token['organization_id']):
-                raise HTTPException(403, 'Resource owner is no longer a member of this application organization')
-            store.expire(db)
-            grant, chain = store.active_grant(db, token["user_id"], resource_id, api.state.blockchain)
-            # Live chain calls can outlast either credential's remaining lifetime.
-            token = checked_app_token(request, db)
-            allowed = bool(grant) and chain["allowed"]
-            store.audit(db, "oauth_permission_checked", token["user_id"], {"client_id": token["client_id"], "resource_id": resource_id, "allowed": allowed, "chain_required": chain["required"], "chain_status": chain["status"]})
+            try:
+                # The dependency may have completed before a disable, rotation,
+                # revocation or mapping change. Reload authority with the grant check.
+                token = checked_app_token(request, db)
+                if "iam:permissions" not in set(json.loads(token["scopes"])):
+                    raise HTTPException(403, "iam:permissions scope is required")
+                if resource_id not in json.loads(token["resource_ids"]):
+                    raise HTTPException(403, "Resource is not mapped to this OAuth application")
+                if token['organization_id'] and resource_id not in api.state.developer.resource_ids(db, token['organization_id']):
+                    raise HTTPException(403, 'Resource owner is no longer a member of this application organization')
+                store.expire(db)
+                grant, chain = store.active_grant(db, token["user_id"], resource_id, api.state.blockchain)
+                # Live chain calls can outlast either credential's remaining lifetime.
+                token = checked_app_token(request, db)
+                allowed = bool(grant) and chain["allowed"]
+                store.audit(db, "oauth_permission_checked", token["user_id"], {"client_id": token["client_id"], "resource_id": resource_id, "allowed": allowed, "chain_required": chain["required"], "chain_status": chain["status"]})
+            except HTTPException as error:
+                # A denied request still commits detected session-risk transitions.
+                rejection = error
+        if rejection:
+            raise rejection
         return JSONResponse({"allowed": allowed, "sub": token["user_id"], "client_id": token["client_id"], "resource_id": resource_id, "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if allowed else None, "blockchain": chain, "reason": "Active human-approved subject grant confirmed by configured policy" if allowed else chain.get("reason", "Authentication and consent do not grant resource access")}, headers={"Cache-Control": "no-store", **provider().cors(request.headers.get("Origin"), json.loads(token["redirect_uris"]))})
 
     @api.options("/oauth/{path:path}")

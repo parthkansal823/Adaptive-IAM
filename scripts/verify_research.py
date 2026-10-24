@@ -18,6 +18,8 @@ def verify_manifest(root: Path, manifest) -> list[str]:
         return [f"Research manifest must retain at least {MIN_ORIGINAL_ASSETS} original assets."]
     root = root.resolve()
     research = (root / "research").resolve()
+    if not research.is_relative_to(root):
+        return ["Research asset directory resolves outside the project."]
     paths, originals = set(), set()
     for index, entry in enumerate(manifest, start=1):
         if (not isinstance(entry, dict)

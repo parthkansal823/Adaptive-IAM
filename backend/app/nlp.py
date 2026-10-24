@@ -126,8 +126,8 @@ class JustificationEngine:
                     result = self.bert(text[:2000], truncation=True, max_length=256)[0]
                     if result["label"].lower() not in {"legitimate", "suspicious"} or not 0 <= float(result["score"]) <= 1:
                         raise ValueError("Invalid BERT inference result")
-                    label = result["label"].lower()
                     confidence = float(result["score"])
+                    label = result["label"].lower() if confidence >= .65 else "uncertain"
                     engine = "local_bert"
                 except (RuntimeError, OSError, ValueError, TypeError, KeyError, IndexError):
                     label = "uncertain"

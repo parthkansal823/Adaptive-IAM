@@ -164,15 +164,21 @@ class IdentityTests(unittest.TestCase):
     def test_session_guard_refreshes_operator_owned_roles(self):
         store = self.application.state.store
         lookup = store.session
+        with store.connection(write=True) as db:
+            db.execute("UPDATE users SET role='security_reviewer' WHERE id='aisha'")
 
         def changes_after_lookup(token):
             identity = lookup(token)
-            # A stale token snapshot must not retain an operator-removed role.
-            identity['user']['role'] = 'security_reviewer'
+            with store.connection(write=True) as db:
+                db.execute("UPDATE users SET role='analyst' WHERE id='aisha'")
             return identity
 
-        with patch.object(store, 'session', side_effect=changes_after_lookup):
-            response = self.client.post('/api/apps', headers=self.headers(), json={'name': 'Unauthorized app', 'redirect_uris': ['http://localhost/callback']})
+        try:
+            with patch.object(store, 'session', side_effect=changes_after_lookup):
+                response = self.client.post('/api/apps', headers=self.headers(), json={'name': 'Unauthorized app', 'redirect_uris': ['http://localhost/callback']})
+        finally:
+            with store.connection(write=True) as db:
+                db.execute("UPDATE users SET role='analyst' WHERE id='aisha'")
         self.assertEqual(response.status_code, 403, response.text)
 
     def test_untrusted_forwarding_cannot_change_context(self):
@@ -211,6 +217,15 @@ class IdentityTests(unittest.TestCase):
         body = {'challenge_id': packet['challenge_id'], 'code': packet['demo_code']}
         self.assertEqual(self.client.post('/api/auth/verify', headers={'User-Agent': 'wrong'}, json=body).status_code, 401)
         self.assertEqual(self.client.post('/api/auth/verify', json={**body, 'recovery_code': 'another-factor'}).status_code, 422)
+
+    def test_outstanding_demo_challenge_cannot_bypass_new_factor(self):
+        medium = {'known_device': False, 'known_location': False, 'failed_attempts': 1, 'login_velocity': 2, 'travel_distance_km': 6500}
+        packet = self.login(context=medium).json()
+        self.assertIn('demo_code', packet)
+        self.enroll()
+        response = self.client.post('/api/auth/verify', json={'challenge_id': packet['challenge_id'], 'code': packet['demo_code']})
+        self.assertEqual(response.status_code, 401, response.text)
+        self.assertNotIn('token', response.json())
 
     def test_operator_provisioning_hashes_password_and_resets_sessions(self):
         from scripts.provision_identity import provision

@@ -219,7 +219,7 @@ def create_app(data_dir: Path | None = None, model_cache: Path | None = None):
                 method = None
                 if same_context and row["method"] == "factor":
                     method = api.state.identity.factor_verify(db, row["user_id"], body.code, body.recovery_code)
-                elif same_context and row["method"] == "demo" and api.state.identity.context.demo_mode and body.code and not body.recovery_code:
+                elif same_context and row["method"] == "demo" and api.state.identity.context.demo_mode and not api.state.identity.factor_enrolled(row["user_id"], db) and body.code and not body.recovery_code:
                     if hmac.compare_digest(secret_hash(body.challenge_id+":"+body.code), row["code_hash"]):
                         method = "demo_mfa"
                 if not method:

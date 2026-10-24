@@ -4,6 +4,8 @@ Base URL: `http://127.0.0.1:8000`. Interactive OpenAPI documentation: `/docs`. S
 
 Protected routes require `Authorization: Bearer <token>`. Tokens expire after 30 minutes and are stored as hashes server-side. Login credentials, demo OTPs and token values must never appear in audit events.
 
+Console guards reload current session expiry and operator-owned identity fields after token lookup. Website permission checks reload the active app, token, resource mapping, source session and organization membership in the grant-check transaction; token and source-session expiry are checked again after any live chain call. Revoked or elapsed authority returns `401`, and removed scope/resource mappings return `403`.
+
 The table below uses console session tokens. Website application tokens are a separate, client-bound credential with ten-minute lifetime and cannot vote or manage the console.
 
 ## Routes
@@ -55,7 +57,7 @@ The table below uses console session tokens. Website application tokens are a se
 
 These context values are simulated by the client. Login merges server-observed recent credential failures so a client cannot reduce that signal. Input fields are bounded, and unknown properties are rejected. Public risk simulation accepts `{ "context": { ... } }` with the same shape.
 
-Medium risk returns `challenge_id`, `demo_code` and `expires_at`; submit `{ "challenge_id": "...", "code": "123456" }` to verify. Challenges expire after 120 seconds, permit at most five incorrect attempts, and are single use. Demo codes are displayed solely to exercise the prototype flow. High risk returns a block without a token.
+Medium risk for an unenrolled demo identity returns `challenge_id`, `demo_code` and `expires_at`; submit `{ "challenge_id": "...", "code": "123456" }` to verify. Challenges expire after 120 seconds, permit at most five incorrect attempts, and are single use. Demo codes are displayed solely to exercise the prototype flow and stop working after a real factor is enrolled, including codes issued before enrollment. Enrolled identities use their actual factors without a demo code. High risk returns a block without a token.
 
 ## Request and voting
 

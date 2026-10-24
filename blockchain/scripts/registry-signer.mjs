@@ -5,6 +5,7 @@ import {performance} from 'node:perf_hooks';
 import {Contract, ContractFactory, NonceManager, Wallet, keccak256, toUtf8Bytes} from 'ethers';
 import {createQbftProvider, requireFreshQbftQuorum} from './qbft-provider.mjs';
 import {validateOperation} from './signer-operations.mjs';
+import {readRetainedDeployment, requireUnusedRegistryWriter} from './registry-state.mjs';
 export {validateOperation} from './signer-operations.mjs';
 
 const provider = createQbftProvider();
@@ -17,12 +18,13 @@ const authToken = (await fs.readFile('/auth/token', 'utf8')).trim();
 if (!/^[a-f0-9]{64}$/.test(authToken)) throw new Error('Missing isolated signer authentication');
 const artifact = JSON.parse(await fs.readFile('/app/blockchain/artifacts/AccessGrantRegistry.json', 'utf8'));
 const file = '/signer/deployment.json';
-let metadata = await fs.readFile(file, 'utf8').then(JSON.parse).catch(() => null);
+let metadata = await readRetainedDeployment(file);
 let registry;
 if (metadata) {
   if (metadata.chain_id !== 31337 || await provider.getCode(metadata.contract_address) === '0x') throw new Error('Signer state does not match retained chain; refuse redeployment');
   registry = new Contract(metadata.contract_address, artifact.abi, writer);
 } else {
+  await requireUnusedRegistryWriter(provider, wallet.address);
   registry = await new ContractFactory(artifact.abi, artifact.bytecode, writer).deploy({gasLimit: 3000000, gasPrice: 0, type: 0});
   await registry.waitForDeployment();
   metadata = {network: 'qbft', chain_id: 31337, contract_address: await registry.getAddress(), writer_address: wallet.address, besu_version: '26.9.0', compiler_version: artifact.compilerVersion, evm_version: artifact.evmVersion};

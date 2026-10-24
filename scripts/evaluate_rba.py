@@ -5,7 +5,9 @@ import argparse
 from bisect import bisect_right
 import csv
 import hashlib
+import importlib.metadata
 import json
+import platform
 import sys
 from collections import defaultdict, deque
 from datetime import datetime, timezone
@@ -170,6 +172,12 @@ def evaluate(path: Path, max_rows: int, split="chronological", label="Is Account
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "implementation": {"entry_point": "scripts/evaluate_rba.py",
+                           "source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                           "risk_feature_metrics_sha256": hashlib.sha256((ROOT / "backend/app/risk.py").read_bytes()).hexdigest()},
+        "environment": {"python": platform.python_version(), "platform": platform.platform(),
+                        **{name: importlib.metadata.version(name) for name in ("numpy", "scikit-learn")}},
         "dataset": {"name": "Supplied RBA CSV (provenance required separately)", "sha256": digest.hexdigest(), "rows_used": len(y), "row_limit": max_rows, "label": label, "feature_names": FEATURES,
                     "partitions": {name: {"rows": len(y[part]), "positives": int(y[part].sum()), "users":len({users[i] for i in part}), "start": times[part[0]], "end": times[part[-1]]} for name, part in zip(names, slices)}},
         "method": {"protocol_version": PROTOCOL_VERSION, "split": split+" 60/10/10/20", "allocation_unit":"whole timestamp groups near nominal event ratios" if split=="chronological" else "users by fixed SHA-256 cohorts; event ratios vary", "partition_tie_policy": "Move chronological cuts to the end of timestamp groups; reject empty or single-class partitions", "row_limit_policy": "Discard the whole final timestamp group if a one-row lookahead shows the cap bisected it", "user_overlap_train_test":len({users[i] for i in slices[0]} & {users[i] for i in slices[3]}), "ensemble": "0.4 LR + 0.6 RF", "calibration": "Platt sigmoid on independent calibration partition", "threshold_selection": "F1 on validation only", "features_use_prior_events_only": True, "features_use_strictly_earlier_timestamps_only": True},

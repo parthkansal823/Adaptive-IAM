@@ -1,4 +1,7 @@
 import unittest
+from unittest.mock import Mock, patch
+
+import numpy as np
 
 from backend.app.nlp import JustificationEngine
 
@@ -24,6 +27,16 @@ class AdvisoryTextTests(unittest.TestCase):
         self.assertIn("baseline", report)
         self.assertFalse(report["method"]["test_used_for_selection"])
         self.assertIn("reanalysis", report["limitation"])
+
+    def test_optional_bert_preserves_low_support_abstention(self):
+        weak_classifier = Mock(predict_proba=Mock(return_value=np.array([[.5, .5]])))
+        for label, confidence in (('legitimate', .51), ('suspicious', .64), ('legitimate', .9)):
+            with self.subTest(label=label, confidence=confidence):
+                bert = Mock(return_value=[{'label': label, 'score': confidence}])
+                with patch.object(self.engine, 'model', weak_classifier), patch.object(self.engine, 'bert', bert):
+                    result = self.engine.assess('Please review the assigned project evidence.')
+                self.assertEqual(result['label'], label if confidence >= .65 else 'uncertain')
+                self.assertEqual(result['engine'], 'local_bert')
 
 
 if __name__ == "__main__":

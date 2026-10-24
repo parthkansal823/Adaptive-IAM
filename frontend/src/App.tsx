@@ -34,11 +34,18 @@ function Workspace() {
   const menuButton = useRef<HTMLButtonElement>(null)
   const sidebar = useRef<HTMLElement>(null)
   const previousView = useRef(view)
+  const menuOrigin = useRef<View | null>(null)
   const setView = useCallback((next: View) => {
     setMenuOpen(false)
     navigate({ pathname: `/${next}`, search: location.search })
   }, [navigate, location.search])
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => {
+    if (menuOpen) { menuOrigin.current ??= view; return }
+    const origin = menuOrigin.current
+    menuOrigin.current = null
+    if (origin === view && window.matchMedia('(max-width: 960px)').matches) menuButton.current?.focus()
+  }, [menuOpen, view])
   useEffect(() => {
     document.title = `${navigation.find(item => item.id === view)?.name || 'Website consent'} · Adaptive IAM`
     if (previousView.current !== view) {
@@ -65,7 +72,8 @@ function Workspace() {
       const controls = sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)')
       if (!controls?.length) return
       const firstControl = controls[0], lastControl = controls[controls.length - 1]
-      if (event.shiftKey && document.activeElement === firstControl) { event.preventDefault(); lastControl.focus() }
+      if (!sidebar.current?.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? lastControl : firstControl).focus() }
+      else if (event.shiftKey && document.activeElement === firstControl) { event.preventDefault(); lastControl.focus() }
       else if (!event.shiftKey && document.activeElement === lastControl) { event.preventDefault(); firstControl.focus() }
     }
     document.addEventListener('keydown', trap)
@@ -99,7 +107,7 @@ function Workspace() {
   const clearSession = useCallback((sessionToken: string | null) => {
     if (tokenRef.current !== sessionToken) return
     tokenRef.current = null; activeAction.current = null; setBusy(null)
-    sessionStorage.removeItem('adaptive-iam-session'); setToken(null); setUser(null); setSessionRisk(null); setSessionInfo(null); setOverview(null); setRequests([]); setGrants([]); setEvents([]); setVerification(null)
+    sessionStorage.removeItem('adaptive-iam-session'); setToken(null); setUser(null); setSessionRisk(null); setSessionInfo(null); setAssessmentRisk(null); setOverview(null); setRequests([]); setGrants([]); setEvents([]); setVerification(null)
   }, [])
   const sessionNow = useExpiryClock([sessionInfo?.expires_at])
   useEffect(() => {
@@ -228,7 +236,7 @@ function Workspace() {
         {sessionInfo?.enrollment_required && <div className="session-gate" role="alert"><Icon name="shield" size={19} /><span>Finish sign-in by enrolling an authenticator or passkey. This five-minute session permits security setup only.</span><button className="text-button" onClick={() => setView('security')}>Set up security</button></div>}
         {requestId && view !== 'connect' && <div className="consent-return"><button className="text-button" onClick={() => setView('connect')}>Return to website consent <Icon name="arrow" size={15} /></button></div>}
         {view === 'overview' && <OverviewView bootstrap={bootstrap} overview={overview} user={user} risk={sessionRisk} session={sessionInfo} grants={grants} onRisk={() => setView('risk')} onRequests={() => setView('access')} onResearch={() => setView('research')} onLogin={() => setLoginOpen(true)} />}
-        {view === 'risk' && <RiskView risk={assessmentRisk} onAssess={assess} busy={busy === 'assess'} thresholds={bootstrap?.risk_thresholds} />}
+        {view === 'risk' && <RiskView key={token || 'signed-out'} risk={assessmentRisk} onAssess={assess} busy={busy === 'assess'} thresholds={bootstrap?.risk_thresholds} />}
         {view === 'access' && <AccessView key={token || 'signed-out'} user={user} bootstrap={bootstrap} requests={requests} grants={grants} busy={busy} onLogin={() => setLoginOpen(true)} onCreate={create} onVote={vote} onInspect={inspect} onRevoke={revoke} />}
         {view === 'audit' && <AuditView key={token || 'signed-out'} events={events} verification={verification} user={user} token={token} busy={busy === 'verify'} onVerify={verify} onLogin={() => setLoginOpen(true)} />}
         {view === 'research' && <ExperimentsView report={report} loading={reportLoading} onRefresh={loadReport} />}

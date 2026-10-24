@@ -12,6 +12,19 @@ from scripts import node_runtime
 
 
 class VerificationTests(unittest.TestCase):
+    def test_docs_only_verification_still_checks_original_assets(self):
+        with patch.object(verify.sys, "argv", ["verify.py", "--changed"]), patch.object(verify, "changed_paths", return_value={"docs/RESEARCH.md"}), patch.object(verify, "run", return_value=True) as run:
+            self.assertEqual(verify.main(), 0)
+        self.assertEqual([call.args[1][1] for call in run.call_args_list], ["scripts/check.py", "scripts/verify_research.py"])
+
+    def test_integrity_failure_stops_verification(self):
+        with patch.object(verify.sys, "argv", ["verify.py"]), patch.object(verify, "run", side_effect=[True, False]) as run:
+            self.assertEqual(verify.main(), 1)
+        self.assertEqual(run.call_count, 2)
+
+    def test_pre_push_snapshot_includes_preserved_assets(self):
+        self.assertIn("research/", verify.SOURCE_PATHS)
+
     def test_missing_git_falls_back_to_full_checks(self):
         with patch.object(verify.subprocess, "check_output", side_effect=FileNotFoundError):
             self.assertIsNone(verify.changed_paths([]))

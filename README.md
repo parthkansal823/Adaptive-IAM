@@ -104,6 +104,8 @@ Node website sessions can survive restarts using encrypted local SQLite; the Doc
 
 Run `npm run check:complete` to include installed-browser regressions and fresh isolated live-chain API checks. The command preserves existing IAM/chain state and requires no running Docker stack.
 
+The [24 October code and research review](docs/CODE_REVIEW.md) records corrected security races, console behavior, research protocol limitations and validation coverage. Original-asset integrity is now mandatory in every verifier mode. Corrected RBA evaluations use `rba-evaluation-v2` and separate output paths; the historical scores were preserved and have not been remeasured under the corrected protocol.
+
 Run `npm run doctor` to check runtimes and installed dependency versions without changing configuration. `npm run check` uses the repository's virtual environment and runs the same project checks on Windows, macOS and Linux. It also accepts `npm run check -- --changed`.
 
 ```powershell

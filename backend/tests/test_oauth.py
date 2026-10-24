@@ -310,6 +310,75 @@ class OAuthIntegrationTests(unittest.TestCase):
             db.execute("UPDATE grants SET expires_at=? WHERE request_id=?", (stamp(now()-timedelta(seconds=1)), request["id"]))
         self.assertFalse(self.client.get("/oauth/permissions/research-vault", headers=headers).json()["allowed"])
 
+    def test_permission_rechecks_authority_after_dependency_validation(self):
+        self.approved_grant()
+        route = next(route for route in self.application.routes if route.path == '/oauth/permissions/{resource_id}')
+        dependency = route.dependant.dependencies[0].call
+        cases = (
+            ('disabled app', "UPDATE oauth_apps SET active=0 WHERE client_id=?", 401),
+            ('revoked token', "DELETE FROM oauth_tokens WHERE client_id=?", 401),
+            ('removed resource mapping', "UPDATE oauth_apps SET resource_ids='[]' WHERE client_id=?", 403),
+        )
+        for name, mutation, expected_status in cases:
+            with self.subTest(name=name):
+                app, tokens = self.roundtrip()
+
+                def stale_snapshot(request: Request):
+                    token = dependency(request)
+                    with self.application.state.store.connection(write=True) as db:
+                        db.execute(mutation, (app['client_id'],))
+                    return token
+
+                self.application.dependency_overrides[dependency] = stale_snapshot
+                try:
+                    response = self.client.get('/oauth/permissions/research-vault', headers={'Authorization': 'Bearer '+tokens['access_token']})
+                finally:
+                    self.application.dependency_overrides.pop(dependency, None)
+                self.assertEqual(response.status_code, expected_status, response.text)
+                self.assertNotIn('allowed', response.json())
+
+    def test_permission_rechecks_token_and_source_expiry_after_chain_delay(self):
+        self.approved_grant()
+        _, tokens = self.roundtrip()
+        headers = {'Authorization': 'Bearer '+tokens['access_token']}
+        mirror = self.application.state.blockchain
+        for module in ('oauth', 'identity'):
+            with self.subTest(expiring_authority=module):
+                with patch('backend.app.'+module+'.stamp', wraps=stamp) as clock:
+                    def delayed_check(grant):
+                        clock.return_value = stamp(now()+timedelta(hours=1))
+                        return {'required': False, 'allowed': True, 'status': 'disabled'}
+
+                    with patch.object(mirror, 'check_grant', side_effect=delayed_check):
+                        response = self.client.get('/oauth/permissions/research-vault', headers=headers)
+                self.assertEqual(response.status_code, 401, response.text)
+                self.assertNotIn('allowed', response.json())
+
+    def test_late_source_risk_denial_keeps_the_step_up_transition(self):
+        _, tokens = self.roundtrip()
+        route = next(route for route in self.application.routes if route.path == '/oauth/permissions/{resource_id}')
+        dependency = route.dependant.dependencies[0].call
+
+        def new_password_failures(request: Request):
+            token = dependency(request)
+            with self.application.state.store.connection(write=True) as db:
+                for _ in range(3):
+                    Store.audit(db, 'login_failed', token['user_id'], {'action': 'deny', 'reason': 'invalid_credentials'})
+            return token
+
+        self.application.dependency_overrides[dependency] = new_password_failures
+        try:
+            response = self.client.get('/oauth/permissions/research-vault', headers={'Authorization': 'Bearer '+tokens['access_token']})
+            self.assertEqual(response.status_code, 401, response.text)
+            with self.application.state.store.connection() as db:
+                row = db.execute("SELECT ss.step_up_required FROM session_security ss JOIN oauth_session_bindings b ON ss.session_id=b.session_id JOIN oauth_tokens t ON b.code_hash=t.code_hash WHERE t.token_hash=?", (secret_hash(tokens['access_token']),)).fetchone()
+                self.assertEqual(row['step_up_required'], 1)
+        finally:
+            self.application.dependency_overrides.pop(dependency, None)
+            # This class shares original console sessions; restore its isolated fixture.
+            with self.application.state.store.connection(write=True) as db:
+                db.execute("UPDATE session_security SET step_up_required=0 WHERE session_id IN (SELECT id FROM sessions WHERE user_id='aisha')")
+
     def test_pending_replacement_preserves_an_existing_live_chain_grant(self):
         _, tokens = self.roundtrip()
         older, newer = self.approved_grant(1), self.approved_grant(2)

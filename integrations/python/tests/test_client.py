@@ -98,7 +98,7 @@ class ClientTests(unittest.TestCase):
         started = time.time()
         for delay in (5, 60):
             now = [started]
-            upstream = self.provider(token_changes={"expires_in": 60})
+            upstream = self.provider(self.signed(iat=int(started), exp=int(started)+600), token_changes={"expires_in": 60})
 
             def delayed(request, timeout):
                 response = upstream(request, timeout)

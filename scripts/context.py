@@ -42,6 +42,8 @@ def main() -> None:
         payload = json.loads(sys.stdin.read(65536) or "{}")
     except (ValueError, TypeError):
         payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
     if payload.get("hook_event_name", "SessionStart") != "SessionStart":
         print(json.dumps({"continue": True}))
         return

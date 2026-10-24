@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from './api'
 import type { AppRegistry, Bootstrap, ConnectedApp, Identity } from './api'
 import { Badge, Empty, formatDate, Icon, PageTitle, PanelTitle } from './components'
@@ -62,6 +62,8 @@ export function ConsentView({ requestId, token, user, onLogin, onSecurity }: { r
   const [terminal, setTerminal] = useState(false)
   const [decision, setDecision] = useState<boolean | null>(null)
   const [verificationNeeded, setVerificationNeeded] = useState(false)
+  const mounted = useRef(false)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const now = useExpiryClock([packet?.expires_at])
   const expired = !!packet && hasExpired(packet.expires_at, now)
   const displayedError = expired ? 'This authorization request expired. Start sign-in again from the website you want to connect.' : error
@@ -76,10 +78,13 @@ export function ConsentView({ requestId, token, user, onLogin, onSecurity }: { r
     setBusy(true); setDecision(approve); setError('')
     try {
       const response = await api<{ redirect_to: string }>('/oauth/consent', token, { request_id: packet.request_id, approve })
+      // The workspace remounts consent when its request or signed-in identity changes.
+      if (!mounted.current) return
       const redirect = new URL(response.redirect_to)
       if (redirect.username || redirect.password || redirect.hash || (redirect.protocol !== 'https:' && !(redirect.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(redirect.hostname)))) throw new ApiError('The API returned an invalid callback URL.', 500)
       window.location.assign(redirect.href)
     } catch (failure) {
+      if (!mounted.current) return
       if (failure instanceof ApiError && ['step_up_required', 'recent_verification_required'].includes(failure.code || '')) setVerificationNeeded(true)
       if (failure instanceof ApiError && [404, 409].includes(failure.status)) setTerminal(true)
       setError(failure instanceof Error ? failure.message : 'Consent could not be recorded.'); setBusy(false)

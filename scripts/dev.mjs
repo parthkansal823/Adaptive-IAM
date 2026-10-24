@@ -24,7 +24,7 @@ function stop(code = 0) {
 }
 for (const child of children) {
   child.on('error', error => { console.error(error.message); stop(1) })
-  child.on('exit', code => { if (!stopping) stop(code || 0) })
+  child.on('exit', (code, signal) => { if (!stopping) stop(signal ? 1 : code ?? 1) })
 }
 process.on('SIGINT', () => stop())
 process.on('SIGTERM', () => stop())
