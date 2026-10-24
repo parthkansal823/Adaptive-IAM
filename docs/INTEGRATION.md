@@ -119,7 +119,9 @@ Discovery: `/.well-known/openid-configuration`; signing keys: `/oauth/jwks`. Org
 
 `/oauth/permissions/{resource_id}` requires both the app's registered resource allowlist and a live grant for the authenticated subject. Default provisioned resources are `research-vault`, `finance-reports` and `production-logs`; arbitrary resource administration is future work. [API.md](API.md) lists the routes.
 
-The SDK rejects timeouts, redirects to other origins, malformed/oversized responses, inconsistent identity/resource bindings, missing read scope and expired grants. The examples return a denial or service error without protected content. Memory mode loses login flows and sessions on restart; the Node example also supports the opt-in durable store described above. These are research examples, not a certified OIDC provider or a production session service. Evaluate deployment configuration, TLS, proxy/cookie handling, retention, rotation and operational threats before deployment.
+The SDK rejects timeouts, redirects to other origins, malformed/oversized responses, inconsistent identity/resource bindings, missing read scope and expired grants. Website session lifetime starts before the token request; fetching verification keys and UserInfo cannot extend `expires_in`. Both website examples recheck local session presence and grant expiry after the permission call before returning protected content. Python callbacks also reject duplicate protocol fields, nonmatching Unicode state and any returned OAuth error before exchanging a code.
+
+The examples return a denial or service error without protected content. Memory mode loses login flows and sessions on restart; the Node example also supports the opt-in durable store described above. These are research examples, not a certified OIDC provider or a production session service. Evaluate deployment configuration, TLS, proxy/cookie handling, retention, rotation and operational threats before deployment.
 
 ## Verify
 

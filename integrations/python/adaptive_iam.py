@@ -140,6 +140,8 @@ class AdaptiveIamClient:
         form = {"grant_type": "authorization_code", "code": code, "client_id": self.client_id, "redirect_uri": self.redirect_uri, "code_verifier": verifier}
         if self.client_secret:
             form["client_secret"] = self.client_secret
+        # Verification and UserInfo requests must not restart the access-token TTL.
+        token_requested_at = self.clock()
         token = self.request(metadata["token_endpoint"], form=form)
         if (not isinstance(token.get("access_token"), str) or not token["access_token"] or not isinstance(token.get("id_token"), str)
                 or len(token["id_token"]) > 16384 or not isinstance(token.get("token_type"), str) or token["token_type"].lower() != "bearer"
@@ -167,7 +169,7 @@ class AdaptiveIamClient:
         identity = self.request(metadata["userinfo_endpoint"], token=token["access_token"])
         if identity.get("sub") != claims["sub"]:
             raise IamError("subject_mismatch")
-        expiry = min(self.clock()+token["expires_in"], claims["exp"])
+        expiry = min(token_requested_at+token["expires_in"], claims["exp"])
         if expiry <= self.clock():
             raise IamError("invalid_session", 401)
         return SiteSession(token["access_token"], identity, expiry)

@@ -148,20 +148,34 @@ def scan_auth(path: Path, *, prefix: bool = False) -> dict:
     rows = selected = 0
     first = last = None
     selected_first = selected_last = None
+    group_rows = group_selected = 0
+    earlier_selected_last = None
     for line in file_lines(path, prefix=prefix):
         second, event = auth_event(line)
         if last is not None and second < last:
             raise ValueError("Authentication rows must be globally chronological")
+        if second != last:
+            earlier_selected_last = selected_last
+            group_rows = group_selected = 0
+        group_rows += 1
         first = second if first is None else first
         last = second
         rows += 1
         if event:
             selected += 1
+            group_selected += 1
             selected_first = second if selected_first is None else selected_first
             selected_last = second
+    if prefix:
+        selected -= group_selected
+        selected_last = earlier_selected_last
+        if not selected:
+            selected_first = None
     return {"source_rows": rows, "selected_rows": selected, "source_first_second": first,
             "source_last_second": last, "selected_first_second": selected_first,
-            "selected_last_second": selected_last}
+            "selected_last_second": selected_last,
+            "final_timestamp_rows_excluded": group_rows if prefix else 0,
+            "final_timestamp_selected_rows_excluded": group_selected if prefix else 0}
 
 
 def fetch(output: Path, max_bytes: int, max_seconds: float, stop_second: int | None = None) -> dict:
@@ -372,6 +386,8 @@ def evaluate(auth: Path, redteam: Path, *, prefix: bool = False, budget: float =
         model.update(events)
     if thresholds is None or not partitions["test"]["events"]:
         raise ValueError("Chronological validation and test require selected events")
+    if sum(entry["events"] for entry in partitions.values()) != summary["selected_rows"]:
+        raise ValueError("Evaluated rows differ from the complete source timestamp selection")
     for name, entry in partitions.items():
         entry["known_redteam_unique_tuples"] = len(positive_keys[name])
         entry["unlabeled_events"] = entry["events"] - entry["matched_auth_rows"]

@@ -94,6 +94,27 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(forms[0]["client_secret"], ["fixture-secret"])
         self.assertEqual(forms[0]["code_verifier"], ["v"*43])
 
+    def test_token_verification_latency_never_extends_access_token_lifetime(self):
+        started = time.time()
+        for delay in (5, 60):
+            now = [started]
+            upstream = self.provider(token_changes={"expires_in": 60})
+
+            def delayed(request, timeout):
+                response = upstream(request, timeout)
+                if urlparse(request.full_url).path == "/oauth/userinfo":
+                    now[0] += delay
+                return response
+
+            client = self.client(delayed, clock=lambda: now[0])
+            if delay == 60:
+                with self.assertRaises(IamError) as error:
+                    client.exchange_code(code="fixture-code", verifier="v"*43, nonce="nonce-fixture")
+                self.assertEqual(error.exception.code, "invalid_session")
+            else:
+                session = client.exchange_code(code="fixture-code", verifier="v"*43, nonce="nonce-fixture")
+                self.assertEqual(session.expires_at, started+60)
+
     def test_invalid_nonce_audience_issuer_expiry_and_signature(self):
         for change in ({"nonce": "wrong-nonce"}, {"aud": "other-client"}, {"iss": "https://wrong.example"}, {"exp": int(time.time())-1}):
             with self.subTest(change=change), self.assertRaises(IamError) as result:

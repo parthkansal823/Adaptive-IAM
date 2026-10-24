@@ -38,34 +38,34 @@ export function AuthModal({ bootstrap, onClose, onAuthenticated }: { bootstrap: 
   }, [result?.status])
   const login = async () => {
     if (busyRef.current) return
-    setBusy(true); setError('')
+    busyRef.current = true; setBusy(true); setError('')
     try {
       const auth = await api<AuthResult>('/auth/login', null, { user_id: identity || bootstrap?.users[0]?.id, password, ...(bootstrap?.demo_mode ? { context: presets.find(item => item.id === preset)!.context } : {}) })
       setResult(auth)
       setVerificationMethod(auth.demo_code ? 'demo' : auth.methods?.includes('totp') ? 'totp' : 'recovery')
       if (auth.status === 'authenticated') onAuthenticated(auth)
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Sign-in failed. Retry this action.') }
-    finally { setBusy(false) }
+    finally { busyRef.current = false; setBusy(false) }
   }
   const verify = async () => {
     if (busyRef.current) return
-    setBusy(true); setError('')
+    busyRef.current = true; setBusy(true); setError('')
     try {
       const auth = await api<AuthResult>('/auth/verify', null, { challenge_id: result?.challenge_id, ...(verificationMethod === 'recovery' ? { recovery_code: code } : { code }) })
       if (auth.status === 'authenticated') onAuthenticated(auth)
       else { setResult(auth); setError('Verification did not authenticate this session.') }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Verification failed. Retry with the correct code.') }
-    finally { setBusy(false) }
+    finally { busyRef.current = false; setBusy(false) }
   }
   const passkeyLogin = async () => {
     if (busyRef.current) return
-    setBusy(true); setError('')
+    busyRef.current = true; setBusy(true); setError('')
     try {
       const auth = await usePasskey('login', null, identity || bootstrap?.users[0]?.id || '')
       setResult(auth)
       if (auth.status === 'authenticated') onAuthenticated(auth)
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Passkey sign-in could not be completed.') }
-    finally { setBusy(false) }
+    finally { busyRef.current = false; setBusy(false) }
   }
   const codeSupported = !!result?.demo_code || !!result?.methods?.some(method => ['totp', 'recovery'].includes(method))
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose() }}><div className="auth-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="auth-heading" aria-describedby="auth-description" aria-busy={busy}><div className="auth-top"><Brand compact /><button className="icon-button" aria-label="Close sign-in" onClick={onClose} disabled={busy}><Icon name="close" /></button></div>
@@ -74,20 +74,20 @@ export function AuthModal({ bootstrap, onClose, onAuthenticated }: { bootstrap: 
     {error && <div className="auth-error" role="alert">{error}</div>}
     {result?.status === 'mfa_required' ? <form onSubmit={event => { event.preventDefault(); if (codeSupported) void verify() }}>
       <div className="auth-risk-summary"><Badge status={result.risk.tier}>{result.risk.tier} risk</Badge><strong>{percent(result.risk.score)}</strong><span>Additional factor required</span></div>
-      {result.demo_code && <div className="demo-code"><span>Demo verification code</span><strong>{result.demo_code}</strong><button className="text-button" type="button" onClick={() => setCode(result.demo_code!)}>Use code</button></div>}
+      {result.demo_code && <div className="demo-code"><span>Demo verification code</span><strong>{result.demo_code}</strong><button className="text-button" type="button" disabled={busy} onClick={() => setCode(result.demo_code!)}>Use code</button></div>}
       {codeSupported && <>
-        {!result.demo_code && <label className="field"><span>Verification method</span><select value={verificationMethod} onChange={event => { setVerificationMethod(event.target.value as 'totp' | 'recovery'); setCode('') }}>{result.methods?.includes('totp') && <option value="totp">Authenticator code</option>}{result.methods?.includes('recovery') && <option value="recovery">Recovery code</option>}</select></label>}
-        <label className="field"><span>{verificationMethod === 'recovery' ? 'Unused recovery code' : 'Six-digit verification code'}</span><input autoComplete="one-time-code" inputMode={verificationMethod === 'recovery' ? 'text' : 'numeric'} pattern={verificationMethod === 'recovery' ? undefined : '[0-9]{6}'} minLength={verificationMethod === 'recovery' ? 8 : 6} maxLength={verificationMethod === 'recovery' ? 80 : 6} value={code} onChange={event => setCode(event.target.value)} required /></label>
+        {!result.demo_code && <label className="field"><span>Verification method</span><select disabled={busy} value={verificationMethod} onChange={event => { setVerificationMethod(event.target.value as 'totp' | 'recovery'); setCode('') }}>{result.methods?.includes('totp') && <option value="totp">Authenticator code</option>}{result.methods?.includes('recovery') && <option value="recovery">Recovery code</option>}</select></label>}
+        <label className="field"><span>{verificationMethod === 'recovery' ? 'Unused recovery code' : 'Six-digit verification code'}</span><input disabled={busy} autoComplete="one-time-code" inputMode={verificationMethod === 'recovery' ? 'text' : 'numeric'} pattern={verificationMethod === 'recovery' ? undefined : '[0-9]{6}'} minLength={verificationMethod === 'recovery' ? 8 : 6} maxLength={verificationMethod === 'recovery' ? 80 : 6} value={code} onChange={event => setCode(event.target.value)} required /></label>
         <button className="button primary auth-submit" disabled={busy} type="submit">{busy ? 'Verifying…' : 'Verify and sign in'}<Icon name="arrow" size={17} /></button>
       </>}
       {result.methods?.includes('passkey') && <button className={`button ${codeSupported ? 'secondary' : 'primary'} auth-submit`} type="button" disabled={busy || !passkeysAvailable()} onClick={passkeyLogin}><Icon name="lock" size={17} />Use an enrolled passkey</button>}
       {!codeSupported && result.methods?.includes('passkey') && !passkeysAvailable() && <p className="security-note">Open this provider in a browser with WebAuthn support on HTTPS or localhost to use your passkey.</p>}
-      <button className="text-button auth-back" onClick={() => { setResult(null); setCode(''); setError('') }} type="button">Return to sign-in</button>
+      <button className="text-button auth-back" disabled={busy} onClick={() => { setResult(null); setCode(''); setError('') }} type="button">Return to sign-in</button>
     </form> : <form onSubmit={event => { event.preventDefault(); void login() }}>
       {result?.status === 'blocked' && <div className="auth-risk-summary"><Badge status="high">High risk</Badge><strong>{percent(result.risk.score)}</strong><span>No session issued</span></div>}
-      <label className="field"><span>{bootstrap?.demo_mode ? 'Demo identity' : 'Account ID'}</span>{bootstrap?.demo_mode ? <select value={identity || bootstrap?.users[0]?.id || ''} onChange={event => setIdentity(event.target.value)} required disabled={!bootstrap}>{bootstrap?.users.map(user => <option key={user.id} value={user.id}>{user.name} · {user.role.replaceAll('_', ' ')}</option>)}</select> : <input autoComplete="username webauthn" value={identity} onChange={event => setIdentity(event.target.value)} maxLength={80} required />}</label>
-      <label className="field"><span>Password</span><input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label>
-      {bootstrap?.demo_mode && <details className="auth-options"><summary>Demo sign-in scenario</summary><label className="field"><span>Sign-in scenario</span><select value={preset} onChange={event => { setPreset(event.target.value); setResult(null) }}>{presets.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><small>{presets.find(item => item.id === preset)?.description}</small></label></details>}
+      <label className="field"><span>{bootstrap?.demo_mode ? 'Demo identity' : 'Account ID'}</span>{bootstrap?.demo_mode ? <select value={identity || bootstrap?.users[0]?.id || ''} onChange={event => setIdentity(event.target.value)} required disabled={busy || !bootstrap}>{bootstrap?.users.map(user => <option key={user.id} value={user.id}>{user.name} · {user.role.replaceAll('_', ' ')}</option>)}</select> : <input disabled={busy} autoComplete="username webauthn" value={identity} onChange={event => setIdentity(event.target.value)} maxLength={80} required />}</label>
+      <label className="field"><span>Password</span><input disabled={busy} type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label>
+      {bootstrap?.demo_mode && <details className="auth-options"><summary>Demo sign-in scenario</summary><label className="field"><span>Sign-in scenario</span><select disabled={busy} value={preset} onChange={event => { setPreset(event.target.value); setResult(null) }}>{presets.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><small>{presets.find(item => item.id === preset)?.description}</small></label></details>}
       <button className="button primary auth-submit" type="submit" disabled={busy || !bootstrap}>{busy ? 'Checking identity…' : result?.status === 'blocked' ? 'Try again' : 'Sign in'}<Icon name="arrow" size={17} /></button>
       <button className="button secondary auth-submit" type="button" disabled={busy || !bootstrap || !passkeysAvailable()} onClick={passkeyLogin}><Icon name="lock" size={17} />Sign in with a passkey</button><p className="security-note">Passkeys use an enrolled authenticator and server-observed context.{bootstrap?.demo_mode ? ' The scenario selector applies to password sign-in.' : ''}</p>
     </form>}

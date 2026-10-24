@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { api } from './api'
 import type { RealAuthModelsStudy } from './api'
 import { Badge, Empty, Icon, PanelTitle, percent } from './components'
@@ -20,7 +21,14 @@ function sourceLink(source: RealAuthModelsStudy['datasets'][string]['source']) {
 }
 
 export function RealAuthModelsView() {
-  const [family, setFamily] = useState('count')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const family = new URLSearchParams(location.search).get('model') === 'trained' ? 'trained' : 'count'
+  const setFamily = (value: string) => {
+    const search = new URLSearchParams(location.search)
+    search.set('model', value === 'trained' ? 'trained' : 'count')
+    navigate({ pathname: location.pathname, search: search.toString(), hash: '#models' })
+  }
   return <><div className="panel"><label className="field"><span>Research model family</span><select value={family} onChange={event => setFamily(event.target.value)}><option value="count">Count models</option><option value="trained">Trained Isolation Forest</option></select></label></div>{family === 'trained' ? <TrainedAuthModelsView /> : <CountAuthModelsView />}</>
 }
 

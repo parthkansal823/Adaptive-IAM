@@ -18,7 +18,19 @@ From the repository root on this Windows workspace, the trusted portable runtime
 & ".\.cache\runtime\node-v24.22.0-win-x64\node.exe" scripts/dev.mjs
 ```
 
-In **Experiments**, choose **Research model family → Trained Isolation Forest**, then select any of the three measured real-log slices. The training view shows fitted reservoir size, selected parameters, all five controls, validation candidates, source/model hashes and a full JSON export. **Audit ledger → Audit inclusion proofs** provides local sealing, proof export and optional live chain checks to authenticated security reviewers. In demo mode, Kavya Sen has this role; the documented seeded password is `Demo@123!`.
+In **Experiments**, choose the **Trained models** shortcut or **Research model family → Trained Isolation Forest**, then select any of the three measured real-log slices. The training view shows fitted reservoir size, selected parameters, all five controls, validation candidates, source/model hashes and a full JSON export. **Audit ledger → Audit inclusion proofs** provides local sealing, proof export and optional live chain checks to authenticated security reviewers. In demo mode, Kavya Sen has this role; the documented seeded password is `Demo@123!`.
+
+Study shortcuts remain available while reports load or show retry states. Each link can be bookmarked or shared within the local deployment:
+
+| Study | Direct URL |
+| --- | --- |
+| Trained Isolation Forests | [Trained models](http://127.0.0.1:5173/research?model=trained#models) |
+| Fixed count controls | [Count models](http://127.0.0.1:5173/research?model=count#models) |
+| LANL sparse exercise labels | [LANL exercise study](http://127.0.0.1:5173/research#real-data) |
+| Synthetic stress conditions | [Uncertainty stress](http://127.0.0.1:5173/research#uncertainty) |
+| Synthetic baseline evaluation | [Synthetic evaluation](http://127.0.0.1:5173/research#synthetic) |
+
+Changing model family keeps unrelated query parameters, records browser history and targets `#models`. Back/Forward restores the selected family. Keyboard focus follows shortcut destinations; report loading keeps the target positioned until the reader interacts with the page. Overview distinguishes observed authentication evidence from simulation results.
 
 ## Interface
 
@@ -50,4 +62,4 @@ Request and grant displays wake at the next server-provided expiry and when the 
 
 Build the frontend, then run `node tests/console-regression.mjs` from this directory. The dependency-free check uses installed Edge, Chrome, or Chromium in headless mode. Set `IAM_TEST_BROWSER` or `CHROME_BIN` to its full executable path when automatic detection cannot find it; a missing browser or production bundle produces an actionable failure. These optional checks are separate from the default build and require no running backend.
 
-The 18 isolated local API fixture cases verify delayed logout, audit, and security-revocation responses during identity switching; scenario-catalog retry; callback limits/duplicates; resource-result isolation; request/grant expiry, search and filters; protected-snapshot removal and explicit recheck; overview expiry; uncertainty-study retry/condition metrics; real-data study recovery, sparse-label recall, disabled rules and zero denominators; fixed-model retry, dataset selection, absent-label eligibility, cold-start diagnostics, source hashes and complete export; trained-model lazy loading, retry, three dataset slices, validation candidates, fit counts and exact export; and audit-proof lazy loading, bounded sealing, live anchor success/RPC failure, hash-only export and response isolation after switching to an ordinary user. Narrow registration, access, research and proof views are checked for overflow, including both themes for access, the studies and the proof verifier instructions. Browser profiles use a separate temporary directory and are removed after the run. No real accounts, credentials, or grants are used; fixture metrics do not establish research performance.
+The 19 isolated local API fixture cases verify delayed logout, audit, and security-revocation responses during identity switching; scenario-catalog retry; callback limits/duplicates; resource-result isolation; request/grant expiry, search and filters; protected-snapshot removal and explicit recheck; overview expiry; uncertainty-study retry/condition metrics; real-data study recovery, sparse-label recall, disabled rules and zero denominators; fixed-model retry, dataset selection, absent-label eligibility, cold-start diagnostics, source hashes and complete export; trained-model lazy loading, retry, three dataset slices, validation candidates, fit counts and exact export; audit-proof lazy loading, bounded sealing, live anchor success/RPC failure, hash-only export and response isolation after switching to an ordinary user; and research links, query state, browser history, keyboard navigation and section positioning. Narrow registration, access, research and proof views are checked for overflow, including both themes for access, the studies, shortcuts and proof verifier instructions. Browser profiles use a separate temporary directory and are removed after the run. No real accounts, credentials, or grants are used; fixture metrics do not establish research performance.

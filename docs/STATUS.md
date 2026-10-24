@@ -1,6 +1,6 @@
 # Project status
 
-22 October 2026. Research prototype; all 31 original assets remain checksum-verified under `research/`. Measured reports disclose sampling, regressions and evidence limits.
+23 October 2026. Research prototype; all 31 original assets remain checksum-verified under `research/`. Measured reports disclose sampling, regressions and evidence limits.
 
 Implemented: Python API; React dark/light console; passkeys, TOTP/recovery; observed-context session checks; OAuth/OIDC + PKCE; Node/Python SDKs; organization onboarding/rotation; attack diagnostics; owner/quorum review and timed grants. Orbit SaaS uses sample records and live IAM permissions. [Website guide](SAAS_WEBSITE.md).
 
@@ -14,6 +14,8 @@ The [actual training study](REAL_AUTH_TRAINING.md), measured 21 October, process
 
 [Audit inclusion proofs](AUDIT_PROOFS.md) add append-only bounded Merkle batches, hash-only export, strict offline verification and optional live EVM confirmation. Reviewer-only console controls separate local commitments from the last external check. Per-event anchoring remains; no gas-saving or novel cryptography claim is made. Ganache dependency findings and the independently packaged QBFT signer's audit boundary are documented in [Security](SECURITY.md).
 
-Latest complete verifier passed: 152 backend cases (eight opt-in skips), 96 script cases (one Windows privilege skip), 63 research, 12 Python SDK, 49 Node integration, 17 contract/RPC, 31 isolated live-chain API and 18 browser fixtures. Typecheck/build, source checks and all asset checksums passed. Updated API/chain images built and packaged reports/signer operations were checked. Linux/Python 3.13 backup: 28 passed, two Windows-only skips. Website session restart/revocation and Besu consensus retain their earlier dated evidence; no retained chain was reset.
+Previous complete verifier passed: 152 backend cases (eight opt-in skips), 96 script cases (one Windows privilege skip), 63 research, 12 Python SDK, 49 Node integration, 17 contract/RPC, 31 isolated live-chain API and 18 browser fixtures. Typecheck/build, source checks and all asset checksums passed. Updated API/chain images built and packaged reports/signer operations were checked. Linux/Python 3.13 backup: 28 passed, two Windows-only skips. Website session restart/revocation and Besu consensus retain their earlier dated evidence; no retained chain was reset.
+
+23 October frontend extension: Experiments now starts with five study shortcuts and supports [direct trained-model links](http://127.0.0.1:5173/research?model=trained#models), model-family history and keyboard section navigation. Async reports keep linked sections positioned until user interaction. Changing family targets the model section and preserves unrelated query parameters. Fresh typecheck/build and all 19 browser cases passed, including stale-section selection, Back/Forward, direct links and both mobile themes; source/diff checks passed. Overview now distinguishes observed data from synthetic evidence.
 
 Independent organizational labels, trusted telemetry, human annotation, multi-host sessions and external interoperability/security review remain boundaries. Commits/pushes remain the user's responsibility. See the [frontend guide](../frontend/README.md) for the portable Windows launcher and feature navigation.

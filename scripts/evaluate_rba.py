@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_right
 import csv
 import hashlib
 import json
@@ -23,6 +24,7 @@ from backend.app.risk import FEATURES, RiskEngine, features, metrics  # noqa: E4
 
 REQUIRED = {"User ID", "Login Timestamp", "User Agent String", "Country", "Login Successful"}
 LABELS = ("Is Account Takeover", "Is Attack IP")
+PROTOCOL_VERSION = "rba-evaluation-v2"
 
 
 def boolean(value: str) -> bool:
@@ -46,20 +48,44 @@ def timestamp(value: str) -> datetime:
 def read_events(path: Path, max_rows: int, label="Is Account Takeover", include_users=False):
     if label not in LABELS:
         raise ValueError("Use an explicitly supported source label")
+    if isinstance(max_rows, bool) or not isinstance(max_rows, int) or max_rows < 1:
+        raise ValueError("A positive integer row limit is required")
     histories = defaultdict(lambda: {"devices": set(), "countries": set(), "failures": deque(), "events": deque(), "first": None})
     rows, labels, times, users = [], [], [], []
-    last = None
+    last, group_start = None, 0
+    pending = []
+
+    def update_group():
+        # A source timestamp has no trustworthy within-timestamp order. Score
+        # its entire group before any outcome/device updates become visible.
+        for user, device, country, successful in pending:
+            history = histories[user]
+            history["events"].append(last)
+            if successful:
+                history["devices"].add(device)
+                history["countries"].add(country)
+            else:
+                history["failures"].append(last)
+        pending.clear()
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         missing = (REQUIRED | {label}) - set(reader.fieldnames or [])
         if missing:
             raise ValueError("Missing CSV columns: " + ", ".join(sorted(missing)))
         for index, row in enumerate(reader):
-            if index >= max_rows:
-                break
             now = timestamp(row["Login Timestamp"])
             if last is not None and now < last:
                 raise ValueError("CSV must be globally chronological. Sort by Login Timestamp before evaluation.")
+            if index >= max_rows:
+                # One lookahead row distinguishes an exact group boundary from
+                # a cap that bisects a timestamp. Exclude the whole partial group.
+                if now == last:
+                    for values in (rows, labels, times, users):
+                        del values[group_start:]
+                break
+            if last is not None and now != last:
+                update_group()
+                group_start = len(rows)
             last = now
             history = histories[row["User ID"]]
             if history["first"] is None:
@@ -67,7 +93,7 @@ def read_events(path: Path, max_rows: int, label="Is Account Takeover", include_
             for key in ("failures", "events"):
                 while history[key] and (now - history[key][0]).total_seconds() > 3600:
                     history[key].popleft()
-            # Every feature uses only events BEFORE this event. Current login success,
+            # Every feature uses only strictly EARLIER timestamps. Current login success,
             # attack IP and account-takeover label are never included in X.
             context = {
                 "known_device": row["User Agent String"] in history["devices"],
@@ -82,23 +108,29 @@ def read_events(path: Path, max_rows: int, label="Is Account Takeover", include_
             labels.append(int(boolean(row[label])))
             times.append(now.isoformat())
             users.append(hashlib.sha256(row["User ID"].encode()).hexdigest())
-            history["events"].append(now)
-            if boolean(row["Login Successful"]):
-                history["devices"].add(row["User Agent String"])
-                history["countries"].add(row["Country"])
-            else:
-                history["failures"].append(now)
+            pending.append((row["User ID"], row["User Agent String"], row["Country"], boolean(row["Login Successful"])))
     if not rows:
-        raise ValueError("CSV has no events")
+        raise ValueError("CSV has no complete timestamp groups within the row limit")
     result = (np.asarray(rows), np.asarray(labels), times)
     return (*result, users) if include_users else result
 
 
-def partitions(users, split):
-    """Frozen row windows or hash cohorts; no label-driven reassignment."""
+def partitions(users, split, times=None):
+    """Timestamp-preserving windows or hash cohorts; no label-driven assignment."""
     count=len(users)
     if split == "chronological":
-        ends=[0, *[int(count*ratio) for ratio in (.6,.7,.8)], count]
+        if times is None or len(times) != count:
+            raise ValueError("Chronological splitting requires an aligned timestamp for every event")
+        normalized = [timestamp(value) for value in times]
+        if any(a > b for a, b in zip(normalized, normalized[1:])):
+            raise ValueError("Partition timestamps must be chronological")
+        ends = [0]
+        for ratio in (.6, .7, .8):
+            end = max(ends[-1], int(count * ratio))
+            # Move a nominal cut to the end of its timestamp group. Large ties
+            # can empty a partition; eligibility rejects it before model fitting.
+            ends.append(bisect_right(normalized, normalized[end - 1], lo=end) if end else 0)
+        ends.append(count)
         return [np.arange(ends[i],ends[i+1]) for i in range(4)]
     if split != "user-disjoint":
         raise ValueError("Unknown split protocol")
@@ -112,7 +144,7 @@ def evaluate(path: Path, max_rows: int, split="chronological", label="Is Account
     x, y, times, users = read_events(path, max_rows, label, include_users=True)
     if len(y) < 100:
         raise ValueError("At least 100 events are required; use a representative dataset with sufficient takeovers.")
-    slices = partitions(users, split)
+    slices = partitions(users, split, times)
     names = ["train", "calibration", "threshold_selection", "test"]
     for name, part in zip(names, slices):
         if len(np.unique(y[part])) != 2:
@@ -140,7 +172,7 @@ def evaluate(path: Path, max_rows: int, split="chronological", label="Is Account
     return {
         "dataset": {"name": "Supplied RBA CSV (provenance required separately)", "sha256": digest.hexdigest(), "rows_used": len(y), "row_limit": max_rows, "label": label, "feature_names": FEATURES,
                     "partitions": {name: {"rows": len(y[part]), "positives": int(y[part].sum()), "users":len({users[i] for i in part}), "start": times[part[0]], "end": times[part[-1]]} for name, part in zip(names, slices)}},
-        "method": {"split": split+" 60/10/10/20", "allocation_unit":"events" if split=="chronological" else "users by fixed SHA-256 cohorts; event ratios vary", "user_overlap_train_test":len({users[i] for i in slices[0]} & {users[i] for i in slices[3]}), "ensemble": "0.4 LR + 0.6 RF", "calibration": "Platt sigmoid on independent calibration partition", "threshold_selection": "F1 on validation only", "features_use_prior_events_only": True},
+        "method": {"protocol_version": PROTOCOL_VERSION, "split": split+" 60/10/10/20", "allocation_unit":"whole timestamp groups near nominal event ratios" if split=="chronological" else "users by fixed SHA-256 cohorts; event ratios vary", "partition_tie_policy": "Move chronological cuts to the end of timestamp groups; reject empty or single-class partitions", "row_limit_policy": "Discard the whole final timestamp group if a one-row lookahead shows the cap bisected it", "user_overlap_train_test":len({users[i] for i in slices[0]} & {users[i] for i in slices[3]}), "ensemble": "0.4 LR + 0.6 RF", "calibration": "Platt sigmoid on independent calibration partition", "threshold_selection": "F1 on validation only", "features_use_prior_events_only": True, "features_use_strictly_earlier_timestamps_only": True},
         "baseline": metrics(y[slices[3]], raw(x[slices[3]]), .5),
         "improved": metrics(y[slices[3]], calibrated(x[slices[3]]), threshold),
         "limitations": ["This command does not deploy or alter the demo's risk model.", "The published RBA dataset is synthesized, not raw production data.", "Is Attack IP is a threat-intelligence proxy, not confirmed account takeover." if label=="Is Attack IP" else "Source takeover indicators in synthesized data do not establish real attack truth.", "VPN, travel distance, resource sensitivity and prior risk are unavailable and held constant.", "Normal hour uses the demo's fixed 10:00 reference, not a learned per-user baseline.", "Temporal split permits known users across periods; unseen-user generalization is not measured." if split=="chronological" else "User cohorts are disjoint but time windows overlap; this is not simultaneous future-time generalization. Test users accumulate their own prior online history without outcome features.", "Historical successful logins can include compromised sessions; device familiarity is not identity proof.", "Metrics may regress; no test-set tuning or automatic improvement claim."],

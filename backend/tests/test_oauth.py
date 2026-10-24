@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 
 import jwt
 from fastapi.testclient import TestClient
+from fastapi import Request
 
 from backend.app.blockchain import identity_hash
 from backend.app.main import create_app

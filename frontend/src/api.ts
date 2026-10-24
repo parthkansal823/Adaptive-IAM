@@ -441,9 +441,9 @@ export async function api<T>(path: string, token?: string | null, body?: unknown
     throw new ApiError('The API returned an unreadable response. Check that the backend is running on port 8000.', response.status)
   }
   if (!response.ok) {
-    const detail = (data as { detail?: unknown }).detail
+    const detail = typeof data === 'object' && data !== null ? (data as { detail?: unknown }).detail : undefined
     const structured = typeof detail === 'object' && detail !== null && !Array.isArray(detail) ? detail as { message?: unknown; code?: unknown } : null
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? detail.map((item: { msg?: string }) => item.msg || 'Invalid input').join('. ') : typeof structured?.message === 'string' ? structured.message : 'The request could not be completed.'
+    const message = typeof detail === 'string' && detail.trim() ? detail : Array.isArray(detail) && detail.length ? detail.map(item => typeof item === 'object' && item !== null && typeof item.msg === 'string' ? item.msg : 'Invalid input').join('. ') : typeof structured?.message === 'string' && structured.message.trim() ? structured.message : 'The request could not be completed. Refresh the workspace and retry.'
     throw new ApiError(message, response.status, typeof structured?.code === 'string' ? structured.code : undefined)
   }
   return data as T

@@ -14,6 +14,7 @@ import { DeveloperView } from './DeveloperView'
 import { OverviewView } from './OverviewView'
 import { RiskView } from './RiskView'
 import { SecurityView } from './SecurityView'
+import { hasExpired, useExpiryClock } from './expiry'
 
 type View = 'overview' | 'risk' | 'access' | 'audit' | 'research' | 'apps' | 'connect' | 'security' | 'attack'
 const navigation: { id: View; name: string; icon: IconName }[] = [{ id: 'overview', name: 'Overview', icon: 'overview' }, { id: 'security', name: 'Security', icon: 'shield' }, { id: 'risk', name: 'Risk lab', icon: 'risk' }, { id: 'attack', name: 'Attack lab', icon: 'research' }, { id: 'access', name: 'Access requests', icon: 'access' }, { id: 'audit', name: 'Audit ledger', icon: 'audit' }, { id: 'research', name: 'Experiments', icon: 'research' }, { id: 'apps', name: 'Developer portal', icon: 'access' }]
@@ -70,7 +71,7 @@ function Workspace() {
     document.addEventListener('keydown', trap)
     return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', trap) }
   }, [menuOpen])
-  const [requestId] = useState(() => new URLSearchParams(window.location.search).get('request_id'))
+  const requestId = new URLSearchParams(location.search).get('request_id')
   const [theme, setTheme] = useState(() => localStorage.getItem('adaptive-iam-theme') || 'light')
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('adaptive-iam-session'))
   const tokenRef = useRef(token)
@@ -100,6 +101,12 @@ function Workspace() {
     tokenRef.current = null; activeAction.current = null; setBusy(null)
     sessionStorage.removeItem('adaptive-iam-session'); setToken(null); setUser(null); setSessionRisk(null); setSessionInfo(null); setOverview(null); setRequests([]); setGrants([]); setEvents([]); setVerification(null)
   }, [])
+  const sessionNow = useExpiryClock([sessionInfo?.expires_at])
+  useEffect(() => {
+    if (!token || !hasExpired(sessionInfo?.expires_at, sessionNow)) return
+    clearSession(token)
+    setFeedback({ type: 'error', text: 'Your session expired. Sign in again to continue.' })
+  }, [token, sessionInfo?.expires_at, sessionNow, clearSession])
   const sessionGate = useCallback((enrollmentRequired = false) => { setSessionInfo(previous => ({ ...(previous || { expires_at: '' }), step_up_required: !enrollmentRequired, enrollment_required: enrollmentRequired })); setOverview(null); setRequests([]); setGrants([]); setEvents([]); setVerification(null); setView('security') }, [setView])
   const loadIdentity = useCallback(async (sessionToken: string) => {
     const session = await api<{ user: Identity; session: SessionInfo; risk: Risk }>('/auth/me', sessionToken)
@@ -228,7 +235,7 @@ function Workspace() {
         {view === 'security' && <SecurityView key={token || 'signed-out'} token={token} user={user} onLogin={() => setLoginOpen(true)} onSessionRevoked={() => clearSession(token)} onChanged={async () => { if (token && tokenRef.current === token) { const identity = await loadIdentity(token); if (identity && !identity.session.step_up_required && !identity.session.enrollment_required) await refreshProtected(token) } }} />}
         {view === 'attack' && <AttackLabView key={token || 'signed-out'} token={token} user={user} onLogin={() => setLoginOpen(true)} onSecurity={() => setView('security')} />}
         {view === 'apps' && <DeveloperView key={token || 'signed-out'} token={token} user={user} bootstrap={bootstrap} onLogin={() => setLoginOpen(true)} onSecurity={() => setView('security')} />}
-        {view === 'connect' && <ConsentView key={token || 'signed-out'} requestId={requestId} token={token} user={user} onLogin={() => setLoginOpen(true)} onSecurity={() => setView('security')} />}
+        {view === 'connect' && <ConsentView key={`${token || 'signed-out'}:${requestId || ''}`} requestId={requestId} token={token} user={user} onLogin={() => setLoginOpen(true)} onSecurity={() => setView('security')} />}
         <footer className="workspace-footer"><span>Adaptive IAM <span className="footer-separator">/</span> Research workspace</span><span>{bootstrap ? <Badge status="neutral">{web3Ready ? 'Synthetic model · local EVM' : 'Synthetic model · local ledger'}</Badge> : 'Waiting for API'}</span></footer>
       </main>
     </div>

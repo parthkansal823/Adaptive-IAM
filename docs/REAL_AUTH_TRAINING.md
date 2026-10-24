@@ -14,6 +14,8 @@ Actual fitted weights stay in ignored `data/real-auth-models/`. The console can
 display/export aggregate evidence without loading those executable artifacts.
 See [the earlier count-model study](REAL_AUTH_MODELS.md) for the simpler models.
 
+With the local services running, open the [trained-model console view](http://127.0.0.1:5173/research?model=trained#models) directly. The Experiments study shortcuts and browser Back/Forward retain the model family in the URL; dataset selection stays within the displayed frozen report.
+
 ## Sources and study population
 
 | Study key | Observed source | Evaluation purpose |

@@ -147,6 +147,34 @@ class IdentityTests(unittest.TestCase):
         self.assertFalse(self.application.state.identity.check_session(sid))
         self.assertEqual(self.client.get('/api/auth/me', headers=self.headers(second['token'])).status_code, 401)
 
+    def test_session_guard_rechecks_expiry_after_token_lookup(self):
+        store = self.application.state.store
+        lookup = store.session
+
+        def expires_after_lookup(token):
+            identity = lookup(token)
+            with store.connection(write=True) as db:
+                db.execute('UPDATE sessions SET expires_at=? WHERE id=?', (stamp(now()-timedelta(seconds=1)), identity['session']['id']))
+            return identity
+
+        with patch.object(store, 'session', side_effect=expires_after_lookup):
+            response = self.client.get('/api/overview', headers=self.headers())
+        self.assertEqual(response.status_code, 401, response.text)
+
+    def test_session_guard_refreshes_operator_owned_roles(self):
+        store = self.application.state.store
+        lookup = store.session
+
+        def changes_after_lookup(token):
+            identity = lookup(token)
+            # A stale token snapshot must not retain an operator-removed role.
+            identity['user']['role'] = 'security_reviewer'
+            return identity
+
+        with patch.object(store, 'session', side_effect=changes_after_lookup):
+            response = self.client.post('/api/apps', headers=self.headers(), json={'name': 'Unauthorized app', 'redirect_uris': ['http://localhost/callback']})
+        self.assertEqual(response.status_code, 403, response.text)
+
     def test_untrusted_forwarding_cannot_change_context(self):
         headers = {**self.headers(), 'X-Forwarded-For': '198.51.100.9'}
         self.assertEqual(self.client.get('/api/overview', headers=headers).status_code, 200)

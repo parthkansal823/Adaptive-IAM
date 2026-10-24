@@ -602,7 +602,72 @@ try {
     users[1].role = 'security_reviewer'
     console.log('PASS audit proofs load lazily, seal bounded ranges, distinguish local and live trust, clear stale success on RPC failure, export exact hash-only evidence, fit mobile themes and discard a prior identity response')
   }
-  console.log('Frontend regression checks: 18 passed (isolated API fixtures, no real account mutations).')
+  {
+    trainingStudyFail = false; modelStudyFail = false
+    const countReadsBefore = modelStudyReads, trainingReadsBefore = trainingStudyReads
+    const p = await page('/research?fixture=share&model=trained#models')
+    const family = "Array.from(document.querySelectorAll('label')).find(label => label.querySelector('span')?.textContent === 'Research model family')?.querySelector('select')?.value"
+    await p.wait(`${family} === 'trained' && document.querySelectorAll('.real-auth-training-methods tbody tr').length === 5`, 'Shared trained-model URL did not open its measured panel')
+    assert.equal(trainingStudyReads, trainingReadsBefore + 1)
+    assert.equal(modelStudyReads, countReadsBefore)
+    assert.equal(await p.evaluate("!!document.querySelector('.real-auth-model-methods')"), false)
+    const shortcuts = [
+      ['Synthetic evaluation', '/research#synthetic'],
+      ['Count models', '/research?model=count#models'],
+      ['Trained models', '/research?model=trained#models'],
+      ['LANL exercise study', '/research#real-data'],
+      ['Uncertainty stress', '/research#uncertainty'],
+    ]
+    assert.deepEqual(await p.evaluate("Array.from(document.querySelectorAll('nav[aria-label=\"Research studies\"] a')).map(link => [link.textContent.trim(), link.getAttribute('href')])"), shortcuts)
+    for (const id of ['synthetic', 'models', 'real-data', 'uncertainty']) assert.equal(await p.evaluate(`document.querySelectorAll('#${id}').length`), 1)
+    await p.field('Research model family', 'count')
+    await p.wait(`${family} === 'count' && document.querySelectorAll('.real-auth-model-methods tbody tr').length === 3`, 'Model selector did not open count controls')
+    assert.deepEqual(await p.evaluate("[location.pathname, new URLSearchParams(location.search).get('fixture'), new URLSearchParams(location.search).get('model'), location.hash]"), ['/research', 'share', 'count', '#models'])
+    await p.field('Research model family', 'trained')
+    await p.wait(`${family} === 'trained' && document.querySelectorAll('.real-auth-training-methods tbody tr').length === 5`, 'Model selector did not return to trained models')
+    assert.deepEqual(await p.evaluate("[new URLSearchParams(location.search).get('fixture'), new URLSearchParams(location.search).get('model'), location.hash]"), ['share', 'trained', '#models'])
+    await p.evaluate('history.back()')
+    await p.wait(`${family} === 'count' && document.querySelectorAll('.real-auth-model-methods tbody tr').length === 3`, 'Browser back did not restore the count family')
+    await p.evaluate('history.forward()')
+    await p.wait(`${family} === 'trained' && document.querySelectorAll('.real-auth-training-methods tbody tr').length === 5`, 'Browser forward did not restore the trained family')
+    for (const search of ['?fixture=share&model=unsupported', '?fixture=share']) {
+      const readsBeforeFallback = trainingStudyReads
+      await p.command('Page.navigate', { url: origin + '/research' + search + '#models' })
+      await p.wait(`${family} === 'count' && document.querySelectorAll('.real-auth-model-methods tbody tr').length === 3`, 'Missing or invalid family did not use the count default')
+      assert.equal(trainingStudyReads, readsBeforeFallback)
+      assert.equal(await p.evaluate("new URLSearchParams(location.search).get('fixture')"), 'share')
+    }
+    await p.command('Page.navigate', { url: origin + '/research?fixture=share#uncertainty' })
+    await p.wait(`${family} === 'count' && document.querySelectorAll('.real-auth-model-methods tbody tr').length === 3`, 'Stale-section URL did not load the model selector')
+    await p.evaluate("(() => { const select = Array.from(document.querySelectorAll('label')).find(label => label.querySelector('span')?.textContent === 'Research model family').querySelector('select'); select.scrollIntoView(); select.focus() })()")
+    await p.field('Research model family', 'trained')
+    await p.wait(`${family} === 'trained' && location.hash === '#models' && document.querySelectorAll('.real-auth-training-methods tbody tr').length === 5`, 'Changing model family retained a stale section hash')
+    assert.equal(await p.evaluate("new URLSearchParams(location.search).get('fixture')"), 'share')
+    await p.wait("(() => { const box = document.getElementById('models').getBoundingClientRect(); return box.top >= -1 && box.top < innerHeight })()", 'Family selection did not bring the model panel into view')
+    assert.equal(await p.evaluate("document.activeElement === Array.from(document.querySelectorAll('label')).find(label => label.querySelector('span')?.textContent === 'Research model family').querySelector('select')"), true)
+    await p.evaluate("document.querySelector('nav[aria-label=\"Research studies\"] a').focus()")
+    await p.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 })
+    await p.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 })
+    assert.equal(await p.evaluate('document.activeElement.textContent.trim()'), 'Count models')
+    await p.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+    await p.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+    await p.wait("location.search === '?model=count' && location.hash === '#models'", 'Keyboard shortcut did not open its shareable count-model URL')
+    for (const [, href] of shortcuts) {
+      const id = href.split('#')[1]
+      await p.click(`nav[aria-label="Research studies"] a[href="${href}"]`)
+      await p.wait(`location.pathname + location.search + location.hash === ${JSON.stringify(href)}`, 'Research shortcut did not update the URL')
+      await p.wait(`(() => { const target = document.getElementById(${JSON.stringify(id)}); if (!target) return false; const box = target.getBoundingClientRect(); return box.top >= -1 && box.top < innerHeight })()`, 'Research shortcut did not scroll its target into view')
+    }
+    await p.command('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    for (const theme of ['light', 'dark']) {
+      if (await p.evaluate('document.documentElement.dataset.theme') !== theme) await p.click('.theme-button')
+      await p.wait(`document.documentElement.dataset.theme === '${theme}'`, 'Research-shortcut theme did not change')
+      assert.equal(await p.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true)
+      assert.equal(await p.evaluate("Array.from(document.querySelectorAll('nav[aria-label=\"Research studies\"] a')).every(link => link.getBoundingClientRect().width > 0 && link.tabIndex === 0)"), true)
+    }
+    console.log('PASS research shortcuts are keyboard accessible and shareable, trained URLs load lazily, family selection preserves query/hash, history and defaults stay synchronized, section links scroll and both mobile themes fit')
+  }
+  console.log('Frontend regression checks: 19 passed (isolated API fixtures, no real account mutations).')
 } finally {
   if (held) held.res.destroy()
   for (const p of pages) p.socket.close()

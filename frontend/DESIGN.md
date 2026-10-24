@@ -35,6 +35,7 @@ React Router provides real page URLs and browser back/forward behavior. `/connec
 ## Hierarchy and interactions
 
 - Signed-out Overview has one sign-in entry and a short explanation. Public experiments and risk checks remain discoverable.
+- Experiments starts with keyboard-accessible study links. Stable section anchors and URL model-family state support shared links and browser history; all evidence panels remain available, including retry states.
 - Access, Security and Developer pages use tabs to focus each task. Context customization, model details, hashes and protocol diagnostics use disclosure sections.
 - One offline banner explains recovery. A compact sidebar indicator reports connection state.
 - Sign-in stays in a focused dialog. Scenario customization is secondary to identity and verification.

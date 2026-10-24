@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError } from './api'
 import type { AppRegistry, Bootstrap, ConnectedApp, Identity } from './api'
 import { Badge, Empty, formatDate, Icon, PageTitle, PanelTitle } from './components'
+import { hasExpired, useExpiryClock } from './expiry'
 
 export function AppsView({ token, user, bootstrap, onLogin }: { token: string | null; user: Identity | null; bootstrap: Bootstrap | null; onLogin: () => void }) {
   const [registry, setRegistry] = useState<AppRegistry | null>(null)
@@ -61,20 +62,17 @@ export function ConsentView({ requestId, token, user, onLogin, onSecurity }: { r
   const [terminal, setTerminal] = useState(false)
   const [decision, setDecision] = useState<boolean | null>(null)
   const [verificationNeeded, setVerificationNeeded] = useState(false)
+  const now = useExpiryClock([packet?.expires_at])
+  const expired = !!packet && hasExpired(packet.expires_at, now)
+  const displayedError = expired ? 'This authorization request expired. Start sign-in again from the website you want to connect.' : error
   useEffect(() => {
     let active = true
     if (!requestId) { setError('No authorization request was supplied. Start sign-in from the website you want to connect.'); setLoading(false); return }
     api<import('./api').AuthorizationPacket>(`/oauth/authorization/${encodeURIComponent(requestId)}`).then(value => { if (active) setPacket(value) }).catch(failure => { if (active) setError(failure instanceof Error ? failure.message : 'The authorization request could not be loaded.') }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [requestId])
-  useEffect(() => {
-    if (!packet) return
-    const remaining = new Date(packet.expires_at).getTime() - Date.now()
-    const expiry = window.setTimeout(() => { setTerminal(true); setError('This authorization request expired. Start sign-in again from the website you want to connect.') }, Math.max(0, remaining))
-    return () => window.clearTimeout(expiry)
-  }, [packet])
   const consent = async (approve: boolean) => {
-    if (!packet || !token || !user || busy || terminal) return
+    if (!packet || !token || !user || busy || terminal || hasExpired(packet.expires_at, Date.now())) return
     setBusy(true); setDecision(approve); setError('')
     try {
       const response = await api<{ redirect_to: string }>('/oauth/consent', token, { request_id: packet.request_id, approve })
@@ -89,9 +87,10 @@ export function ConsentView({ requestId, token, user, onLogin, onSecurity }: { r
   }
   return <>
     <PageTitle title="Authorize application" description="Review the identity information this application is asking to use." />
-    {error && <div className="feedback feedback-error" role="alert"><Icon name="signal" size={18} /><span>{error}</span>{verificationNeeded && <button className="text-button" onClick={onSecurity}>Verify in Security</button>}</div>}
-    {loading ? <section className="panel"><Empty icon="access" title="Loading the authorization request…">The provider is checking the app and its requested scopes.</Empty></section> : packet ? <section className="panel consent-panel"><div className="consent-app-mark"><Icon name="access" size={31} /></div><h2>{packet.app.name} requests access</h2><p>{user ? `You are signing in as ${user.name}.` : 'Sign in to choose whether to share your identity with this website.'}</p><div className="consent-scopes"><h3>This app will be allowed to</h3>{packet.scopes.map(scope => <div key={scope}><Icon name="check" size={17} /><span>{scope === 'openid' ? 'Identify your account' : scope === 'profile' ? 'Read your profile name and department' : scope === 'iam:permissions' ? 'Check your resource permissions' : scope}<small>{scope}</small></span></div>)}</div>{packet.resources.length > 0 && <div className="consent-resources"><h3>Mapped resources</h3>{packet.resources.map(resource => <span key={resource.id} className="quiet-tag">{resource.name}</span>)}<p>Only your existing approved grants allow resource access.</p></div>}<div className="consent-expiry"><Icon name="clock" size={15} /><span>This request expires {formatDate(packet.expires_at)}.</span></div>{!user ? <button className="button primary" disabled={terminal} onClick={onLogin}>Sign in to continue <Icon name="arrow" size={17} /></button> : <div className="consent-actions"><button className="button secondary" disabled={busy || terminal} onClick={() => consent(false)}>{busy && decision === false ? 'Returning to app…' : 'Deny connection'}</button><button className="button primary" disabled={busy || terminal} onClick={() => consent(true)}>{busy && decision === true ? 'Returning to app…' : 'Allow and continue'}<Icon name="arrow" size={17} /></button></div>}</section> : null}
+    {displayedError && <div className="feedback feedback-error" role="alert"><Icon name="signal" size={18} /><span>{displayedError}</span>{verificationNeeded && !expired && <button className="text-button" onClick={onSecurity}>Verify in Security</button>}</div>}
+    {loading ? <section className="panel"><Empty icon="access" title="Loading the authorization request…">The provider is checking the app and its requested scopes.</Empty></section> : packet ? <section className="panel consent-panel"><div className="consent-app-mark"><Icon name="access" size={31} /></div><h2>{packet.app.name} requests access</h2><p>{user ? `You are signing in as ${user.name}.` : 'Sign in to choose whether to share your identity with this website.'}</p><div className="consent-scopes"><h3>This app will be allowed to</h3>{packet.scopes.map(scope => <div key={scope}><Icon name="check" size={17} /><span>{scope === 'openid' ? 'Identify your account' : scope === 'profile' ? 'Read your profile name and department' : scope === 'iam:permissions' ? 'Check your resource permissions' : scope}<small>{scope}</small></span></div>)}</div>{packet.resources.length > 0 && <div className="consent-resources"><h3>Mapped resources</h3>{packet.resources.map(resource => <span key={resource.id} className="quiet-tag">{resource.name}</span>)}<p>Only your existing approved grants allow resource access.</p></div>}<div className="consent-expiry"><Icon name="clock" size={15} /><span>This request expires {formatDate(packet.expires_at)}.</span></div>{!user ? <button className="button primary" disabled={terminal || expired} onClick={onLogin}>Sign in to continue <Icon name="arrow" size={17} /></button> : <div className="consent-actions"><button className="button secondary" disabled={busy || terminal || expired} onClick={() => consent(false)}>{busy && decision === false ? 'Returning to app…' : 'Deny connection'}</button><button className="button primary" disabled={busy || terminal || expired} onClick={() => consent(true)}>{busy && decision === true ? 'Returning to app…' : 'Allow and continue'}<Icon name="arrow" size={17} /></button></div>}</section> : null}
   </>
 }
+
 
 

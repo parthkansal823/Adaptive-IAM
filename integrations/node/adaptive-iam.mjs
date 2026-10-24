@@ -101,6 +101,8 @@ export class AdaptiveIamClient {
     const metadata = await this.discover()
     const form = new URLSearchParams({ grant_type: 'authorization_code', code, client_id: this.clientId, redirect_uri: this.redirectUri, code_verifier: verifier })
     if (this.clientSecret) form.set('client_secret', this.clientSecret)
+    // Verification and UserInfo requests must not restart the access-token TTL.
+    const tokenRequestedAt = this.clock()
     const token = await this.request(metadata.token_endpoint, { method: 'POST', form })
     if (typeof token.access_token !== 'string' || !token.access_token || typeof token.id_token !== 'string' || token.id_token.length > 16384 || typeof token.token_type !== 'string' || token.token_type.toLowerCase() !== 'bearer' || !Number.isInteger(token.expires_in) || token.expires_in <= 0 || token.expires_in > 86400 || typeof token.scope !== 'string' || !this.scopes.every(scope => token.scope.split(' ').includes(scope))) throw new IamError('invalid_token_response')
     let claims
@@ -120,7 +122,7 @@ export class AdaptiveIamClient {
     }
     const identity = await this.request(metadata.userinfo_endpoint, { token: token.access_token })
     if (identity.sub !== claims.sub) throw new IamError('subject_mismatch')
-    const expiresAt = Math.min(this.clock() + token.expires_in * 1000, claims.exp * 1000)
+    const expiresAt = Math.min(tokenRequestedAt + token.expires_in * 1000, claims.exp * 1000)
     if (expiresAt <= this.clock()) throw new IamError('invalid_session', 401)
     return { accessToken: token.access_token, identity, expiresAt }
   }

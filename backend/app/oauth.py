@@ -147,11 +147,13 @@ class OAuthProvider:
     def endpoints(self):
         return {"issuer": self.issuer, "authorization_endpoint": self.issuer+"/oauth/authorize", "token_endpoint": self.issuer+"/oauth/token", "userinfo_endpoint": self.issuer+"/oauth/userinfo", "jwks_uri": self.issuer+"/oauth/jwks", "revocation_endpoint": self.issuer+"/oauth/revoke"}
 
-    def access_token(self, value):
+    def access_token(self, value, db=None):
         if not value or len(value) > 256:
             raise HTTPException(401, "Invalid OAuth access token")
-        with self.store.connection() as db:
-            row = db.execute("SELECT t.*,a.resource_ids,a.redirect_uris,a.organization_id,u.name,u.role,u.department,b.session_id source_session_id FROM oauth_tokens t JOIN oauth_apps a ON t.client_id=a.client_id JOIN users u ON t.user_id=u.id LEFT JOIN oauth_session_bindings b ON t.code_hash=b.code_hash WHERE t.token_hash=? AND a.active=1", (secret_hash(value),)).fetchone()
+        if db is None:
+            with self.store.connection() as connection:
+                return self.access_token(value, db=connection)
+        row = db.execute("SELECT t.*,a.resource_ids,a.redirect_uris,a.organization_id,u.name,u.role,u.department,b.session_id source_session_id FROM oauth_tokens t JOIN oauth_apps a ON t.client_id=a.client_id JOIN users u ON t.user_id=u.id LEFT JOIN oauth_session_bindings b ON t.code_hash=b.code_hash WHERE t.token_hash=? AND a.active=1", (secret_hash(value),)).fetchone()
         if not row or row["expires_at"] <= stamp():
             raise HTTPException(401, "OAuth access token expired or invalid")
         return dict(row)
@@ -174,15 +176,27 @@ def install_oauth(api, authenticated, data_dir: Path):
             raise HTTPException(403, "Application registration requires a security reviewer")
         return identity
 
-    def app_token(request: Request):
+    def checked_app_token(request, db):
         authorization = request.headers.get("Authorization", "")
         if not authorization.startswith("Bearer "):
             raise HTTPException(401, "OAuth Bearer token required")
-        token = provider().access_token(authorization[7:])
-        if not token['source_session_id'] or not api.state.identity.check_session(token['source_session_id']):
+        token = provider().access_token(authorization[7:], db=db)
+        if not token['source_session_id'] or not api.state.identity.check_session(token['source_session_id'], db=db):
             raise HTTPException(401, 'Source identity session expired, revoked or requires re-verification')
-        with provider().store.connection() as db:
-            api.state.developer.allow_subject(db, token, token['user_id'])
+        api.state.developer.allow_subject(db, token, token['user_id'])
+        return token
+
+    def app_token(request: Request):
+        # Token, application, source session and membership form one policy snapshot.
+        rejection, token = None, None
+        with provider().store.connection(write=True) as db:
+            try:
+                token = checked_app_token(request, db)
+            except HTTPException as error:
+                # Keep any server-observed source-session risk transition durable.
+                rejection = error
+        if rejection:
+            raise rejection
         return token
 
     @api.get("/.well-known/openid-configuration")
@@ -432,16 +446,21 @@ def install_oauth(api, authenticated, data_dir: Path):
 
     @api.get("/oauth/permissions/{resource_id}")
     def permissions(resource_id: str, request: Request, token=Depends(app_token)):
-        if "iam:permissions" not in set(json.loads(token["scopes"])):
-            raise HTTPException(403, "iam:permissions scope is required")
-        if resource_id not in json.loads(token["resource_ids"]):
-            raise HTTPException(403, "Resource is not mapped to this OAuth application")
         store = provider().store
         with store.connection(write=True) as db:
+            # The dependency may have completed before a disable, rotation,
+            # revocation or mapping change. Reload authority with the grant check.
+            token = checked_app_token(request, db)
+            if "iam:permissions" not in set(json.loads(token["scopes"])):
+                raise HTTPException(403, "iam:permissions scope is required")
+            if resource_id not in json.loads(token["resource_ids"]):
+                raise HTTPException(403, "Resource is not mapped to this OAuth application")
             if token['organization_id'] and resource_id not in api.state.developer.resource_ids(db, token['organization_id']):
                 raise HTTPException(403, 'Resource owner is no longer a member of this application organization')
             store.expire(db)
             grant, chain = store.active_grant(db, token["user_id"], resource_id, api.state.blockchain)
+            # Live chain calls can outlast either credential's remaining lifetime.
+            token = checked_app_token(request, db)
             allowed = bool(grant) and chain["allowed"]
             store.audit(db, "oauth_permission_checked", token["user_id"], {"client_id": token["client_id"], "resource_id": resource_id, "allowed": allowed, "chain_required": chain["required"], "chain_status": chain["status"]})
         return JSONResponse({"allowed": allowed, "sub": token["user_id"], "client_id": token["client_id"], "resource_id": resource_id, "scope": "read" if allowed else None, "expires_at": grant["expires_at"] if allowed else None, "blockchain": chain, "reason": "Active human-approved subject grant confirmed by configured policy" if allowed else chain.get("reason", "Authentication and consent do not grant resource access")}, headers={"Cache-Control": "no-store", **provider().cors(request.headers.get("Origin"), json.loads(token["redirect_uris"]))})

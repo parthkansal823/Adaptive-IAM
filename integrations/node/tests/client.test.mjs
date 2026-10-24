@@ -58,6 +58,23 @@ test('OIDC signature, issuer/audience/nonce and userinfo subject are checked bef
   assert.equal(result.identity.sub, 'aisha'); assert.equal(form.get('code_verifier'), 'v'.repeat(43)); assert.equal(form.get('client_secret'), 'fixture-client-secret')
   assert(result.expiresAt > Date.now())
 })
+
+test('token verification latency never extends the access token lifetime', async () => {
+  const started = Date.now()
+  const token = await signed()
+  for (const delay of [5000, 60000]) {
+    let now = started
+    const upstream = provider(token, { token: { expires_in: 60 } })
+    const client = makeClient(async (url, options) => {
+      const response = await upstream(url, options)
+      if (new URL(url).pathname === '/oauth/userinfo') now += delay
+      return response
+    }, { clock: () => now })
+    const exchange = client.exchangeCode({ code: 'fixture-code', verifier: 'v'.repeat(43), nonce: 'nonce-fixture' })
+    if (delay === 60000) await assert.rejects(exchange, error => error.code === 'invalid_session' && error.status === 401)
+    else assert.equal((await exchange).expiresAt, started + 60000)
+  }
+})
 test('wrong nonce, issuer, audience and expired ID tokens fail', async () => {
   for (const options of [{ nonce: 'wrong-nonce' }, { aud: 'other-client' }, { iss: 'https://wrong.example' }, { exp: Math.floor(Date.now()/1000)-1 }]) {
     const client = makeClient(provider(await signed(options)))

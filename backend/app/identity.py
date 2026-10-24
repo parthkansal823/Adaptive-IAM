@@ -125,7 +125,9 @@ class IdentitySecurity:
 
     def require_recent(self, identity, maximum_age=300, require_factor=True):
         with self.store.connection() as db:
-            row = self.metadata(identity["session"]["id"], db)
+            row = db.execute("SELECT ss.*,s.expires_at FROM session_security ss JOIN sessions s ON ss.session_id=s.id WHERE s.id=? AND s.user_id=?", (identity["session"]["id"], identity["user"]["id"])).fetchone()
+            if not row or row["expires_at"] <= stamp():
+                raise HTTPException(401, "Session is invalid or expired")
             permitted = row and not row["step_up_required"] and row["verified_at"] and row["verified_at"] > stamp(now()-timedelta(seconds=maximum_age))
             if require_factor:
                 permitted = permitted and row["verification_method"] in ("totp", "passkey", "recovery")
@@ -154,13 +156,20 @@ class IdentitySecurity:
         # Allow recovery of a gated session; no resource/vote/consent endpoint is exempt.
         recovery_paths = {"/api/auth/me", "/api/auth/security", "/api/auth/reauth", "/api/auth/step-up", "/api/auth/logout", "/api/auth/sessions", "/api/auth/passkeys/step-up/options", "/api/auth/passkeys/step-up/verify"}
         with self.store.connection(write=True) as db:
+            # The token lookup and this writer are separate transactions. Expiry,
+            # revocation and operator-owned identity changes can occur between them.
+            session = db.execute("SELECT s.created_at,s.expires_at,u.id,u.name,u.role,u.department FROM sessions s JOIN users u ON s.user_id=u.id WHERE s.id=? AND s.user_id=?", (sid, uid)).fetchone()
+            if not session or session["expires_at"] <= stamp():
+                raise HTTPException(401, "Session is invalid or expired")
+            identity["user"] = {key: session[key] for key in ("id", "name", "role", "department")}
+            identity["session"]["expires_at"] = session["expires_at"]
             row = self.metadata(sid, db)
             if not row:
                 # Sessions from an older build must freshly authenticate; never bind a bearer on first use.
                 raise HTTPException(401, "Sign in again to bind this session to trusted request context")
             if not self.context.demo_mode and row["authentication_mode"] != "secure":
                 raise HTTPException(401, "Demo sessions cannot authenticate in secure mode; sign in again")
-            created = db.execute("SELECT created_at FROM sessions WHERE id=?", (sid,)).fetchone()[0]
+            created = session["created_at"]
             since = max(row["verified_at"] or created, stamp(now()-timedelta(minutes=15)))
             failures = db.execute("SELECT COUNT(*) FROM audit WHERE actor_id=? AND event_type='login_failed' AND timestamp>?", (uid, since)).fetchone()[0]
             context_changed = not hmac.compare_digest(row["fingerprint"], self.context.fingerprint(request))

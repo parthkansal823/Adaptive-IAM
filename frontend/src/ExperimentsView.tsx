@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import type { Evaluation, Metrics } from './api'
 import { Empty, Icon, PageTitle, PanelTitle, percent } from './components'
 import { UncertaintyStudyView } from './UncertaintyStudyView'
@@ -11,6 +13,36 @@ function metricsFor(section: Record<string, unknown>): Metrics | null {
 function prettyKey(key: string) { return key.replaceAll('_', ' ').replace(/\bauc\b/gi, 'AUC').replace(/\bf1\b/gi, 'F1').replace(/\bnlp\b/gi, 'NLP') }
 
 export function ExperimentsView({ report, loading, onRefresh }: { report: Evaluation | null; loading: boolean; onRefresh: () => Promise<void> }) {
+  const location = useLocation()
+  const studies = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const id = location.hash.slice(1)
+    if (!['synthetic', 'models', 'real-data', 'uncertainty'].includes(id)) return
+    let frame = 0, positioned = false
+    const position = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const target = document.getElementById(id)
+        if (!target) return
+        const focused = document.activeElement
+        if (!positioned && (focused === document.body || focused?.id === 'main-content' || focused?.closest('.research-shortcuts') || focused?.classList.contains('research-study'))) target.focus({ preventScroll: true })
+        target.scrollIntoView({ block: 'start', behavior: 'auto' })
+        positioned = true
+      })
+    }
+    // Earlier reports load independently. Keep the destination in view as their
+    // height changes, until the reader starts interacting with the page.
+    const observer = new ResizeObserver(position)
+    if (studies.current) observer.observe(studies.current)
+    const gestures = ['pointerdown', 'wheel', 'touchstart', 'keydown'] as const
+    const stop = () => {
+      observer.disconnect(); cancelAnimationFrame(frame)
+      gestures.forEach(event => window.removeEventListener(event, stop))
+    }
+    gestures.forEach(event => window.addEventListener(event, stop, { passive: true }))
+    position()
+    return stop
+  }, [location.hash, location.key])
   const baseline = report ? metricsFor(report.baseline) : null
   const improved = report ? metricsFor(report.improved) : null
   const download = () => {
@@ -21,15 +53,26 @@ export function ExperimentsView({ report, loading, onRefresh }: { report: Evalua
   const metricRows = [{ key: 'accuracy', label: 'Accuracy', better: 'higher' }, { key: 'precision', label: 'Precision', better: 'higher' }, { key: 'recall', label: 'Recall', better: 'higher' }, { key: 'f1', label: 'F1 score', better: 'higher' }, { key: 'roc_auc', label: 'ROC AUC', better: 'higher' }, { key: 'false_positive_rate', label: 'False positive rate', better: 'lower' }, { key: 'false_negative_rate', label: 'False negative rate', better: 'lower' }, { key: 'brier_score', label: 'Brier score', better: 'lower' }, { key: 'suspicious_challenge_or_block_recall', label: 'Challenge or block recall', better: 'higher' }, { key: 'suspicious_direct_allow_rate', label: 'Suspicious direct allow', better: 'lower' }, { key: 'legitimate_friction_rate', label: 'Legitimate sign-in friction', better: 'lower' }, { key: 'blocked_legitimate_rate', label: 'Legitimate sign-ins blocked', better: 'lower' }]
   return <>
     <PageTitle title="Experiments" description="Compare measured model results and review their research limitations." action={<button className="button secondary" onClick={download} disabled={!report}><Icon name="download" size={17} />Export report</button>} />
+    <nav className="research-shortcuts" aria-label="Research studies">
+      <Link className="button secondary" to="/research#synthetic">Synthetic evaluation</Link>
+      <Link className="button secondary" to="/research?model=count#models">Count models</Link>
+      <Link className="button secondary" to="/research?model=trained#models">Trained models</Link>
+      <Link className="button secondary" to="/research#real-data">LANL exercise study</Link>
+      <Link className="button secondary" to="/research#uncertainty">Uncertainty stress</Link>
+    </nav>
+    <div ref={studies}>
+    <div id="synthetic" className="research-study" tabIndex={-1} aria-label="Synthetic evaluation">
     {!report ? <section className="panel"><Empty icon="research" title={loading ? 'Loading the measured evaluation…' : 'The evaluation is unavailable.'} action={<button className="button primary" disabled={loading} onClick={onRefresh}>{loading ? 'Loading…' : 'Retry evaluation'}</button>}>The backend exposes the reproducible held-out report. Start the API and retry to view actual results.</Empty></section> : <>
       <div className="experiment-intro"><span className="experiment-mark"><Icon name="research" size={29} /></span><div><h2>Baseline and calibrated model</h2><p>Held-out results from the same reproducible synthetic dataset.</p></div><span className="quiet-tag">Synthetic dataset</span></div>
       <section className="panel comparison-panel"><PanelTitle title="Model comparison" description="Each metric states whether higher or lower is better." />{baseline && improved ? <div className="table-wrap"><table className="comparison-table"><thead><tr><th>Metric</th><th>Baseline</th><th>Calibrated</th><th>Change</th></tr></thead><tbody>{metricRows.filter(metric => typeof baseline[metric.key] === 'number' && typeof improved[metric.key] === 'number').map(metric => { const before = baseline[metric.key] as number; const after = improved[metric.key] as number; const difference = after - before; const better = metric.better === 'higher' ? difference : -difference; const brier = metric.key === 'brier_score'; return <tr key={metric.key}><td><strong>{metric.label}</strong><small>{metric.better} is better</small></td><td>{brier ? before.toFixed(4) : percent(before)}</td><td>{brier ? after.toFixed(4) : percent(after)}</td><td className={better > 0 ? 'text-low' : better < 0 ? 'text-high' : ''}>{difference > 0 ? '+' : ''}{brier ? difference.toFixed(4) : `${(difference * 100).toFixed(2)} pp`}<small>{better > 0 ? 'Improved' : better < 0 ? 'Regressed' : 'Unchanged'}</small></td></tr> })}</tbody></table></div> : <div className="report-details"><p>Complete model results are available in the exported report.</p><pre>{JSON.stringify({ baseline: report.baseline, improved: report.improved }, null, 2)}</pre></div>}<p className="security-note">pp means percentage points. Gains and regressions are both shown; these results do not establish real-world attack detection.</p></section>
       <div className="experiment-columns"><section className="panel protocol-panel"><PanelTitle title="Evaluation protocol" description="Dataset and split information returned by the experiment." /><dl className="protocol-list">{Object.entries(report.dataset).filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value)).map(([key, value]) => <div key={key}><dt>{prettyKey(key)}</dt><dd>{typeof value === 'boolean' ? value ? 'Yes' : 'No' : String(value)}</dd></div>)}</dl>{Object.entries(report.dataset).filter(([, value]) => value && typeof value === 'object').map(([key, value]) => <details className="protocol-extra" key={key}><summary>{prettyKey(key)}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details>)}</section><section className="panel research-notes"><PanelTitle title="Interpret the result" description="Research claims are only as broad as the evidence." />{report.limitations?.length ? <ul>{report.limitations.map((limitation, index) => <li key={index}>{limitation}</li>)}</ul> : <p>These measurements apply to the generated research dataset. Operational performance requires independent validation.</p>}<div className="research-note-callout"><Icon name="signal" size={20} /><p>More than one metric matters. A change in accuracy can hide a change in missed attacks or unnecessary verification.</p></div></section></div>
       {report.nlp && <section className="panel text-experiment"><PanelTitle title="Justification classifier" description="Measured text-model results from the evaluation report." /><dl className="protocol-list horizontal">{Object.entries(report.nlp).filter(([, value]) => ['string', 'number'].includes(typeof value)).map(([key, value]) => <div key={key}><dt>{prettyKey(key)}</dt><dd>{typeof value === 'number' && value >= 0 && value <= 1 && !key.includes('sample') ? percent(value) : String(value)}</dd></div>)}</dl>{Object.entries(report.nlp).filter(([, value]) => value && typeof value === 'object').map(([key, value]) => <details className="protocol-extra" key={key}><summary>{prettyKey(key)}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details>)}</section>}
     </>}
-    <RealAuthModelsView />
-    <RealDataStudyView />
-    <UncertaintyStudyView />
+    </div>
+    <div id="models" className="research-study" tabIndex={-1} aria-label="Real authentication models"><RealAuthModelsView /></div>
+    <div id="real-data" className="research-study" tabIndex={-1} aria-label="LANL exercise study"><RealDataStudyView /></div>
+    <div id="uncertainty" className="research-study" tabIndex={-1} aria-label="Uncertainty stress"><UncertaintyStudyView /></div>
+    </div>
   </>
 }
 

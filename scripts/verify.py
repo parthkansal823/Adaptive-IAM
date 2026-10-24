@@ -15,7 +15,7 @@ except ImportError:  # Direct execution by the Git pre-push hook.
 ROOT = Path(__file__).resolve().parents[1]
 
 
-SOURCE_PATHS = ("backend/", "frontend/", "integrations/", "blockchain/", "deployment/", "compose.yaml", ".dockerignore", "experiments/", "scripts/", ".githooks/", "package.json", "package-lock.json")
+SOURCE_PATHS = ("backend/", "frontend/", "integrations/", "blockchain/", "deployment/", "compose.yaml", ".dockerignore", "experiments/", "research/", "scripts/", ".githooks/", "package.json", "package-lock.json")
 
 
 def check_pushed_snapshot(refs: list[list[str]]) -> bool:
@@ -101,6 +101,8 @@ def main() -> int:
         return 1
     paths = changed_paths(refs) if args.changed else None
     if not run("syntax and secret checks", [sys.executable, "scripts/check.py", "--all"]):
+        return 1
+    if not run("preserved research asset integrity", [sys.executable, "scripts/verify_research.py"]):
         return 1
     backend_needed = paths is None or any(path.startswith(("backend/", "experiments/", "scripts/")) for path in paths)
     frontend_needed = paths is None or any(path.startswith(("frontend/", "backend/app/", "package", "scripts/")) for path in paths)

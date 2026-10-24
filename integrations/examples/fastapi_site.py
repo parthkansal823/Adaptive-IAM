@@ -6,6 +6,7 @@ import os
 import secrets
 import threading
 import time
+from datetime import datetime
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
@@ -61,11 +62,13 @@ def callback(request: Request):
     with lock:
         flow = flows.pop(request.cookies.get("iam_login"), None)
     state = request.query_params.get("state", "")
-    if not flow or flow["expires_at"] <= time.time() or not hmac.compare_digest(flow["state"], state):
+    if any(len(request.query_params.getlist(name)) > 1 for name in ("state", "iss", "code", "error")):
+        raise IamError("invalid_callback_parameters", 401)
+    if not flow or flow["expires_at"] <= time.time() or not hmac.compare_digest(flow["state"].encode(), state.encode()):
         raise IamError("invalid_login_state", 401)
     if request.query_params.get("iss") != client.issuer:
         raise IamError("callback_issuer_mismatch", 401)
-    if request.query_params.get("error"):
+    if "error" in request.query_params:
         raise IamError("login_not_approved", 401)
     session = client.exchange_code(code=request.query_params.get("code", ""), verifier=flow["verifier"], nonce=flow["nonce"])
     key = secrets.token_urlsafe(32)
@@ -82,12 +85,24 @@ def callback(request: Request):
 
 @app.get("/protected")
 def protected(request: Request):
+    key = request.cookies.get("iam_site_session")
     with lock:
         cleanup()
-        session = sessions.get(request.cookies.get("iam_site_session"))
+        session = sessions.get(key)
     if not session:
         raise IamError("login_required", 401)
     access = client.permission(session, "research-vault")
+    # A logout or expiry during the provider call removes local authority too.
+    with lock:
+        cleanup()
+        if sessions.get(key) is not session:
+            raise IamError("login_required", 401)
+        try:
+            expiry = datetime.fromisoformat(access["expires_at"].replace("Z", "+00:00"))
+            if expiry.tzinfo is None or expiry.timestamp() <= time.time():
+                raise ValueError("expiry")
+        except (KeyError, AttributeError, TypeError, ValueError, OverflowError):
+            raise IamError("grant_expired_or_invalid", 403) from None
     return JSONResponse({"message": "Your site returned this record after an IAM permission check.", "user": access["identity"]["sub"], "resource": access["resource_id"]}, headers={"Cache-Control": "no-store"})
 
 

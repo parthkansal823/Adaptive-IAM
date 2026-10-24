@@ -2049,6 +2049,26 @@ summary::-webkit-details-marker {
   padding: 6px 0 27px;
 }
 
+.research-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.research-shortcuts a {
+  text-decoration: none;
+}
+
+.research-study {
+  scroll-margin-top: 24px;
+}
+
+.research-study:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+
 .experiment-intro h2 {
   font-size: 18px;
   font-weight: 550;
